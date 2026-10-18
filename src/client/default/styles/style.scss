@@ -1,0 +1,369 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+// ── 2. SCSS variables (design tokens) ────────────────────────
+
+// Brand
+$color-primary:     #6366f1;
+$color-primary-hov: #4f46e5;
+$color-secondary:   #8b5cf6;
+$color-accent:      #a78bfa;
+
+// Semantic
+$color-success:     #22c55e;
+$color-warning:     #f59e0b;
+$color-error:       #ef4444;
+$color-info:        #38bdf8;
+
+// Neutral scale
+$neutral-50:        #f9fafb;
+$neutral-100:       #f3f4f6;
+$neutral-200:       #e5e7eb;
+$neutral-300:       #d1d5db;
+$neutral-400:       #9ca3af;
+$neutral-500:       #6b7280;
+$neutral-600:       #4b5563;
+$neutral-700:       #374151;
+$neutral-800:       #1f2937;
+$neutral-900:       #111827;
+
+// Surface / backgrounds
+$surface-light:     #ffffff;
+$surface-dark:      #0f0f17;
+$bg-light:          #f9fafb;
+$bg-dark:           #050507;
+
+// Canvas (mobile shell)
+$canvas-width:      390px;
+$canvas-max-h:      844px;
+$canvas-radius:     32px;
+
+// Typography
+$font-sans:         'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+$font-mono:         'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+$font-size-base:    14px;
+$line-height-base:  1.6;
+
+// Spacing scale
+$space-1:  4px;
+$space-2:  8px;
+$space-3:  12px;
+$space-4:  16px;
+$space-5:  20px;
+$space-6:  24px;
+$space-8:  32px;
+$space-10: 40px;
+$space-12: 48px;
+$space-16: 64px;
+
+// Border radius
+$radius-sm:   6px;
+$radius-md:   10px;
+$radius-lg:   16px;
+$radius-xl:   24px;
+$radius-full: 9999px;
+
+// Shadows
+$shadow-sm:  0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md:  0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+$shadow-lg:  0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+$shadow-xl:  0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+// Motion
+$duration-fast: 0.15s;
+$duration-base: 0.25s;
+$duration-slow: 0.4s;
+$ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
+$ease-out:      cubic-bezier(0, 0, 0.2, 1);
+$ease-in:       cubic-bezier(0.4, 0, 1, 1);
+
+// Z-index scale
+$z-base:     0;
+$z-raised:   10;
+$z-dropdown: 100;
+$z-sticky:   200;
+$z-overlay:  300;
+$z-modal:    400;
+$z-toast:    500;
+
+// ── 3. SCSS mixins ────────────────────────────────────────────
+
+// Flex helpers
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+// Frosted glass surface
+@mixin glass($bg: rgba(255, 255, 255, 0.8), $blur: 16px, $border: rgba(255, 255, 255, 0.2)) {
+  background: $bg;
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+  border: 1px solid $border;
+}
+
+// Gradient text
+@mixin gradient-text($from: $color-primary, $to: $color-secondary) {
+  background: linear-gradient(135deg, $from, $to);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// Truncate single line
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Visually hidden (screen-reader only)
+@mixin sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+// Focus ring
+@mixin focus-ring($color: $color-primary) {
+  outline: 2px solid $color;
+  outline-offset: 2px;
+}
+
+// Smooth transition
+@mixin transition($props: all, $dur: $duration-base, $ease: $ease-in-out) {
+  transition: $props $dur $ease;
+}
+
+// Breakpoints
+$breakpoint-sm: 480px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+
+@mixin mobile-only   { @media (max-width: #{$breakpoint-sm - 1})  { @content; } }
+@mixin tablet-up     { @media (min-width: #{$breakpoint-sm})       { @content; } }
+@mixin desktop-up    { @media (min-width: #{$breakpoint-lg})       { @content; } }
+
+// ── 4. CSS custom properties (available to vanilla CSS + Tailwind) ──
+:root {
+  // Brand
+  --color-primary:       #{$color-primary};
+  --color-primary-hov:   #{$color-primary-hov};
+  --color-secondary:     #{$color-secondary};
+  --color-accent:        #{$color-accent};
+
+  // Semantic
+  --color-success:       #{$color-success};
+  --color-warning:       #{$color-warning};
+  --color-error:         #{$color-error};
+  --color-info:          #{$color-info};
+
+  // Surfaces
+  --surface:             #{$surface-light};
+  --bg:                  #{$bg-light};
+  --border:              #{$neutral-200};
+  --border-subtle:       #{$neutral-100};
+
+  // Text
+  --text:                #{$neutral-700};
+  --text-muted:          #{$neutral-500};
+  --text-disabled:       #{$neutral-400};
+  --text-heading:        #{$neutral-900};
+  --text-inverted:       #{$surface-light};
+
+  // Canvas
+  --canvas-width:        #{$canvas-width};
+  --canvas-max-h:        #{$canvas-max-h};
+  --canvas-radius:       #{$canvas-radius};
+
+  // Shadows
+  --shadow-sm:           #{$shadow-sm};
+  --shadow-md:           #{$shadow-md};
+  --shadow-lg:           #{$shadow-lg};
+
+  // Motion
+  --duration-fast:       #{$duration-fast};
+  --duration-base:       #{$duration-base};
+  --duration-slow:       #{$duration-slow};
+  --ease:                #{$ease-in-out};
+}
+
+// Dark mode overrides
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface:           #{$surface-dark};
+    --bg:                #{$bg-dark};
+    --border:            rgba(255, 255, 255, 0.1);
+    --border-subtle:     rgba(255, 255, 255, 0.06);
+    --text:              #{$neutral-200};
+    --text-muted:        #{$neutral-400};
+    --text-disabled:     #{$neutral-600};
+    --text-heading:      #{$neutral-50};
+    --text-inverted:     #{$neutral-900};
+    --shadow-sm:         0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md:         0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --shadow-lg:         0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  }
+}
+
+// ── 5. Global base reset + typography ─────────────────────────
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: $font-size-base;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  font-family: $font-sans;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// Headings
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: $font-sans;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text-heading);
+  letter-spacing: -0.02em;
+}
+
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.75rem; }
+h3 { font-size: 1.375rem; }
+h4 { font-size: 1.125rem; }
+h5 { font-size: 1rem;     }
+h6 { font-size: 0.875rem; }
+
+p {
+  margin: 0 0 $space-4;
+  &:last-child { margin-bottom: 0; }
+}
+
+a {
+  color: $color-primary;
+  text-decoration: none;
+  @include transition(color);
+  &:hover { color: $color-primary-hov; }
+}
+
+code, pre, kbd, samp {
+  font-family: $font-mono;
+}
+
+img, video, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, textarea, select {
+  font-family: inherit;
+}
+
+// ── 6. Utility classes ────────────────────────────────────────
+
+// Gradient text utility
+.text-gradient {
+  @include gradient-text;
+}
+
+.text-gradient-accent {
+  @include gradient-text($color-secondary, $color-accent);
+}
+
+// Glass surfaces
+.glass {
+  @include glass;
+}
+
+.glass-dark {
+  @include glass(rgba(15, 15, 23, 0.8), 16px, rgba(255, 255, 255, 0.08));
+}
+
+// Scrollbar (webkit)
+.scrollbar-thin {
+  &::-webkit-scrollbar        { width: 4px; height: 4px; }
+  &::-webkit-scrollbar-track  { background: transparent; }
+  &::-webkit-scrollbar-thumb  { background: $neutral-300; border-radius: $radius-full; }
+  &::-webkit-scrollbar-thumb:hover { background: $neutral-400; }
+}
+
+// Hide scrollbar but keep scroll functionality
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+// Focus ring
+.focus-ring:focus-visible {
+  @include focus-ring;
+}
+
+// ── 7. Ant Design overrides ───────────────────────────────────
+// Keep these minimal — prefer themeConfig.tsx for token changes
+
+.ant-btn-primary {
+  background: linear-gradient(135deg, $color-primary, $color-secondary) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+  @include transition(opacity box-shadow);
+
+  &:hover {
+    opacity: 0.92 !important;
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.45) !important;
+  }
+}
+
+// Antd form labels
+.ant-form-item-label > label {
+  font-weight: 500;
+  color: var(--text-heading);
+}
+
+// Antd input focus glow
+.ant-input:focus,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused {
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+}
