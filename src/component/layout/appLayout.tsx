@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom'
 
 const { Content } = Layout
 
-export default function AuthLayout() {
+const AppLayout = () => {
   return (
     <Layout className="min-h-full !bg-white">
       <header className="flex items-center px-6 py-5">
@@ -22,3 +22,6 @@ export default function AuthLayout() {
     </Layout>
   )
 }
+
+
+export default  AppLayout
