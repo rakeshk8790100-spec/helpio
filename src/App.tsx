@@ -4,13 +4,14 @@ import {
 } from 'react-router-dom'
 
 import { lightTheme }  from './client/default/styles/themeConfig'
-import router from './common/myRouter'
+import myRouter from './config/router/MyRouter'
+ 
 
 
 export default function App() {
   return (
     <ConfigProvider theme={lightTheme}>
-      <RouterProvider router={router} />
+      <RouterProvider router={myRouter} />
     </ConfigProvider>
   )
 }
