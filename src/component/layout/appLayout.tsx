@@ -1,20 +1,16 @@
 
 import { Layout } from "antd";
 import { Outlet, NavLink } from "react-router-dom";
-import {
-  Home,
-  Search,
-  Heart,
-  UserRound,
-} from "lucide-react";
+import { CalendarDays, Home, Search, UserRound } from "lucide-react";
+import { RouterKeys } from "../../config/router/RouterKeys";
 
 const { Header, Content, Footer } = Layout;
 
 const tabs = [
-  { label: "Home", path: "/", Icon: Home },
-  { label: "Search", path: "/search", Icon: Search },
-  { label: "Saved", path: "/saved", Icon: Heart },
-  { label: "Profile", path: "/profile", Icon: UserRound },
+  { label: "Home", path: RouterKeys.HOME, Icon: Home },
+  { label: "Search", path: RouterKeys.SEARCH, Icon: Search },
+  { label: "Bookings", path: RouterKeys.BOOKINGS, Icon: CalendarDays },
+  { label: "Profile", path: RouterKeys.PROFILE, Icon: UserRound },
 ];
 
 const AppLayout = () => {
@@ -23,17 +19,17 @@ const AppLayout = () => {
       <Layout className="!h-dvh !w-full !max-w-[430px] !overflow-hidden !bg-white sm:border-x sm:border-slate-200">
         {/* Header */}
         <Header className="!flex !h-16 !shrink-0 !items-center !justify-between !border-b !border-slate-100 !bg-white !px-5 !leading-normal">
-          <span className="text-xl font-bold tracking-tight text-slate-900">
+          <NavLink to={RouterKeys.HOME} className="text-xl font-bold tracking-tight !text-slate-900">
             helpio
-          </span>
+          </NavLink>
 
-          <button
-            type="button"
-            aria-label="Open profile"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700"
+          {/* Logged-out state until auth is wired */}
+          <NavLink
+            to={RouterKeys.LOGIN}
+            className="flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold !text-white"
           >
-            H
-          </button>
+            Log in
+          </NavLink>
         </Header>
 
         {/* Dynamic page content */}
@@ -55,7 +51,7 @@ const AppLayout = () => {
                 className={({ isActive }) =>
                   `flex min-h-[64px] flex-col items-center justify-center gap-1 text-xs ${
                     isActive
-                      ? "text-blue-600"
+                      ? "text-indigo-600"
                       : "text-slate-500"
                   }`
                 }
