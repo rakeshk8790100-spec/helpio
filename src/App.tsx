@@ -1,4 +1,4 @@
-import { ConfigProvider } from 'antd'
+import { App as AntApp, ConfigProvider } from 'antd'
 import { Provider } from 'react-redux'
 import { RouterProvider } from 'react-router-dom'
 
@@ -10,7 +10,10 @@ export default function App() {
   return (
     <Provider store={store}>
       <ConfigProvider theme={lightTheme}>
-        <RouterProvider router={myRouter} />
+        {/* AntApp provides theme-aware message/notification via App.useApp() */}
+        <AntApp>
+          <RouterProvider router={myRouter} />
+        </AntApp>
       </ConfigProvider>
     </Provider>
   )

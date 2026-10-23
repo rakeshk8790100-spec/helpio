@@ -4,6 +4,10 @@ export const RouterKeys = {
   PROFILE: '/profile',
   LOGIN: '/login',
   REGISTER: '/register',
+  /** Provider sign-up step 2 */
+  ONBOARDING_SKILLS: '/onboarding/skills',
+  /** Provider sign-up step 3 */
+  ONBOARDING_AREA: '/onboarding/service-area',
   BOOKINGS: '/bookings',
   POST_JOB: '/jobs/new',
   SERVICE_DETAIL: '/services/:id',

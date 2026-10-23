@@ -1,0 +1,45 @@
+import { Form, Input } from 'antd';
+
+/* Form fields shared by the login and provider sign-up layouts. Use inside an antd `Form`. */
+
+const digitsOnly = (value: string | undefined) => (value ?? '').replace(/\D/g, '');
+
+export const EmailField = ({ disabled = false }: { disabled?: boolean }) => (
+  <Form.Item
+    name="email"
+    label="Email"
+    rules={[
+      { required: true, message: 'Enter your email' },
+      { type: 'email', message: 'Enter a valid email' },
+    ]}
+  >
+    <Input size="large" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" disabled={disabled} />
+  </Form.Item>
+);
+
+export const NameField = () => (
+  <Form.Item
+    name="name"
+    label="Full name"
+    rules={[
+      { required: true, whitespace: true, message: 'Enter your full name' },
+      { min: 2, max: 80, message: 'Use 2 to 80 characters' },
+    ]}
+  >
+    <Input size="large" autoComplete="name" placeholder="As on your ID" maxLength={80} />
+  </Form.Item>
+);
+
+export const PhoneField = () => (
+  <Form.Item
+    name="phone"
+    label="Mobile number"
+    normalize={digitsOnly}
+    rules={[
+      { required: true, message: 'Enter your mobile number' },
+      { pattern: /^[6-9]\d{9}$/, message: 'Enter a valid 10-digit mobile number' },
+    ]}
+  >
+    <Input size="large" type="tel" inputMode="numeric" prefix="+91" maxLength={10} autoComplete="tel-national" placeholder="98765 43210" />
+  </Form.Item>
+);

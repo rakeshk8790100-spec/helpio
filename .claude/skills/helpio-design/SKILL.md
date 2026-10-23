@@ -14,7 +14,7 @@ Helpio is a mobile-first, two-sided services marketplace (customers ↔ provider
 3. **Build in three layers.** Follow [references/architecture.md](references/architecture.md):
    - `src/component/**`: pure presentational components. Props come in, `onX` callbacks go out.
    - `src/client/default/<feature>/*.layout.tsx`: all markup for the screen.
-   - `src/pages/<feature>/*.page.tsx` and `hooks/useX.ts`: all behaviour (data, state, navigation).
+   - `src/pages/<feature>/*.page.tsx` and `src/hooks/useX.ts`: all behaviour (data, state, navigation).
 4. **Apply the design system.** Follow [references/design-system.md](references/design-system.md) for colour, spacing, type, shape, motion, states, privacy, accessibility and the CSS gotchas.
 5. **Run the checklist.** Work through [references/checklist.md](references/checklist.md) before saying the work is done, including `npm run lint` and `npm run build`.
 
@@ -29,4 +29,4 @@ Helpio is a mobile-first, two-sided services marketplace (customers ↔ provider
 
 ## Worked example
 
-- **Public landing (`/`), one layout for both audiences:** `src/pages/hero/hero.page.tsx` with `hooks/useLanding.ts`, and `src/client/default/hero/hero.layout.tsx` with `hero.layout.types.ts`.
+- **Public landing (`/`), one layout for both audiences:** `src/pages/hero/hero.page.tsx` with `src/hooks/useLanding.ts`, and `src/client/default/hero/hero.layout.tsx` with `hero.layout.types.ts`.

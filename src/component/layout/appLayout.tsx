@@ -1,8 +1,12 @@
 
 import { Layout } from "antd";
-import { Outlet, NavLink } from "react-router-dom";
+import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { CalendarDays, Home, Search, UserRound } from "lucide-react";
+import { useGetMeQuery, useLogoutMutation } from "../../common/CommonApi";
 import { RouterKeys } from "../../config/router/RouterKeys";
+import { useAppSelector } from "../../redux";
+import { selectCurrentUser, selectToken } from "../../redux/authSlice";
+import { UserMenu } from "../marketplace";
 
 const { Header, Content, Footer } = Layout;
 
@@ -14,6 +18,22 @@ const tabs = [
 ];
 
 const AppLayout = () => {
+  const user = useAppSelector(selectCurrentUser);
+  const token = useAppSelector(selectToken);
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [logout] = useLogoutMutation();
+  // Refresh the stored user (and validate the token) once per visit
+  useGetMeQuery(undefined, { skip: !token });
+
+  const onLogout = async () => {
+    // Stop Google from silently picking the same account next time
+    window.google?.accounts.id.disableAutoSelect();
+    await logout();
+    navigate(RouterKeys.HOME);
+  };
+  const onAuthScreen = pathname === RouterKeys.LOGIN || pathname === RouterKeys.REGISTER;
+
   return (
     <div className="min-h-dvh w-full bg-slate-100 sm:flex sm:justify-center">
       <Layout className="!h-dvh !w-full !max-w-[430px] !overflow-hidden !bg-white sm:border-x sm:border-slate-200">
@@ -23,13 +43,18 @@ const AppLayout = () => {
             helpio
           </NavLink>
 
-          {/* Logged-out state until auth is wired */}
-          <NavLink
-            to={RouterKeys.LOGIN}
-            className="flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold !text-white"
-          >
-            Log in
-          </NavLink>
+          {user ? (
+            <UserMenu user={user} onLogout={onLogout} />
+          ) : (
+            !onAuthScreen && (
+              <NavLink
+                to={RouterKeys.LOGIN}
+                className="flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold !text-white"
+              >
+                Log in
+              </NavLink>
+            )
+          )}
         </Header>
 
         {/* Dynamic page content */}
@@ -51,8 +76,8 @@ const AppLayout = () => {
                 className={({ isActive }) =>
                   `flex min-h-[64px] flex-col items-center justify-center gap-1 text-xs ${
                     isActive
-                      ? "text-indigo-600"
-                      : "text-slate-500"
+                      ? "!text-indigo-600"
+                      : "!text-slate-500"
                   }`
                 }
               >

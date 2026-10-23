@@ -3,7 +3,7 @@
 Go through every item before calling UI work done. Fix it or explicitly call it out.
 
 ## Architecture
-- [ ] Behaviour (queries, state, navigation, handlers) lives in `pages/<feature>/` (page or `hooks/`).
+- [ ] Behaviour (queries, state, navigation, handlers) lives in `pages/<feature>/*.page.tsx` or a hook in `src/hooks/`.
 - [ ] All markup lives in `client/default/<feature>/*.layout.tsx`, typed by `<feature>.layout.types.ts`.
 - [ ] Components in `src/component/ui|marketplace` have no router, redux, API or `pages/` imports. Check with:
       `grep -rnE "react-router-dom|redux|\.api'|/pages/" src/component/ui src/component/marketplace` (must print nothing).

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EARN_SECTION_ID } from '../../../client/default/hero/hero.layout.types';
-import type { LandingLayoutProps } from '../../../client/default/hero/hero.layout.types';
-import { useSearchServicesQuery } from '../../../common/CommonApi';
-import { UserRole } from '../../../common/CommonEnum';
-import { RouterKeys, toPath, withQuery } from '../../../config/router/RouterKeys';
-import { useDebouncedValue } from '../../../lib/useDebouncedValue';
-import { draftJobDescription } from '../../../lib/utils';
-import { useGetLandingQuery } from '../hero.api';
+import { EARN_SECTION_ID } from '../client/default/hero/hero.layout.types';
+import type { LandingLayoutProps } from '../client/default/hero/hero.layout.types';
+import { useSearchServicesQuery } from '../common/CommonApi';
+import { UserRole } from '../common/CommonEnum';
+import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
+import { useDebouncedValue } from './useDebouncedValue';
+import { draftJobDescription } from '../lib/utils';
+import { useGetLandingQuery } from '../pages/hero/hero.api';
 
 /** Average weeks per month, for turning weekly hours into a monthly estimate */
 const WEEKS_PER_MONTH = 4.3;

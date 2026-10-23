@@ -3,7 +3,7 @@
 ## Layers and dependency direction
 
 ```
-src/pages/<feature>/          behaviour   (data, state, handlers, navigation)
+src/pages/<feature>/ + src/hooks/   behaviour   (data, state, handlers, navigation)
         │  builds props
         ▼
 src/client/default/<feature>/ markup      (JSX composition only; "default" is the client theme/skin)
@@ -38,7 +38,7 @@ Imports only point **down** this list. A component importing from `pages/` or `c
 
 ### `src/pages/<feature>/` (behaviour)
 - `<feature>.page.tsx` reads any global state, calls the hooks and renders the layout.
-- `hooks/use<View>.ts` holds one hook per view. It owns queries, state, debounce, derived values, navigation and handlers, and **returns the layout props**.
+- `src/hooks/use<View>.ts` holds one hook per view. It owns queries, state, debounce, derived values, navigation and handlers, and **returns the layout props**.
 - `<feature>.api.ts` injects RTK Query endpoints into `baseApi` (never `createApi` again). Use `queryFn` with mocks until the backend exists.
 - `<feature>.mock.ts` holds typed mock data.
 - `types/<feature>.dto.ts` holds only feature-specific payloads, composed from `common/CommonDto` entities.
@@ -47,7 +47,7 @@ Imports only point **down** this list. A component importing from `pages/` or `c
 ### Shared (not owned by one page)
 - `src/common/CommonApi.ts` holds endpoints used by several screens (e.g. `searchServices`). Pages never import another page's `*.api.ts`.
 - `src/common/CommonMock.ts` holds shared catalogue mocks (categories, services).
-- `src/lib/` holds framework-free helpers and generic hooks: `formatINR`, `draftJobDescription`, `useDebouncedValue`.
+- `src/lib/` holds framework-free helpers: `formatINR`, `draftJobDescription`. Every custom hook (page hooks and generic ones such as `useDebouncedValue`) lives in `src/hooks/`.
 
 ### Public vs post-login screens
 - **Landing (`pages/hero`, `/`)** is public. **No role toggle**: one scroll serves customers (search, post a job) and providers (earnings, join).
@@ -57,7 +57,7 @@ Imports only point **down** this list. A component importing from `pages/` or `c
 | Kind | Pattern | Example |
 |---|---|---|
 | Page | `<feature>.page.tsx` | `hero.page.tsx` |
-| Page hook | `hooks/use<View>.ts` | `useLanding.ts` |
+| Page hook | `src/hooks/use<View>.ts` | `useLanding.ts` |
 | Root layout | `<feature>.layout.tsx` | `hero.layout.tsx` |
 | Sub-layout (optional) | `<view>.layout.tsx` (camelCase) | `bookingList.layout.tsx` |
 | Layout contract | `<feature>.layout.types.ts` | `hero.layout.types.ts` |
@@ -69,7 +69,7 @@ Imports only point **down** this list. A component importing from `pages/` or `c
 3. Add API endpoints in `pages/<feature>/<feature>.api.ts` (mock with `queryFn` if needed).
 4. Write `client/default/<feature>/<feature>.layout.types.ts`: one prop group per section.
 5. Write the layout(s) by composing catalogue components. If something is missing, build it in `component/ui` or `component/marketplace`, export it, and document it in `components.md`.
-6. Write `pages/<feature>/hooks/use<View>.ts` returning the layout props, then a thin `<feature>.page.tsx`.
+6. Write `src/hooks/use<View>.ts` returning the layout props, then a thin `<feature>.page.tsx`.
 7. Run the checklist.
 
 ## Worked example: landing page
@@ -77,7 +77,7 @@ Imports only point **down** this list. A component importing from `pages/` or `c
 // pages/hero/hero.page.tsx: behaviour only
 const HeroPage = () => <HeroLayout {...useLanding()} />;
 
-// pages/hero/hooks/useLanding.ts: returns layout props
+// hooks/useLanding.ts: returns layout props
 const monthlyEstimate = Math.round((rate.hourlyAvg * hours * WEEKS_PER_MONTH) / 100) * 100;
 earnings: { rates: data.earningRates, skillId: rate.skillId, onSkillChange: setSkillId, hours, onHoursChange: setHours, monthlyEstimate },
 onExploreEarning: () => document.getElementById(EARN_SECTION_ID)?.scrollIntoView({ behavior: 'smooth' }),

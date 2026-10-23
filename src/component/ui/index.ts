@@ -1,7 +1,10 @@
 export { default as Avatar } from './Avatar';
 export { default as Chip } from './Chip';
+export { default as ChipMultiSelect } from './ChipMultiSelect';
+export type { ChipOption } from './ChipMultiSelect';
 export { default as FaqList } from './FaqList';
 export type { FaqListItem } from './FaqList';
+export { default as GoogleButton } from './GoogleButton';
 export { default as HScroll } from './HScroll';
 export { default as IconTile } from './IconTile';
 export { default as PageSkeleton } from './PageSkeleton';
@@ -11,3 +14,4 @@ export { default as StatusBadge } from './StatusBadge';
 export type { BadgeTone } from './StatusBadge';
 export { default as StepList } from './StepList';
 export type { StepListItem } from './StepList';
+export { default as StepProgress } from './StepProgress';
