@@ -1,18 +1,21 @@
-"""Environment-based database configuration."""
+"""Environment-based application settings."""
 import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
 
 ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_SECRET_KEY = "change-me-in-env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore", hide_input_in_errors=True)
+
+    app_env: Literal["dev", "prod"] = "dev"
 
     db_host: str = ""
     db_port: int = Field(default=5432, ge=1, le=65535)
@@ -21,11 +24,33 @@ class Settings(BaseSettings):
     db_password: SecretStr = SecretStr("")
     db_sslmode: Literal["require", "verify-ca", "verify-full"] = "require"
     db_sslrootcert: str = ""
-    auth_secret_key: SecretStr = SecretStr("change-me-in-env")
+
+    auth_secret_key: SecretStr = SecretStr(DEFAULT_SECRET_KEY)
+    # 30 days: sign-in is by emailed code, so short sessions would mean an email per visit.
+    auth_token_minutes: int = Field(default=43_200, ge=5, le=525_600)
+    # Dev only: print OTP emails to the server log instead of sending them.
+    auth_dev_email_console: bool = False
+
     brevo_smtp_login: str = ""
     brevo_smtp_key: SecretStr = SecretStr("")
     brevo_from_email: str = ""
     google_client_id: str = ""
+
+    # Comma-separated browser origins allowed to call the API, e.g. "https://app.helpio.in".
+    cors_origins: str = ""
+
+    @model_validator(mode="after")
+    def check_production_safety(self) -> "Settings":
+        if self.app_env == "prod":
+            if self.auth_secret_key.get_secret_value() == DEFAULT_SECRET_KEY:
+                raise ValueError("Set AUTH_SECRET_KEY in production")
+            if self.auth_dev_email_console:
+                raise ValueError("AUTH_DEV_EMAIL_CONSOLE must be off in production")
+        return self
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     def database_url(self) -> URL:
         missing = [name for name, value in {
@@ -49,7 +74,3 @@ def get_settings() -> Settings:
     if environment not in {"dev", "prod"}:
         raise ValueError("APP_ENV must be dev or prod")
     return Settings(_env_file=ROOT / f".env.{environment}", _env_file_encoding="utf-8")
-
-
-
-

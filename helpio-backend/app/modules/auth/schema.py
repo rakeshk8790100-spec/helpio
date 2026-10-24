@@ -1,61 +1,93 @@
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, EmailStr, Field, StringConstraints, model_validator
 
-AuthRole = Literal["admin", "customer", "provider"]
-GoogleAuthRole = Literal["customer", "provider"]
-OtpPurpose = Literal["signup", "password_reset"]
-
-
-class SignupRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
-    role: AuthRole
+Email = Annotated[EmailStr, AfterValidator(str.lower)]
+PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=80)]
+# Indian mobile number as typed (10 digits), stored in E.164 form.
+IndianMobile = Annotated[str, Field(pattern=r"^[6-9]\d{9}$"), AfterValidator(lambda digits: f"+91{digits}")]
+Otp = Annotated[str, Field(pattern=r"^\d{6}$")]
+SelfServiceRole = Literal["customer", "provider"]
+OtpLoginPurpose = Literal["signup", "login"]
 
 
-class SignupResponse(BaseModel):
-    id: str
-    email: EmailStr
-    role: AuthRole
-    email_verified: bool
-    requires_verification: bool
+class OtpStartRequest(BaseModel):
+    email: Email
+    role: SelfServiceRole
 
 
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str = Field(min_length=1, max_length=128)
+class NextStepResponse(BaseModel):
+    """`otp`: a code was emailed. `details`: no account yet, collect name and phone and register."""
+
+    next: Literal["otp", "details"]
 
 
-class GoogleLoginRequest(BaseModel):
-    id_token: str = Field(min_length=1)
-    role: GoogleAuthRole
-
-
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+class RegisterRequest(BaseModel):
+    name: PersonName
+    email: Email
+    phone: IndianMobile
+    role: SelfServiceRole
+    # Optional; lets a customer log in with email + password as well as an emailed code.
+    password: str | None = Field(default=None, min_length=8, max_length=128)
 
 
 class VerifyOtpRequest(BaseModel):
-    email: EmailStr
-    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
-    purpose: OtpPurpose = "signup"
+    email: Email
+    otp: Otp
+    purpose: OtpLoginPurpose
 
 
-class VerifyOtpResponse(BaseModel):
-    email: EmailStr
-    email_verified: bool
+class ResendOtpRequest(BaseModel):
+    email: Email
+    purpose: OtpLoginPurpose
+
+
+class GoogleLoginRequest(BaseModel):
+    id_token: str = Field(min_length=1, max_length=4096)
+
+
+class UpdateMeRequest(BaseModel):
+    name: PersonName | None = None
+    phone: IndianMobile | None = None
+
+    @model_validator(mode="after")
+    def require_a_field(self) -> "UpdateMeRequest":
+        if self.name is None and self.phone is None:
+            raise ValueError("Provide name or phone")
+        return self
+
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    name: str | None
+    phone: str | None
+    role: Literal["admin", "customer", "provider"]
+    avatar_url: str | None
+    # Providers only: the next sign-up step, or "complete".
+    onboarding_status: Literal["skills", "service_setup", "complete"] | None
+
+
+class SessionResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    user: UserResponse
+
+
+class LoginRequest(BaseModel):
+    email: Email
+    password: str = Field(min_length=1, max_length=128)
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    email: Email
+
+
+class ResetPasswordRequest(BaseModel):
+    email: Email
+    otp: Otp
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class MessageResponse(BaseModel):
     message: str
-
-
-class ResetPasswordRequest(BaseModel):
-    email: EmailStr
-    otp: str = Field(min_length=6, max_length=6, pattern=r"^\d{6}$")
-    new_password: str = Field(min_length=8, max_length=128)

@@ -60,49 +60,82 @@ exposing application data; direct SQL does not automatically carry Supabase user
 
 ## Auth
 
-Auth endpoints are available under `/api/v1/auth`:
+Customers and providers sign in **without passwords**: they enter their email and type the 6-digit code
+we email them. Customers can also continue with Google, or set a password at sign-up and log in with
+email + password afterwards. Administrators use email + password.
 
-- `POST /signup`: create `admin`, `customer`, or `provider` users.
-- `POST /login`: return a bearer token for verified active users.
-- `POST /google`: verify a Google ID token and login or create `customer`/`provider` users.
-- `POST /verify-otp`: verify signup OTPs for email/password accounts.
-- `POST /forgot-password`: send a password reset OTP when the email exists.
-- `POST /reset-password`: reset a password with the emailed OTP.
+All endpoints are under `/api/v1/auth`:
 
-Email/password signups require email OTP verification before login. OTP emails are sent with Brevo SMTP using
-`BREVO_SMTP_LOGIN`, `BREVO_SMTP_KEY`, and `BREVO_FROM_EMAIL`; keep the SMTP key in `.env.dev` or
-`.env.prod`, never in source code. `BREVO_FROM_EMAIL` must be a verified sender in Brevo.
+| Endpoint | Purpose |
+|---|---|
+| `POST /otp/start` `{email, role}` | Existing account: emails a login code, returns `{"next":"otp"}`. New email: returns `{"next":"details"}`. |
+| `POST /register` `{name, email, phone, role, password?}` | Creates the account (or refreshes an unverified one) and emails a sign-up code. `role` is `customer` or `provider`; `phone` is 10 digits, stored as `+91…`; `password` (8–128 chars) is optional and stored hashed. |
+| `POST /verify-otp` `{email, otp, purpose}` | `purpose` is `signup` or `login`. Returns the session `{access_token, token_type, user}`. |
+| `POST /otp/resend` `{email, purpose}` | Always 202, so it can't be used to discover accounts. |
+| `POST /google` `{id_token}` | Customers only. Verifies the Google ID token and returns the session. |
+| `GET /me`, `PATCH /me` `{name?, phone?}` | Current user; Google customers add their mobile number here. |
+| `POST /logout` | Revokes the bearer token (other devices stay signed in). |
+| `POST /login` `{email, password}` | Administrators, and verified customers who set a password at sign-up. |
+| `POST /forgot-password`, `/reset-password` | Administrators only. Customers who forget their password sign in with an email code. |
 
-The table SQL is in `migrations/202609240001_auth_tables.sql`. It enables RLS on
-the auth tables; because this backend uses a server-side Postgres connection,
-application endpoints enforce the auth flow.
+`user.onboarding_status` is `skills`, `service_setup` or `complete` for providers and `null` for others.
 
-For Google login, set `GOOGLE_CLIENT_ID` to the Web Client ID from Google Cloud.
-The frontend should send the Google `credential` ID token to:
+**Code rules:** codes expire after 10 minutes, are stored hashed, and die after 5 wrong attempts.
+A new code can be requested once every 60 seconds and at most 5 times per hour (429 with `Retry-After`).
+Requesting a new code retires the previous one.
 
-```http
-POST /api/v1/auth/google
-Content-Type: application/json
+**Sessions** last `AUTH_TOKEN_MINUTES` (default 30 days). Protected endpoints use
+`Depends(get_current_user)`, or `Depends(require_role(UserRole.PROVIDER))` for one role, from
+`app.modules.auth.dependencies`. Revocations persist across restarts; raw tokens are never stored.
+Expired records can be removed periodically with `DELETE FROM auth_revoked_tokens WHERE expires_at <= now();`.
 
-{
-  "id_token": "<google-credential-id-token>",
-  "role": "customer"
-}
+**Email** is sent with Brevo SMTP using `BREVO_SMTP_LOGIN`, `BREVO_SMTP_KEY` and `BREVO_FROM_EMAIL`
+(a verified sender). Keep the key in `.env.dev`/`.env.prod`, never in source code. Brevo must allow the
+backend's outgoing IP (see `docs/superpowers/plans/2026-10-01-signup-email-failure.md`).
+For local development without email, set `AUTH_DEV_EMAIL_CONSOLE=true` in `.env.dev`: codes are printed
+to the uvicorn console instead. Settings refuse this flag when `APP_ENV=prod`.
+
+**Google:** set `GOOGLE_CLIENT_ID` to the Web Client ID from Google Cloud (the same ID the frontend uses).
+
+**Administrators** are created from the command line (public sign-up can't create them):
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.create_admin
 ```
 
-`role` can be `customer` or `provider`. Admin accounts still use email/password plus OTP.
+## Provider onboarding
 
+After verifying their email, providers finish sign-up in two more steps. Endpoints (provider token required):
 
-## Logout
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/v1/catalog/skills` | Public skills catalogue grouped by category. |
+| `GET /api/v1/providers/me/onboarding` | Status plus saved skills, availability and service area. |
+| `PUT /api/v1/providers/me/skills` | 3–15 skills, each with `proficiency` (`beginner`/`intermediate`/`expert`) and optional `years_experience`. Moves status to `service_setup`. |
+| `PUT /api/v1/providers/me/service-setup` | Weekly availability (`day` 0 = Monday, `start`/`end` "HH:MM"), service area (`pincode`, `area_name`, optional `latitude`/`longitude`) and `radius_km` (1–50). Completes sign-up. |
 
-Apply `migrations/202610010001_auth_revoked_tokens.sql` to the backend database before using logout.
+Status only moves forward; providers can re-save either step later.
 
-`POST /api/v1/auth/logout` requires `Authorization: Bearer <access_token>` and no request body.
-It returns 200 with `{"message":"Logged out successfully"}`. Delete the frontend's stored token on success.
-Only the supplied token is revoked; other devices remain signed in. Repeating logout succeeds while the token is valid.
-Missing, invalid, or expired tokens return 401. Google and email login tokens both work.
+## Migrations
 
-Protected endpoints must use `Depends(get_current_user)` from `app.modules.auth.dependencies`
-to reject expired, invalid, or revoked tokens. No protected resource endpoints exist yet.
-Revocations persist across backend restarts and workers; raw tokens are not stored.
-Expired records can be removed periodically with `DELETE FROM auth_revoked_tokens WHERE expires_at <= now();`.
+Apply these in order in the Supabase SQL editor (each is safe to re-run):
+
+1. `migrations/202609240001_auth_tables.sql`
+2. `migrations/202610010001_auth_revoked_tokens.sql`
+3. `migrations/202610220001_otp_login_and_profile.sql`: name, phone, avatar, login codes, attempt counter
+4. `migrations/202610220002_catalog_and_providers.sql`: skills catalogue (seeded) and provider onboarding tables
+
+All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
+server-side connection enforces the rules.
+
+## Tests
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest
+```
+
+Tests run against in-memory SQLite with fake email and Google clients; nothing is sent.
+
+## Settings reference
+
+See `.env.example`. Restart uvicorn after changing settings (they are cached).

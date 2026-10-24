@@ -40,14 +40,14 @@ def verify_secret(secret: str, stored_hash: str) -> bool:
         return False
 
 
-def create_access_token(*, subject: str, role: str, minutes: int = 60) -> str:
+def create_access_token(*, subject: str, role: str) -> str:
     settings = get_settings()
     now = datetime.now(timezone.utc)
     payload: dict[str, Any] = {
         "sub": subject,
         "role": role,
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(minutes=minutes)).timestamp()),
+        "exp": int((now + timedelta(minutes=settings.auth_token_minutes)).timestamp()),
         "nonce": token_urlsafe(8),
     }
     header = {"alg": "HS256", "typ": "JWT"}
@@ -59,7 +59,6 @@ def create_access_token(*, subject: str, role: str, minutes: int = 60) -> str:
         hashlib.sha256,
     ).digest()
     return signing_input + "." + _b64url(signature)
-
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
