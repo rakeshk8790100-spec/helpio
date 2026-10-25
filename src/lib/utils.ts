@@ -48,3 +48,10 @@ export const formatDays = (days: number[]) => {
 /** Metres → "500 m", "2 km" or "2.5 km" */
 export const formatDistance = (metres: number) =>
   metres < 1000 ? `${metres} m` : `${+(metres / 1000).toFixed(1)} km`;
+
+/** ISO date-time → "28 Oct" */
+export const formatShortDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+/** First name for greetings, e.g. "Asha Kumar" → "Asha" */
+export const firstName = (name: string | null) => name?.trim().split(/\s+/)[0] || 'there';

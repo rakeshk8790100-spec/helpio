@@ -27,3 +27,32 @@ export type Proficiency = (typeof Proficiency)[keyof typeof Proficiency];
 
 /** Digits in an emailed password-reset code */
 export const OTP_LENGTH = 6;
+
+/** A custom job, from draft to paid-out. Escrow, PIN and milestones move it past `accepted`. */
+export const JobStatus = {
+  DRAFT: 'draft',
+  OPEN: 'open',
+  ACCEPTED: 'accepted',
+  FUNDED: 'funded',
+  IN_PROGRESS: 'in_progress',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  DISPUTED: 'disputed',
+} as const;
+export type JobStatus = (typeof JobStatus)[keyof typeof JobStatus];
+
+export const QuoteStatus = {
+  PENDING: 'pending',
+  ACCEPTED: 'accepted',
+  REJECTED: 'rejected',
+  WITHDRAWN: 'withdrawn',
+} as const;
+export type QuoteStatus = (typeof QuoteStatus)[keyof typeof QuoteStatus];
+
+/** A provider sign-up checklist step; `unavailable` steps (e.g. KYC) aren't offered yet. */
+export const ChecklistState = {
+  DONE: 'done',
+  PENDING: 'pending',
+  UNAVAILABLE: 'unavailable',
+} as const;
+export type ChecklistState = (typeof ChecklistState)[keyof typeof ChecklistState];

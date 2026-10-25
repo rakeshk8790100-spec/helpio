@@ -1,4 +1,4 @@
-import type { AvailabilitySlot, ProviderOnboarding, ProviderSkill, ServiceArea, SkillCategory } from '../../common/CommonDto';
+import type { AvailabilitySlot, ProviderOnboarding, ProviderSkill, ServiceArea } from '../../common/CommonDto';
 import { baseApi, dispatchOnSuccess } from '../../config/base_service/base.api';
 import { onboardingStatusChanged } from '../../redux/authSlice';
 import type { OnboardingApiDto, ProviderSkillApiDto, SaveServiceSetupApiDto } from './types/onboarding.dto';
@@ -23,10 +23,6 @@ const syncStatus = dispatchOnSuccess<ProviderOnboarding>((data) => onboardingSta
 /** Provider onboarding: skills catalogue, then skills, availability and service area. */
 export const onboardingApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getSkillCatalog: builder.query<SkillCategory[], void>({
-      query: () => '/catalog/skills',
-      providesTags: ['Catalog'],
-    }),
     getOnboarding: builder.query<ProviderOnboarding, void>({
       query: () => '/providers/me/onboarding',
       transformResponse: toOnboarding,
@@ -70,7 +66,6 @@ export const onboardingApi = baseApi.injectEndpoints({
 });
 
 export const {
-  useGetSkillCatalogQuery,
   useGetOnboardingQuery,
   useSaveSkillsMutation,
   useSaveServiceSetupMutation,

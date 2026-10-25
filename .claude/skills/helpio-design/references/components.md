@@ -25,6 +25,9 @@ All components are pure: data comes in through props and actions go out through 
 | `ChipSelect` | Single-choice chip group that wraps (e.g. service radius); works inside `Form.Item` | `options`, `value?`, `onChange?`, `ariaLabel` | `Segmented` with too many options for 360px |
 | `StepProgress` | Segmented "Step N of M" bar for multi-screen flows | `steps: string[]`, `current` (1-based) | ad-hoc progress bars |
 | `GoogleButton` | Official Google Identity Services button | `clientId`, `onCredential(idToken)` | custom Google buttons |
+| `ProgressBar` | Thin progress bar with `role="progressbar"` (milestones 0/25/50/75/100) | `value`, `label`, `variant?: 'plain' \| 'glass'` | ad-hoc width bars |
+| `EmptyState` | Empty section: icon, one line, optional action | `Icon`, `text`, `actionLabel?`, `onAction?` | blank sections |
+| `AlertBanner` | Inline error notice with Retry (`role="alert"`) | `message`, `onRetry?` | antd `Alert` for failed requests |
 
 ## `src/component/marketplace` (Helpio domain)
 
@@ -41,11 +44,19 @@ All components are pure: data comes in through props and actions go out through 
 | `HelpioLogo` | Brand mark + "helpio" wordmark (header) | `size?: 'sm' \| 'md'` |
 | `SkillPicker` | Provider skills: category tabs, skill chips, proficiency per selected skill | see the component's props |
 | `UserMenu` | Signed-in header avatar with account details and Log out | `user`, `onLogout` |
+| `ActiveJobCard` | Gradient card for the hired job in progress: status, progress, next step, action, red Safety | `eyebrow`, `title`, `statusLabel`, `progressPct`, `nextStep`, `actionLabel`, `onAction`, `onSafety` |
+| `JobCard` | A customer's job in a list: status badge, meta line, amount on the right | `title`, `meta`, `badge`, `amount?`, `amountLabel?`, `urgent?`, `onClick` |
+| `NearbyJobCard` | Provider view of a job before hire: ~distance, area, "Asha K.", budget, my quote status | `job: NearbyJob`, `onOpen` |
+| `ChecklistCard` | Dark provider checklist (done/pending/coming soon) with a locked-action note and one CTA | `title`, `items`, `lockedNote?`, `actionLabel?`, `onAction?` |
+| `CurrentLocationButton` | "Use my current location", or "added" with Remove; geolocation errors suggest the pincode (pair with `useCurrentLocation`) | `coordinates`, `locating`, `error?`, `onLocate`, `onClear` |
+| `PhotoPicker` | Up to `max` photos/videos as a thumbnail grid with add tile, upload spinner, error and remove | `items: PhotoItem[]`, `max`, `onAdd(files)`, `onRemove(id)`, `disabled?` |
+| `QuoteCard` | A provider's quote for the customer: "Ravi S.", proficiency, ~distance, price, note, Decline/Accept (locked with a reason until escrow exists) | `quote: CustomerQuote`, `cheapest?`, `lockedNote?`, `onAccept?`, `onReject?` |
+| `JobMap` | OpenStreetMap (react-leaflet) with the provider's radius and approximate job circles only, never exact pins; popups open the job | `area`, `jobs: JobMapItem[]`, `center?`, `height?` |
 
 ## `src/component/layout` (app shell)
 | Component | Purpose |
 |---|---|
-| `AppLayout` | 430px mobile shell: header with `HelpioLogo`, scrolling content (`<Outlet/>`), bottom tabs and Log in button (both hidden on log-in, sign-up and password pages) |
+| `AppLayout` | 430px mobile shell: header with `HelpioLogo`, scrolling content (`<Outlet/>`), role-based bottom tabs (customer: Home/Search/My jobs/Profile; provider: Home/Jobs/Earnings/Profile) and Log in button (both hidden on log-in, sign-up and password pages) |
 | `ComingSoon` | Placeholder for routes not built yet (catch-all child route) |
 
 ## Before creating a new component

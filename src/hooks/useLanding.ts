@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EARN_SECTION_ID } from '../client/default/hero/hero.layout.types';
 import type { LandingLayoutProps } from '../client/default/hero/hero.layout.types';
-import { useSearchServicesQuery } from '../common/CommonApi';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
-import { useDebouncedValue } from './useDebouncedValue';
 import { draftJobDescription } from '../lib/utils';
 import { useGetLandingQuery } from '../pages/hero/hero.api';
+import { useServiceSearch } from './useServiceSearch';
 
 /** Average weeks per month, for turning weekly hours into a monthly estimate */
 const WEEKS_PER_MONTH = 4.3;
@@ -16,11 +15,7 @@ export const useLanding = (): LandingLayoutProps => {
   const navigate = useNavigate();
   const { data } = useGetLandingQuery();
 
-  const [searchText, setSearchText] = useState('');
-  const debounced = useDebouncedValue(searchText.trim());
-  // Only search from 2 characters
-  const term = debounced.length >= 2 ? debounced : '';
-  const { data: results = [], isFetching: searching } = useSearchServicesQuery(term, { skip: !term });
+  const search = useServiceSearch();
 
   const [skillId, setSkillId] = useState<string>();
   const [hours, setHours] = useState(20);
@@ -38,18 +33,10 @@ export const useLanding = (): LandingLayoutProps => {
   return {
     loading: false,
 
-    search: {
-      value: searchText,
-      onChange: setSearchText,
-      term,
-      results,
-      loading: searching,
-      onSelect: (s) => navigate(toPath(RouterKeys.SERVICE_DETAIL, { id: s.id })),
-      onPostCustom: (t) => postJob({ title: t }),
-    },
+    search,
     quickCategories: {
       items: data.categories.slice(0, 6),
-      onPick: (c) => setSearchText(c.name),
+      onPick: (c) => search.onChange(c.name),
     },
     stats: data.stats,
 

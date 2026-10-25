@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import type { FormInstance } from 'antd';
-import type { SkillPicker } from '../../../component/marketplace';
+import type { CurrentLocationButton, SkillPicker } from '../../../component/marketplace';
 import type { WithLoading } from '../layout.types';
 
 /* Contract between pages/onboarding (behaviour) and client/default/onboarding (markup). */
@@ -34,11 +34,6 @@ export interface ServiceSetupFormValues {
   radiusM: number;
 }
 
-export interface Coordinates {
-  latitude: number;
-  longitude: number;
-}
-
 export type ServiceAreaLayoutProps = WithLoading<{
   loadError: boolean;
   onRetry: () => void;
@@ -46,13 +41,7 @@ export type ServiceAreaLayoutProps = WithLoading<{
   initialValues: ServiceSetupFormValues;
   /** Live values for the plain-language summary */
   summary: Partial<ServiceSetupFormValues>;
-  location: {
-    coordinates: Coordinates | null;
-    locating: boolean;
-    error?: string;
-    onLocate: () => void;
-    onClear: () => void;
-  };
+  location: ComponentProps<typeof CurrentLocationButton>;
   onSubmit: (values: ServiceSetupFormValues) => void;
   saving: boolean;
   error?: string;

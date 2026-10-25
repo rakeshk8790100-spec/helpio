@@ -2,8 +2,9 @@
 import { useCallback, useState } from "react";
 import { Layout } from "antd";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { CalendarDays, Home, Search, UserRound } from "lucide-react";
+import { BriefcaseBusiness, ClipboardList, Home, Search, UserRound, Wallet } from "lucide-react";
 import { useGetMeQuery, useLogoutMutation } from "../../common/CommonApi";
+import { UserRole } from "../../common/CommonEnum";
 import { RouterKeys } from "../../config/router/RouterKeys";
 import { useAppSelector } from "../../redux";
 import { selectCurrentUser, selectToken } from "../../redux/authSlice";
@@ -12,10 +13,17 @@ import { HelpioLogo, UserMenu } from "../marketplace";
 
 const { Header, Content, Footer } = Layout;
 
-const tabs = [
+/** Customers (and signed-out visitors) book and track jobs; providers find work and get paid. */
+const CUSTOMER_TABS = [
   { label: "Home", path: RouterKeys.HOME, Icon: Home },
   { label: "Search", path: RouterKeys.SEARCH, Icon: Search },
-  { label: "Bookings", path: RouterKeys.BOOKINGS, Icon: CalendarDays },
+  { label: "My jobs", path: RouterKeys.JOBS, Icon: ClipboardList },
+  { label: "Profile", path: RouterKeys.PROFILE, Icon: UserRound },
+];
+const PROVIDER_TABS = [
+  { label: "Home", path: RouterKeys.HOME, Icon: Home },
+  { label: "Jobs", path: RouterKeys.PRO_JOBS, Icon: BriefcaseBusiness },
+  { label: "Earnings", path: RouterKeys.PRO_EARNINGS, Icon: Wallet },
   { label: "Profile", path: RouterKeys.PROFILE, Icon: UserRound },
 ];
 
@@ -80,7 +88,7 @@ const AppLayout = () => {
             aria-label="Bottom navigation"
             className="grid grid-cols-4"
           >
-            {tabs.map(({ label, path, Icon }) => (
+            {(user?.role === UserRole.PROVIDER ? PROVIDER_TABS : CUSTOMER_TABS).map(({ label, path, Icon }) => (
               <NavLink
                 key={path}
                 to={path}

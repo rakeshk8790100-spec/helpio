@@ -6,7 +6,8 @@ import type { ProviderSkill } from '../common/CommonDto';
 import { Proficiency } from '../common/CommonEnum';
 import { RouterKeys } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
-import { useGetOnboardingQuery, useGetSkillCatalogQuery, useSaveSkillsMutation } from '../pages/onboarding/onboarding.api';
+import { useGetSkillCatalogQuery } from '../common/CommonApi';
+import { useGetOnboardingQuery, useSaveSkillsMutation } from '../pages/onboarding/onboarding.api';
 
 /** /onboarding/skills?category= behaviour: pick 3–15 skills with a level, then continue to step 3. */
 export const useOnboardingSkills = (): SkillsLayoutProps => {

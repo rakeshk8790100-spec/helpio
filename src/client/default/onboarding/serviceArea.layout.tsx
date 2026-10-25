@@ -1,5 +1,6 @@
 import { Alert, Button, Form, Input, Select } from 'antd';
-import { CircleCheck, LocateFixed, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
+import { CurrentLocationButton } from '../../../component/marketplace';
 import { ChipMultiSelect, ChipSelect, PageSkeleton, StepProgress } from '../../../component/ui';
 import { WEEKDAY_SHORT, formatDays, formatDistance, formatTime } from '../../../lib/utils';
 import { PROVIDER_SIGNUP_STEPS } from './onboarding.layout.types';
@@ -86,29 +87,7 @@ const ServiceAreaLayout = (p: ServiceAreaLayoutProps) => {
             Customers only ever see your approximate area, never your exact location.
           </div>
 
-          {p.location.coordinates ? (
-            <div className="mb-3 flex items-center justify-between rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-              <span className="flex items-center gap-2">
-                <CircleCheck size={16} />
-                Current location added
-              </span>
-              <button type="button" onClick={p.location.onClear} className="font-medium text-slate-600">
-                Remove
-              </button>
-            </div>
-          ) : (
-            <Button
-              size="large"
-              block
-              icon={<LocateFixed size={16} />}
-              loading={p.location.locating}
-              onClick={p.location.onLocate}
-              className="!mb-3"
-            >
-              Use my current location
-            </Button>
-          )}
-          {p.location.error && <Alert type="warning" showIcon title={p.location.error} className="!mb-3" />}
+          <CurrentLocationButton {...p.location} />
 
           <div className="grid grid-cols-[2fr_3fr] gap-3">
             <Form.Item

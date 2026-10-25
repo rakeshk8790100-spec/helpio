@@ -14,8 +14,17 @@ export const RouterKeys = {
   ONBOARDING_SKILLS: '/onboarding/skills',
   /** Provider sign-up step 3 */
   ONBOARDING_AREA: '/onboarding/service-area',
-  BOOKINGS: '/bookings',
+  /** Customer jobs: post, list, one job's hub (quotes, escrow, PIN, progress) and masked chat */
   POST_JOB: '/jobs/new',
+  JOBS: '/jobs',
+  JOB_DETAIL: '/jobs/:id',
+  JOB_CHAT: '/jobs/:id/chat',
+  /** Provider area after sign-up */
+  PRO_VERIFICATION: '/pro/verification',
+  PRO_JOBS: '/pro/jobs',
+  PRO_JOB_DETAIL: '/pro/jobs/:id',
+  PRO_WORK: '/pro/work/:id',
+  PRO_EARNINGS: '/pro/earnings',
   SERVICE_DETAIL: '/services/:id',
   CATEGORY: '/categories/:id',
 } as const;
