@@ -11,9 +11,9 @@ const SkillsLayout = (p: SkillsLayoutProps) => {
   const missing = MIN_SKILLS - p.selectedCount;
   return (
     <div className="flex flex-col gap-6">
-      <StepProgress steps={PROVIDER_SIGNUP_STEPS} current={2} />
+      {!p.editing && <StepProgress steps={PROVIDER_SIGNUP_STEPS} current={2} />}
       <div>
-        <div className="text-2xl font-bold text-slate-900">What work do you do?</div>
+        <div className="text-2xl font-bold text-slate-900">{p.editing ? 'Your skills' : 'What work do you do?'}</div>
         <div className="mt-1 text-sm text-slate-600">
           Pick at least {MIN_SKILLS} skills and your level in each. We'll match you with jobs that fit.
         </div>
@@ -39,7 +39,7 @@ const SkillsLayout = (p: SkillsLayoutProps) => {
             : `${p.selectedCount} of up to ${MAX_SKILLS} skills selected`}
         </div>
         <Button type="primary" size="large" block disabled={missing > 0 || p.loadError} loading={p.saving} onClick={p.onContinue}>
-          Continue
+          {p.editing ? 'Save skills' : 'Continue'}
         </Button>
       </div>
     </div>

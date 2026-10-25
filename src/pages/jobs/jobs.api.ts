@@ -53,6 +53,12 @@ export const jobsApi = baseApi.injectEndpoints({
           yearsExperience: q.years_experience,
           approxDistanceKm: q.approx_distance_km,
         })),
+        invites: dto.invites.map((i) => ({
+          providerId: i.provider_id,
+          providerLabel: i.provider_label,
+          avatarUrl: i.avatar_url,
+          status: i.status,
+        })),
       }),
       providesTags: ['Jobs'],
     }),
@@ -82,7 +88,22 @@ export const jobsApi = baseApi.injectEndpoints({
       invalidatesTags: ['Jobs'],
     }),
 
+    /** Send an open job straight to a chosen pro */
+    inviteProvider: builder.mutation<void, { jobId: string; providerId: string; message: string | null }>({
+      query: ({ jobId, providerId, message }) => ({
+        url: `/jobs/${jobId}/invites`,
+        method: 'POST',
+        body: { provider_id: providerId, message },
+      }),
+      transformResponse: () => undefined,
+      invalidatesTags: ['Jobs'],
+    }),
+
     // ----- Provider -----
+    declineInvite: builder.mutation<void, string>({
+      query: (jobId) => ({ url: `/jobs/${jobId}/invite/decline`, method: 'POST' }),
+      invalidatesTags: ['Jobs'],
+    }),
     getNearbyJobs: builder.query<NearbyJobs, NearbyFilters>({
       query: (f) => ({
         url: '/jobs/nearby',
@@ -138,4 +159,6 @@ export const {
   useGetNearbyJobQuery,
   useCreateQuoteMutation,
   useWithdrawQuoteMutation,
+  useInviteProviderMutation,
+  useDeclineInviteMutation,
 } = jobsApi;

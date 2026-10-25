@@ -5,6 +5,7 @@ import type { OnboardingApiDto, ProviderSkillApiDto, SaveServiceSetupApiDto } fr
 
 const toOnboarding = (dto: OnboardingApiDto): ProviderOnboarding => ({
   status: dto.status,
+  bio: dto.bio,
   skills: dto.skills.map((s) => ({ skillId: s.skill_id, proficiency: s.proficiency, yearsExperience: s.years_experience })),
   // "09:00:00" → "09:00"
   availability: dto.availability.map((slot) => ({ day: slot.day, start: slot.start.slice(0, 5), end: slot.end.slice(0, 5) })),
@@ -42,6 +43,12 @@ export const onboardingApi = baseApi.injectEndpoints({
       invalidatesTags: ['Onboarding'],
       onQueryStarted: syncStatus,
     }),
+    /** The bio on the public profile ('' clears it) */
+    updateBio: builder.mutation<ProviderOnboarding, string>({
+      query: (bio) => ({ url: '/providers/me/profile', method: 'PATCH', body: { bio } }),
+      transformResponse: toOnboarding,
+      invalidatesTags: ['Onboarding', 'Providers'],
+    }),
     saveServiceSetup: builder.mutation<ProviderOnboarding, { availability: AvailabilitySlot[]; serviceArea: ServiceArea }>({
       query: ({ availability, serviceArea }) => ({
         url: '/providers/me/service-setup',
@@ -69,4 +76,5 @@ export const {
   useGetOnboardingQuery,
   useSaveSkillsMutation,
   useSaveServiceSetupMutation,
+  useUpdateBioMutation,
 } = onboardingApi;

@@ -1,6 +1,6 @@
 import type { JobApiDto, MapCircleApiDto, NearbyJobApiDto, QuoteApiDto } from '../../../common/CommonApi';
 import type { Coordinates } from '../../../common/CommonDto';
-import type { Proficiency } from '../../../common/CommonEnum';
+import type { InviteStatus, Proficiency } from '../../../common/CommonEnum';
 
 /* Wire format (snake_case, money in paise) of /jobs/*. App-side inputs are in ₹ and camelCase. */
 
@@ -17,9 +17,17 @@ export interface CustomerQuoteApiDto extends QuoteApiDto {
   approx_distance_km: number | null;
 }
 
+export interface InviteApiDto {
+  provider_id: string;
+  provider_label: string;
+  avatar_url: string | null;
+  status: InviteStatus;
+}
+
 export interface JobDetailApiDto extends JobApiDto {
   attachments: AttachmentApiDto[];
   quotes: CustomerQuoteApiDto[];
+  invites: InviteApiDto[];
 }
 
 export interface NearbyJobDetailApiDto extends NearbyJobApiDto {

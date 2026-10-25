@@ -1,5 +1,6 @@
 export { default as AlertBanner } from './AlertBanner';
 export { default as Avatar } from './Avatar';
+export { default as AvatarUpload } from './AvatarUpload';
 export { default as Chip } from './Chip';
 export { default as ChipMultiSelect } from './ChipMultiSelect';
 export type { ChipOption } from './ChipMultiSelect';
@@ -10,6 +11,7 @@ export type { FaqListItem } from './FaqList';
 export { default as GoogleButton } from './GoogleButton';
 export { default as HScroll } from './HScroll';
 export { default as IconTile } from './IconTile';
+export { default as MenuRow } from './MenuRow';
 export { default as PageSkeleton } from './PageSkeleton';
 export { default as ProgressBar } from './ProgressBar';
 export { default as SectionHeader } from './SectionHeader';

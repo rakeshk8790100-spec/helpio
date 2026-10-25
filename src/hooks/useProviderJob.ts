@@ -7,7 +7,12 @@ import { QuoteStatus } from '../common/CommonEnum';
 import { RouterKeys } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
 import { pendingOnboardingPath } from '../pages/auth/authRedirect';
-import { useCreateQuoteMutation, useGetNearbyJobQuery, useWithdrawQuoteMutation } from '../pages/jobs/jobs.api';
+import {
+  useCreateQuoteMutation,
+  useDeclineInviteMutation,
+  useGetNearbyJobQuery,
+  useWithdrawQuoteMutation,
+} from '../pages/jobs/jobs.api';
 import { jobBadge, jobFacts } from './jobItems';
 
 /** Built-in quote notes; saved personal templates can replace these later */
@@ -24,6 +29,7 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
   const { data: job, error, isLoading, refetch } = useGetNearbyJobQuery(id);
   const [createQuote, { isLoading: submitting }] = useCreateQuoteMutation();
   const [withdrawQuote, { isLoading: withdrawing }] = useWithdrawQuoteMutation();
+  const [declineInvite, { isLoading: declining }] = useDeclineInviteMutation();
   const [form] = Form.useForm<QuoteFormValues>();
   const [quoteError, setQuoteError] = useState<string>();
 
@@ -42,6 +48,7 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
       ? {
           state: 'sent',
           quote: mine,
+          changedSince: job.editedAfterMyQuote,
           withdrawing,
           onWithdraw: async () => {
             try {
@@ -80,12 +87,29 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
       title: job.title,
       badge: jobBadge(job),
       isEmergency: job.isEmergency,
+      edited: job.editedAfterMyQuote,
       facts: jobFacts(job, [job.approxDistanceKm !== null && `~${job.approxDistanceKm} km`, job.areaName].filter(Boolean).join(' · ') || null),
       description: job.description,
       photos: job.attachments,
       customerLabel: job.customerLabel,
       quoteCount: job.quoteCount,
     },
+    invite:
+      job.inviteStatus !== null
+        ? {
+            message: job.inviteMessage,
+            declining,
+            onDecline: async () => {
+              try {
+                await declineInvite(job.id).unwrap();
+                message.success("Request declined. We'll let the customer know.");
+                navigate(RouterKeys.PRO_JOBS);
+              } catch (e) {
+                message.error(apiErrorMessage(e));
+              }
+            },
+          }
+        : null,
     circle: job.areaCircle,
     quote,
     onBack: () => navigate(RouterKeys.PRO_JOBS),

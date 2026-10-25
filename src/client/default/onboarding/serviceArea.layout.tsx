@@ -32,7 +32,7 @@ const ServiceAreaLayout = (p: ServiceAreaLayoutProps) => {
 
   return (
     <div className="flex flex-col gap-6">
-      <StepProgress steps={PROVIDER_SIGNUP_STEPS} current={3} />
+      {!p.editing && <StepProgress steps={PROVIDER_SIGNUP_STEPS} current={3} />}
       <div>
         <div className="text-2xl font-bold text-slate-900">When and where do you work?</div>
         <div className="mt-1 text-sm text-slate-600">You can change this any time.</div>
@@ -128,10 +128,10 @@ const ServiceAreaLayout = (p: ServiceAreaLayoutProps) => {
 
         <div className="mt-2 grid grid-cols-[1fr_2fr] gap-3">
           <Button size="large" onClick={p.onBack}>
-            Back
+            {p.editing ? 'Cancel' : 'Back'}
           </Button>
           <Button type="primary" htmlType="submit" size="large" loading={p.saving}>
-            Finish sign-up
+            {p.editing ? 'Save changes' : 'Finish sign-up'}
           </Button>
         </div>
       </Form>

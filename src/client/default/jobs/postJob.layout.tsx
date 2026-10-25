@@ -1,7 +1,7 @@
 import { Alert, Button, Form, Input, InputNumber, Switch } from 'antd';
-import { MapPin, Siren, Sparkles } from 'lucide-react';
+import { MapPin, Send, Siren, Sparkles } from 'lucide-react';
 import { CurrentLocationButton, PhotoPicker } from '../../../component/marketplace';
-import { ChipSelect, PageSkeleton } from '../../../component/ui';
+import { Chip, ChipSelect, PageSkeleton } from '../../../component/ui';
 import type { PostJobLayoutProps } from './jobs.layout.types';
 
 const DURATIONS = [
@@ -10,6 +10,8 @@ const DURATIONS = [
   { value: 240, label: 'Half day' },
   { value: 480, label: 'Full day' },
 ];
+
+const TITLES = { new: 'Post a job', draft: 'Finish your job', edit: 'Edit job' };
 
 const Card = ({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) => (
   <section className="rounded-2xl border border-slate-100 p-4 shadow-sm">
@@ -26,9 +28,20 @@ const PostJobLayout = (p: PostJobLayoutProps) => {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <div className="text-xl font-bold text-slate-900">{p.editingDraft ? 'Finish your job' : 'Post a job'}</div>
-        <div className="mt-1 text-sm text-slate-600">Pros nearby send quotes. You choose, and pay only for approved work.</div>
+        <div className="text-xl font-bold text-slate-900">{TITLES[p.mode]}</div>
+        <div className="mt-1 text-sm text-slate-600">
+          {p.mode === 'edit'
+            ? 'Pros who already quoted will see the job was changed, so they can update their quote.'
+            : 'Pros nearby send quotes. You choose, and pay only for approved work.'}
+        </div>
       </div>
+
+      {p.invitee && (
+        <div role="status" className="flex items-center gap-2 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm text-indigo-900">
+          <Send size={16} className="shrink-0 text-indigo-600" />
+          Once posted, this job goes straight to {p.invitee} for a quote.
+        </div>
+      )}
 
       <Form form={p.form} layout="vertical" requiredMark={false} initialValues={p.initialValues} className="flex flex-col gap-4">
         <Card title="What do you need?">
@@ -59,7 +72,19 @@ const PostJobLayout = (p: PostJobLayoutProps) => {
         </Card>
 
         <Card title="Where?" hint="Pros only see your area and a rough distance until you hire one.">
-          <CurrentLocationButton {...p.location} />
+          {p.addresses && (
+            <div role="group" aria-label="Saved addresses" className="mb-3 flex flex-wrap gap-2">
+              {p.addresses.items.map((a) => (
+                <Chip key={a.id} active={p.addresses?.selectedId === a.id} onClick={() => p.addresses?.onSelect(a.id)}>
+                  {a.label}
+                </Chip>
+              ))}
+              <Chip active={p.addresses.selectedId === null} onClick={() => p.addresses?.onSelect(null)}>
+                Somewhere else
+              </Chip>
+            </div>
+          )}
+          {!p.addresses?.selectedId && <CurrentLocationButton {...p.location} />}
           <div className="grid grid-cols-[2fr_3fr] gap-3">
             <Form.Item
               name="pincode"
@@ -108,11 +133,17 @@ const PostJobLayout = (p: PostJobLayoutProps) => {
       {p.error && <Alert type="error" showIcon title={p.error} />}
 
       <div className="grid grid-cols-[1fr_2fr] gap-3">
-        <Button size="large" onClick={p.onSaveDraft} loading={p.saving === 'draft'} disabled={p.saving === 'post'}>
-          Save draft
-        </Button>
+        {p.mode === 'edit' ? (
+          <Button size="large" onClick={p.onCancel} disabled={p.saving !== null}>
+            Cancel
+          </Button>
+        ) : (
+          <Button size="large" onClick={p.onSaveDraft} loading={p.saving === 'draft'} disabled={p.saving === 'post'}>
+            Save draft
+          </Button>
+        )}
         <Button type="primary" size="large" onClick={p.onPost} loading={p.saving === 'post'} disabled={p.saving === 'draft'}>
-          Post job
+          {p.mode === 'edit' ? 'Save changes' : 'Post job'}
         </Button>
       </div>
     </div>

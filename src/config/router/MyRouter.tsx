@@ -8,6 +8,11 @@ import { authRoutes } from "../../pages/auth/routes";
 import HomePage from "../../pages/home/home.page";
 import { customerJobRoutes, providerJobRoutes } from "../../pages/jobs/routes";
 import { onboardingRoutes } from "../../pages/onboarding/routes";
+import ProfilePage from "../../pages/profile/profile.page";
+import { providerProfileRoutes } from "../../pages/profile/routes";
+import CategoryRedirectPage from "../../pages/pros/screens/categoryRedirect.page";
+import ProviderProfilePage from "../../pages/pros/screens/providerProfile.page";
+import ProviderSearchPage from "../../pages/pros/screens/providerSearch.page";
 import { RouterKeys } from "./RouterKeys";
 
 /** Screens planned but not built yet; listed so each sits behind the right role. */
@@ -27,18 +32,31 @@ const myRouter = createBrowserRouter([
       // Customer jobs: post, list, job hub and chat
       {
         element: <RequireAuth roles={[UserRole.CUSTOMER]} />,
-        children: [...customerJobRoutes, ...comingSoon([RouterKeys.JOB_CHAT])],
+        children: [
+          ...customerJobRoutes,
+          { path: RouterKeys.SEARCH, element: <ProviderSearchPage /> },
+          { path: RouterKeys.CATEGORY, element: <CategoryRedirectPage /> },
+          ...comingSoon([RouterKeys.JOB_CHAT]),
+        ],
       },
       // Provider work: verification, nearby jobs, active job and earnings
       {
         element: <RequireAuth roles={[UserRole.PROVIDER]} />,
         children: [
           ...providerJobRoutes,
+          ...providerProfileRoutes,
           ...comingSoon([RouterKeys.PRO_VERIFICATION, RouterKeys.PRO_WORK, RouterKeys.PRO_EARNINGS]),
         ],
       },
-      // Everything else needs login; screens not built yet show ComingSoon
-      { element: <RequireAuth />, children: [{ path: "*", element: <ComingSoon /> }] },
+      // Both roles: own profile and pros' public profiles; anything else not built yet shows ComingSoon
+      {
+        element: <RequireAuth />,
+        children: [
+          { path: RouterKeys.PROFILE, element: <ProfilePage /> },
+          { path: RouterKeys.PRO_PROFILE, element: <ProviderProfilePage /> },
+          { path: "*", element: <ComingSoon /> },
+        ],
+      },
     ],
   },
 ]);

@@ -16,6 +16,7 @@ export interface ProviderHomeApiDto {
   can_quote: boolean;
   active_job: NearbyJobApiDto | null;
   quotes: { pending: number; accepted: number; rejected: number };
+  invites: NearbyJobApiDto[];
   nearby: NearbyJobApiDto[];
   nearby_count: number;
   earnings: { week_paise: number; wallet_paise: number };

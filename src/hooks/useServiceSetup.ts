@@ -30,8 +30,11 @@ const savedValues = (data: ProviderOnboarding | undefined): ServiceSetupFormValu
   };
 };
 
-/** /onboarding/service-area behaviour: working days and hours, location and radius. Completes sign-up. */
-export const useServiceSetup = (): ServiceAreaLayoutProps => {
+/**
+ * /onboarding/service-area behaviour: working days and hours, location and radius. Completes sign-up.
+ * With `editing` (/profile/service-area) the same screen saves and returns to Profile.
+ */
+export const useServiceSetup = ({ editing = false }: { editing?: boolean } = {}): ServiceAreaLayoutProps => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const onboarding = useGetOnboardingQuery();
@@ -49,6 +52,7 @@ export const useServiceSetup = (): ServiceAreaLayoutProps => {
 
   return {
     loading: false,
+    editing,
     loadError: onboarding.isError,
     onRetry: () => void onboarding.refetch(),
     form,
@@ -70,12 +74,17 @@ export const useServiceSetup = (): ServiceAreaLayoutProps => {
             radiusM,
           },
         }).unwrap();
-        message.success("You're all set! We'll show you jobs near you.");
-        navigate(RouterKeys.HOME, { replace: true });
+        if (editing) {
+          message.success('Saved. Jobs near you now use your new area and hours.');
+          navigate(RouterKeys.PROFILE);
+        } else {
+          message.success("You're all set! We'll show you jobs near you.");
+          navigate(RouterKeys.HOME, { replace: true });
+        }
       } catch (e) {
         setError(apiErrorMessage(e));
       }
     },
-    onBack: () => navigate(RouterKeys.ONBOARDING_SKILLS),
+    onBack: () => navigate(editing ? RouterKeys.PROFILE : RouterKeys.ONBOARDING_SKILLS),
   };
 };

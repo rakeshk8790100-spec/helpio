@@ -3,14 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import type { CustomerHomeLayoutProps } from '../client/default/home/home.layout.types';
 import type { AuthUser, Job } from '../common/CommonDto';
 import { JobStatus } from '../common/CommonEnum';
-import { MOCK_CATEGORIES, MOCK_SERVICES } from '../common/CommonMock';
+import { MOCK_CATEGORIES } from '../common/CommonMock';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
 import { draftJobDescription, firstName } from '../lib/utils';
 import { useGetCustomerHomeQuery } from '../pages/home/home.api';
+import { useGetAddressesQuery } from '../pages/profile/profile.api';
+import { useSearchProvidersQuery } from '../pages/pros/pros.api';
 import { callEmergency } from '../lib/safety';
 import { toJobItem } from './jobItems';
-import { useServiceSearch } from './useServiceSearch';
+
+const HOME_PROS = 6;
 
 /** What the active-job card says for each hired stage: status, next step and button. */
 const ACTIVE_COPY: Partial<Record<JobStatus, (job: Job) => { statusLabel: string; nextStep: string; actionLabel: string }>> = {
@@ -34,8 +37,10 @@ const ACTIVE_COPY: Partial<Record<JobStatus, (job: Job) => { statusLabel: string
 /** Signed-in customer home: live job, quotes to review, posted jobs and drafts, plus search and discovery. */
 export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
   const navigate = useNavigate();
-  const search = useServiceSearch();
   const { data, error, isLoading, refetch } = useGetCustomerHomeQuery();
+  const addresses = useGetAddressesQuery();
+  // Searches from the default address; skipped until the customer has one
+  const pros = useSearchProvidersQuery({}, { skip: !addresses.data?.length });
   const [jobText, setJobText] = useState('');
 
   const openJob = (job: Job) => navigate(toPath(RouterKeys.JOB_DETAIL, { id: job.id }));
@@ -47,7 +52,7 @@ export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
 
     const active = data.activeJob;
     const copy = active && ACTIVE_COPY[active.status]?.(active);
-    const item = (job: Job) => toJobItem(job, openJob, (draft) => postJob({ draft: draft.id }));
+    const item = (job: Job) => toJobItem(job, openJob, (draft) => postJob({ job: draft.id }));
     const decisions = data.awaitingDecision.map(item);
     const waiting = data.waitingForQuotes.map(item);
     const drafts = data.drafts.map(item);
@@ -71,7 +76,7 @@ export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
 
   return {
     firstName: firstName(user.name),
-    search,
+    onSearch: () => navigate(RouterKeys.SEARCH),
     jobs,
     onPostJob: () => postJob(),
     onEmergencyJob: () => postJob({ emergency: '1' }),
@@ -87,10 +92,14 @@ export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
       onSelect: (c) => navigate(toPath(RouterKeys.CATEGORY, { id: c.id })),
       onMore: () => navigate(RouterKeys.SEARCH),
     },
-    popular: {
-      items: MOCK_SERVICES.slice(0, 6),
-      onBook: (s) => navigate(toPath(RouterKeys.SERVICE_DETAIL, { id: s.id })),
-      onSeeAll: () => navigate(RouterKeys.SEARCH),
-    },
+    pros: pros.data?.providers.length
+      ? {
+          items: pros.data.providers.slice(0, HOME_PROS).map((provider) => ({
+            provider,
+            onOpen: () => navigate(toPath(RouterKeys.PRO_PROFILE, { id: provider.id })),
+          })),
+          onSeeAll: () => navigate(RouterKeys.SEARCH),
+        }
+      : null,
   };
 };

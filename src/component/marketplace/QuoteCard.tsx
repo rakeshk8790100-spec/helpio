@@ -1,15 +1,10 @@
 import { BadgeCheck, Lock, MapPin } from 'lucide-react';
 import type { CustomerQuote } from '../../common/CommonDto';
-import { Proficiency, QuoteStatus } from '../../common/CommonEnum';
+import { QuoteStatus } from '../../common/CommonEnum';
 import { formatINR } from '../../lib/utils';
 import Avatar from '../ui/Avatar';
 import StatusBadge from '../ui/StatusBadge';
-
-const PROFICIENCY_LABEL = {
-  [Proficiency.BEGINNER]: 'Beginner',
-  [Proficiency.INTERMEDIATE]: 'Skilled',
-  [Proficiency.EXPERT]: 'Expert',
-};
+import { PROFICIENCY_LABEL } from './proficiency';
 
 interface Props {
   quote: CustomerQuote;

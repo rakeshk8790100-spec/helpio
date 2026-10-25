@@ -13,6 +13,7 @@ const JobSummaryBlock = ({ summary, onBack, backLabel }: { summary: JobSummary; 
       <div className="flex flex-wrap items-center gap-1.5">
         <StatusBadge label={summary.badge.label} tone={summary.badge.tone} />
         {summary.isEmergency && <StatusBadge label="Urgent" tone="error" />}
+        {summary.edited && <StatusBadge label="Edited" tone="neutral" />}
       </div>
       <div className="mt-2 text-xl font-bold leading-tight text-slate-900">{summary.title}</div>
       <div className="mt-2 flex flex-wrap gap-1.5">

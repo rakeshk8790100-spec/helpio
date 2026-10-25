@@ -61,6 +61,7 @@ export const useProviderHome = (user: AuthUser): ProviderHomeLayoutProps => {
       onAction: () => navigate(toPath(RouterKeys.PRO_WORK, { id: active.id })),
       onSafety: callEmergency,
     } : null,
+    invites: data.invites.map((job) => ({ job, onOpen: () => navigate(toPath(RouterKeys.PRO_JOB_DETAIL, { id: job.id })) })),
     nearby: {
       items: data.nearby.map((job) => ({ job, onOpen: () => navigate(toPath(RouterKeys.PRO_JOB_DETAIL, { id: job.id })) })),
       total: data.nearbyCount,

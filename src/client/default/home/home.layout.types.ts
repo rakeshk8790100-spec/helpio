@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
-import type { Category, ChecklistItem, NearbyJob, Service } from '../../../common/CommonDto';
-import type { ActiveJobCard, JobCard, PostJobComposer, SearchBox } from '../../../component/marketplace';
+import type { Category, ChecklistItem, NearbyJob, ProviderCard } from '../../../common/CommonDto';
+import type { ActiveJobCard, JobCard, PostJobComposer } from '../../../component/marketplace';
 import type { WithStatus } from '../layout.types';
 
 /*
@@ -12,7 +12,8 @@ export type JobItem = ComponentProps<typeof JobCard> & { id: string };
 
 export interface CustomerHomeLayoutProps {
   firstName: string;
-  search: ComponentProps<typeof SearchBox>;
+  /** Opens Search (find a pro) */
+  onSearch: () => void;
   jobs: WithStatus<{
     /** The hired job in progress, if any */
     active: ComponentProps<typeof ActiveJobCard> | null;
@@ -28,7 +29,8 @@ export interface CustomerHomeLayoutProps {
   onEmergencyJob: () => void;
   composer: ComponentProps<typeof PostJobComposer>;
   categories: { items: Category[]; onSelect: (category: Category) => void; onMore: () => void };
-  popular: { items: Service[]; onBook: (service: Service) => void; onSeeAll: () => void };
+  /** Pros serving the default address; hidden when there's no address or nobody yet */
+  pros: { items: { provider: ProviderCard; onOpen: () => void }[]; onSeeAll: () => void } | null;
 }
 
 export interface ProviderHomeSections {
@@ -43,6 +45,8 @@ export interface ProviderHomeSections {
     onAction?: () => void;
   } | null;
   active: ComponentProps<typeof ActiveJobCard> | null;
+  /** Customers who asked this pro directly */
+  invites: { job: NearbyJob; onOpen: () => void }[];
   nearby: {
     items: { job: NearbyJob; onOpen: () => void }[];
     total: number;

@@ -56,3 +56,18 @@ export const ChecklistState = {
   UNAVAILABLE: 'unavailable',
 } as const;
 export type ChecklistState = (typeof ChecklistState)[keyof typeof ChecklistState];
+
+/** A customer's direct request to one pro: waiting, answered with a quote, or turned down */
+export const InviteStatus = {
+  PENDING: 'pending',
+  QUOTED: 'quoted',
+  DECLINED: 'declined',
+} as const;
+export type InviteStatus = (typeof InviteStatus)[keyof typeof InviteStatus];
+
+export const AddressLabel = {
+  HOME: 'home',
+  WORK: 'work',
+  OTHER: 'other',
+} as const;
+export type AddressLabel = (typeof AddressLabel)[keyof typeof AddressLabel];

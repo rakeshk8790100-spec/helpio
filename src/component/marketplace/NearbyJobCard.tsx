@@ -30,6 +30,7 @@ const NearbyJobCard = ({ job, onOpen }: Props) => {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
+            {job.inviteStatus !== null && <StatusBadge label="Requested you" tone="brand" />}
             {job.isEmergency && <StatusBadge label="Urgent" tone="error" />}
             {job.categoryName && <span className="text-[11px] font-medium text-slate-500">{job.categoryName}</span>}
           </div>

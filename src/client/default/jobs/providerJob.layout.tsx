@@ -1,5 +1,5 @@
-import { Alert, Button, Form, Input, InputNumber } from 'antd';
-import { Lock, MessageCircleQuestion, UserRound } from 'lucide-react';
+import { Alert, Button, Form, Input, InputNumber, Popconfirm } from 'antd';
+import { Lock, MessageCircleQuestion, Send, UserRound } from 'lucide-react';
 import { QuoteStatus } from '../../../common/CommonEnum';
 import { JobMap } from '../../../component/marketplace';
 import { AlertBanner, Chip, PageSkeleton, StatusBadge } from '../../../component/ui';
@@ -47,6 +47,11 @@ const QuoteSection = ({ quote }: { quote: ProviderQuoteProps }) => {
           <StatusBadge label={badge.label} tone={badge.tone} />
         </div>
         {quote.quote.message && <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">{quote.quote.message}</div>}
+        {quote.changedSince && quote.quote.status === QuoteStatus.PENDING && (
+          <div role="status" className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            The customer changed this job after you quoted. Check the details, and withdraw and re-quote if needed.
+          </div>
+        )}
         {quote.quote.status === QuoteStatus.PENDING && (
           <Button block size="large" loading={quote.withdrawing} onClick={quote.onWithdraw} className="!mt-3">
             Withdraw quote
@@ -101,6 +106,27 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
   return (
     <div className="flex flex-col gap-5">
       <JobSummaryBlock summary={p.summary} onBack={p.onBack} backLabel="Jobs near you" />
+
+      {p.invite && (
+        <section className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-indigo-900">
+            <Send size={16} className="text-indigo-600" />
+            {p.summary.customerLabel} asked you for a quote
+          </div>
+          {p.invite.message && <div className="mt-2 rounded-xl bg-white px-3 py-2 text-sm text-slate-700">"{p.invite.message}"</div>}
+          <Popconfirm
+            title="Decline this request?"
+            description="The customer will see you declined."
+            okText="Decline"
+            okButtonProps={{ danger: true }}
+            onConfirm={p.invite.onDecline}
+          >
+            <Button size="small" type="link" danger loading={p.invite.declining} className="!mt-2 !px-0">
+              Not for me, decline
+            </Button>
+          </Popconfirm>
+        </section>
+      )}
 
       <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5 text-sm">
         <span className="flex items-center gap-2 text-slate-700">

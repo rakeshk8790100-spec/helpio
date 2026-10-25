@@ -24,6 +24,7 @@ export interface ServiceAreaApiDto {
 
 export interface OnboardingApiDto {
   status: OnboardingStatus;
+  bio: string | null;
   skills: ProviderSkillApiDto[];
   availability: AvailabilitySlotApiDto[];
   service_area: (ServiceAreaApiDto & { radius_m: number }) | null;

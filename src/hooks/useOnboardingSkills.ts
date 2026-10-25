@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { App } from 'antd';
 import { MAX_SKILLS, MIN_SKILLS } from '../client/default/onboarding/onboarding.layout.types';
 import type { SkillsLayoutProps } from '../client/default/onboarding/onboarding.layout.types';
 import type { ProviderSkill } from '../common/CommonDto';
@@ -9,9 +10,13 @@ import { apiErrorMessage } from '../lib/apiError';
 import { useGetSkillCatalogQuery } from '../common/CommonApi';
 import { useGetOnboardingQuery, useSaveSkillsMutation } from '../pages/onboarding/onboarding.api';
 
-/** /onboarding/skills?category= behaviour: pick 3–15 skills with a level, then continue to step 3. */
-export const useOnboardingSkills = (): SkillsLayoutProps => {
+/**
+ * /onboarding/skills?category= behaviour: pick 3–15 skills with a level, then continue to step 3.
+ * With `editing` (/profile/skills) the same screen saves and returns to Profile.
+ */
+export const useOnboardingSkills = ({ editing = false }: { editing?: boolean } = {}): SkillsLayoutProps => {
   const navigate = useNavigate();
+  const { message } = App.useApp();
   const [params] = useSearchParams();
   const catalog = useGetSkillCatalogQuery();
   const onboarding = useGetOnboardingQuery();
@@ -30,6 +35,7 @@ export const useOnboardingSkills = (): SkillsLayoutProps => {
 
   return {
     loading: false,
+    editing,
     loadError: catalog.isError || onboarding.isError || categories.length === 0,
     onRetry: () => {
       void catalog.refetch();
@@ -57,7 +63,12 @@ export const useOnboardingSkills = (): SkillsLayoutProps => {
       setError(undefined);
       try {
         await saveSkills(selected).unwrap();
-        navigate(RouterKeys.ONBOARDING_AREA);
+        if (editing) {
+          message.success('Skills saved. Jobs near you now match them.');
+          navigate(RouterKeys.PROFILE);
+        } else {
+          navigate(RouterKeys.ONBOARDING_AREA);
+        }
       } catch (e) {
         setError(apiErrorMessage(e));
       }

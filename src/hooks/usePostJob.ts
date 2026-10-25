@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { App, Form } from 'antd';
-import type { PostJobFormValues, PostJobLayoutProps } from '../client/default/jobs/jobs.layout.types';
+import type { PostJobFormValues, PostJobLayoutProps, PostJobMode } from '../client/default/jobs/jobs.layout.types';
 import { useGetSkillCatalogQuery } from '../common/CommonApi';
 import type { JobDetail } from '../common/CommonDto';
+import { JobStatus } from '../common/CommonEnum';
 import type { PhotoItem } from '../component/marketplace';
 import { RouterKeys, toPath } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
@@ -13,12 +14,16 @@ import {
   useCreateJobMutation,
   useDeleteAttachmentMutation,
   useGetJobQuery,
+  useInviteProviderMutation,
   useUpdateJobMutation,
 } from '../pages/jobs/jobs.api';
 import type { JobInput } from '../pages/jobs/types/jobs.dto';
+import { useGetAddressesQuery } from '../pages/profile/profile.api';
+import { useGetProviderQuery } from '../pages/pros/pros.api';
 import { useCurrentLocation } from './useCurrentLocation';
 
 const MAX_PHOTOS = 6;
+const ADDRESS_LABEL = { home: 'Home', work: 'Work', other: 'Other' };
 const MAX_BYTES = 10 * 1024 * 1024;
 const TYPES: string[] = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4'];
 
@@ -49,16 +54,23 @@ const REQUIRED_TO_POST: [keyof PostJobFormValues, string][] = [
 ];
 
 /**
- * /jobs/new: post a custom job, or save it as a draft to continue later (`?draft=<id>`). Prefills from
- * `?title=`, `?description=`, `?category=` and `?emergency=1`. Photos need a saved draft, so adding the
- * first one saves it.
+ * /jobs/new: post a custom job, continue a draft, or change a posted job until a pro is hired (`?job=<id>`;
+ * `?draft=` still works). A new job prefills from `?title=`, `?description=`, `?category=` and `?emergency=1`.
+ * Photos need a saved job, so adding the first one saves a draft.
  */
 export const usePostJob = (): PostJobLayoutProps => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [params] = useSearchParams();
   // Read once: later saves don't change the URL, so the form never reloads under the customer
-  const [initialDraftId] = useState(() => params.get('draft'));
+  const [initialDraftId] = useState(() => params.get('job') ?? params.get('draft'));
+  // Posting for a chosen pro (from their profile): send it to them once posted
+  const [inviteeId] = useState(() => params.get('invite'));
+  const invitee = useGetProviderQuery({ id: inviteeId ?? '' }, { skip: !inviteeId });
+  const addresses = useGetAddressesQuery();
+  // undefined until the customer picks: a new job starts at the default address
+  const [pickedAddressId, setPickedAddressId] = useState<string | null | undefined>(undefined);
+  const [inviteProvider] = useInviteProviderMutation();
   const [jobId, setJobId] = useState<string | null>(initialDraftId);
   const draft = useGetJobQuery(initialDraftId ?? '', { skip: !initialDraftId });
   const catalog = useGetSkillCatalogQuery();
@@ -74,7 +86,16 @@ export const usePostJob = (): PostJobLayoutProps => {
   const [uploads, setUploads] = useState<PhotoItem[]>([]);
   const [removed, setRemoved] = useState<string[]>([]);
 
-  if (catalog.isLoading || (initialDraftId && draft.isLoading)) return { loading: true };
+  if (catalog.isLoading || addresses.isLoading || (initialDraftId && draft.isLoading)) return { loading: true };
+
+  const savedAddresses = addresses.data ?? [];
+  const addressId = pickedAddressId === undefined ? (initialDraftId ? null : savedAddresses.find((a) => a.isDefault)?.id ?? null) : pickedAddressId;
+  const address = savedAddresses.find((a) => a.id === addressId) ?? null;
+  const inviteeName = invitee.data?.displayName ?? null;
+
+  // A posted job is edited in place: it stays posted and keeps its quotes
+  const mode: PostJobMode = !initialDraftId ? 'new' : draft.data?.status === JobStatus.OPEN ? 'edit' : 'draft';
+  const backToJob = (id: string) => navigate(toPath(RouterKeys.JOB_DETAIL, { id }), { replace: true });
 
   const uploadIds = new Set(uploads.map((item) => item.id));
   const saved: PhotoItem[] = (draft.data?.attachments ?? [])
@@ -86,7 +107,7 @@ export const usePostJob = (): PostJobLayoutProps => {
     title: values.title.trim(),
     description: values.description?.trim() || null,
     categoryId: values.categoryId ?? null,
-    coordinates: location.coordinates,
+    coordinates: address ? address.coordinates : location.coordinates,
     pincode: values.pincode || null,
     areaName: values.areaName?.trim() || null,
     budget: values.budget ?? null,
@@ -126,9 +147,20 @@ export const usePostJob = (): PostJobLayoutProps => {
     setSaving(submit ? 'post' : 'draft');
     try {
       const id = await persist(submit);
-      if (submit) {
+      if (mode === 'edit') {
+        message.success('Job updated. Pros who already quoted will see it was changed.');
+        backToJob(id);
+      } else if (submit && inviteeId) {
+        try {
+          await inviteProvider({ jobId: id, providerId: inviteeId, message: null }).unwrap();
+          message.success(`Job posted and sent to ${inviteeName ?? 'the pro'}.`);
+        } catch (e) {
+          message.warning(`Job posted, but it couldn't be sent to ${inviteeName ?? 'the pro'}: ${apiErrorMessage(e)}`);
+        }
+        backToJob(id);
+      } else if (submit) {
         message.success('Job posted. Pros nearby can now send quotes.');
-        navigate(toPath(RouterKeys.JOB_DETAIL, { id }), { replace: true });
+        backToJob(id);
       } else {
         message.success('Draft saved. Continue any time from My jobs.');
       }
@@ -174,9 +206,25 @@ export const usePostJob = (): PostJobLayoutProps => {
 
   return {
     loading: false,
-    editingDraft: Boolean(initialDraftId),
+    mode,
     form,
-    initialValues: fromDraft(draft.data, params),
+    initialValues: {
+      ...fromDraft(draft.data, params),
+      // A new job starts at the default address
+      ...(!draft.data && address && { pincode: address.pincode, areaName: address.areaName }),
+    },
+    invitee: inviteeId ? inviteeName ?? 'the pro' : null,
+    addresses: savedAddresses.length
+      ? {
+          items: savedAddresses.map((a) => ({ id: a.id, label: `${ADDRESS_LABEL[a.label]} · ${a.areaName}` })),
+          selectedId: addressId,
+          onSelect: (id) => {
+            setPickedAddressId(id);
+            const picked = savedAddresses.find((a) => a.id === id);
+            form.setFieldsValue(picked ? { pincode: picked.pincode, areaName: picked.areaName } : { pincode: undefined, areaName: undefined });
+          },
+        }
+      : null,
     categories: (catalog.data ?? []).map((c) => ({ value: c.id, label: c.name })),
     location,
     onImprove: () => {
@@ -223,5 +271,6 @@ export const usePostJob = (): PostJobLayoutProps => {
     error,
     onSaveDraft: () => void save(false),
     onPost: () => void save(true),
+    onCancel: () => (jobId ? backToJob(jobId) : navigate(RouterKeys.JOBS)),
   };
 };

@@ -2,6 +2,11 @@ export const RouterKeys = {
   HOME: '/',
   SEARCH: '/search',
   PROFILE: '/profile',
+  /** Provider: change skills, or service area and hours, after sign-up */
+  PROFILE_SKILLS: '/profile/skills',
+  PROFILE_AREA: '/profile/service-area',
+  /** A pro's public profile */
+  PRO_PROFILE: '/pros/:id',
   /** Customer log-in, sign-up and password reset */
   LOGIN: '/login',
   SIGNUP: '/signup',

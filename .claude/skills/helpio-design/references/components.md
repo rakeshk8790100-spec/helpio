@@ -18,7 +18,9 @@ All components are pure: data comes in through props and actions go out through 
 | `FaqList` | Accessible accordion (native `<details>`) | `items: { q, a }[]` | antd Collapse / custom toggles |
 | `StatTile` | Labelled metric | `label`, `value`, `variant: 'plain' \| 'glass'` | ad-hoc stat boxes |
 | `StatusBadge` | Status label with tone | `label`, `tone: success \| warning \| error \| neutral \| brand` | coloured spans / antd `Tag` for status |
-| `Avatar` | Initials avatar on the brand gradient | `name`, `size: sm \| md \| lg` | coloured initial circles |
+| `Avatar` | Profile photo, or initials on the brand gradient | `name`, `src?`, `size: sm \| md \| lg \| xl` | coloured initial circles, raw `<img>` avatars |
+| `AvatarUpload` | Large avatar with camera badge; tap to pick a new photo | `name`, `src`, `uploading`, `onPick(file)` | custom photo pickers |
+| `MenuRow` | Settings row: icon tile, label, hint, chevron or trailing badge (stack in a rounded card) | `Icon`, `label`, `hint?`, `onClick?`, `trailing?`, `tone?: 'default' \| 'danger'`, `disabled?` | hand-made list rows |
 | `IconTile` | Icon square + caption for grids | `Icon`, `label`, `onClick?` | category/shortcut tiles |
 | `PageSkeleton` | Page-level loading skeleton | none | spinners |
 | `ChipMultiSelect` | Multi-select chip group; works inside antd `Form.Item` | `options: { value, label }[]`, `value?`, `onChange?`, `ariaLabel` | checkbox groups for days/tags |
@@ -52,6 +54,8 @@ All components are pure: data comes in through props and actions go out through 
 | `PhotoPicker` | Up to `max` photos/videos as a thumbnail grid with add tile, upload spinner, error and remove | `items: PhotoItem[]`, `max`, `onAdd(files)`, `onRemove(id)`, `disabled?` |
 | `QuoteCard` | A provider's quote for the customer: "Ravi S.", proficiency, ~distance, price, note, Decline/Accept (locked with a reason until escrow exists) | `quote: CustomerQuote`, `cheapest?`, `lockedNote?`, `onAccept?`, `onReject?` |
 | `JobMap` | OpenStreetMap (react-leaflet) with the provider's radius and approximate job circles only, never exact pins; popups open the job | `area`, `jobs: JobMapItem[]`, `center?`, `height?` |
+| `ProviderCard` | A pro in search results: photo, name, level, area · ~distance, matched skills, working days; `compact` for carousels | `provider: ProviderCard`, `onOpen`, `compact?` |
+| `PROFICIENCY_LABEL` | Customer-facing level names (Beginner / Skilled / Expert) | constant |
 
 ## `src/component/layout` (app shell)
 | Component | Purpose |

@@ -29,7 +29,19 @@ const ProviderHomeLayout = (p: ProviderHomeLayoutProps) => {
       {/* ③ Live job */}
       {p.active && <ActiveJobCard {...p.active} />}
 
-      {/* ④ Nearby jobs */}
+      {/* ④ Direct requests */}
+      {p.invites.length > 0 && (
+        <section>
+          <SectionHeader title={`Asked for you (${p.invites.length})`} />
+          <div className="flex flex-col gap-2">
+            {p.invites.map(({ job, onOpen }) => (
+              <NearbyJobCard key={job.id} job={job} onOpen={onOpen} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ⑤ Nearby jobs */}
       <section>
         <SectionHeader
           title="Jobs near you"

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { JobDetailLayoutProps } from '../client/default/jobs/jobs.layout.types';
 import { JobStatus, QuoteStatus } from '../common/CommonEnum';
-import { RouterKeys, withQuery } from '../config/router/RouterKeys';
+import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
 import { useGetJobQuery } from '../pages/jobs/jobs.api';
 import { jobBadge, jobFacts } from './jobItems';
@@ -24,11 +24,16 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
       title: job.title,
       badge: jobBadge(job),
       isEmergency: job.isEmergency,
+      edited: job.editedAt !== null,
       facts: jobFacts(job, [job.areaName, job.pincode].filter(Boolean).join(' ') || null),
       description: job.description,
       photos: job.attachments,
     },
-    draft: isDraft ? { onContinue: () => navigate(withQuery(RouterKeys.POST_JOB, { draft: job.id })) } : null,
+    draft: isDraft ? { onContinue: () => navigate(withQuery(RouterKeys.POST_JOB, { job: job.id })) } : null,
+    edit:
+      job.status === JobStatus.OPEN
+        ? { onEdit: () => navigate(withQuery(RouterKeys.POST_JOB, { job: job.id })), hasQuotes: pending.length > 0 }
+        : null,
     quotes: isDraft
       ? null
       : {
@@ -38,6 +43,11 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
             .map((quote) => ({ quote, cheapest: pending.length > 1 && quote.status === QuoteStatus.PENDING && quote.amount === lowest })),
           lockedNote: 'Accepting a quote and paying into escrow arrives in the next update. Compare quotes for now.',
         },
+    invites: job.invites.map((invite) => ({
+      invite,
+      onOpen: () => navigate(toPath(RouterKeys.PRO_PROFILE, { id: invite.providerId })),
+    })),
+    onFindPros: job.status === JobStatus.OPEN ? () => navigate(withQuery(RouterKeys.SEARCH, job.categoryId ? { category: job.categoryId } : {})) : null,
     onBack: () => navigate(RouterKeys.JOBS),
   };
 };

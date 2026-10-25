@@ -24,6 +24,7 @@ export const homeApi = baseApi.injectEndpoints({
         canQuote: dto.can_quote,
         activeJob: dto.active_job && toNearbyJob(dto.active_job),
         quotes: dto.quotes,
+        invites: dto.invites.map(toNearbyJob),
         nearby: dto.nearby.map(toNearbyJob),
         nearbyCount: dto.nearby_count,
         earnings: { week: toRupees(dto.earnings.week_paise), wallet: toRupees(dto.earnings.wallet_paise) },

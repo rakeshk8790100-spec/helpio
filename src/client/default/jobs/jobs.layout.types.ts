@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react';
 import type { FormInstance } from 'antd';
-import type { CustomerQuote, JobAttachment, MapCircle, NearbyJob, JobQuote } from '../../../common/CommonDto';
+import type { CustomerQuote, JobAttachment, JobInvite, MapCircle, NearbyJob, JobQuote } from '../../../common/CommonDto';
 import type { BadgeTone, ChipOption } from '../../../component/ui';
 import type { CurrentLocationButton, JobMapItem, PhotoPicker } from '../../../component/marketplace';
 import type { JobItem } from '../home/home.layout.types';
@@ -24,9 +24,15 @@ export interface PostJobFormValues {
   isEmergency: boolean;
 }
 
+export type PostJobMode = 'new' | 'draft' | 'edit';
+
 export type PostJobLayoutProps = WithLoading<{
-  /** Editing a saved draft rather than starting fresh */
-  editingDraft: boolean;
+  /** A new job, a saved draft, or a posted job being changed */
+  mode: PostJobMode;
+  /** Posting for a chosen pro: the job is sent to them once posted */
+  invitee: string | null;
+  /** Saved addresses as quick picks; `selectedId` null means "somewhere else" */
+  addresses: { items: { id: string; label: string }[]; selectedId: string | null; onSelect: (id: string | null) => void } | null;
   form: FormInstance<PostJobFormValues>;
   initialValues: Partial<PostJobFormValues>;
   categories: ChipOption<string>[];
@@ -38,6 +44,8 @@ export type PostJobLayoutProps = WithLoading<{
   error?: string;
   onSaveDraft: () => void;
   onPost: () => void;
+  /** Edit mode: leave without saving */
+  onCancel: () => void;
 }>;
 
 // ----- Customer: My jobs -----
@@ -64,6 +72,8 @@ export interface JobSummary {
   title: string;
   badge: { label: string; tone: BadgeTone };
   isEmergency: boolean;
+  /** Changed after posting (for a provider: after their quote) */
+  edited: boolean;
   /** Plain facts, e.g. ["Plumbing", "Indiranagar 560038", "Tue 28 Oct, 4:00 PM", "2 hr", "Budget ₹800"] */
   facts: string[];
   description: string | null;
@@ -74,11 +84,17 @@ export type JobDetailLayoutProps = WithStatus<{
   summary: JobSummary;
   /** Shown instead of quotes while the job is a draft */
   draft: { onContinue: () => void } | null;
+  /** Posted and nobody hired yet; `hasQuotes` adds a note that quoters will see the change */
+  edit: { onEdit: () => void; hasQuotes: boolean } | null;
   quotes: {
     items: { quote: CustomerQuote; cheapest: boolean }[];
     /** Why accepting isn't possible yet */
     lockedNote: string;
   } | null;
+  /** Pros the customer sent this job to directly */
+  invites: { invite: JobInvite; onOpen: () => void }[];
+  /** Open jobs: find another pro to send it to */
+  onFindPros: (() => void) | null;
   onBack: () => void;
 }>;
 
@@ -123,7 +139,7 @@ export interface QuoteFormValues {
 /** Locked until sign-up is done, then a form, then the sent quote (withdrawable while pending) */
 export type ProviderQuoteProps =
   | { state: 'locked'; reason: string; actionLabel: string; onAction: () => void }
-  | { state: 'sent'; quote: JobQuote; withdrawing: boolean; onWithdraw: () => void }
+  | { state: 'sent'; quote: JobQuote; changedSince: boolean; withdrawing: boolean; onWithdraw: () => void }
   | {
       state: 'form';
       form: FormInstance<QuoteFormValues>;
@@ -139,6 +155,8 @@ export type ProviderQuoteProps =
 
 export type ProviderJobLayoutProps = WithStatus<{
   summary: JobSummary & { customerLabel: string; quoteCount: number };
+  /** The customer asked this pro directly */
+  invite: { message: string | null; declining: boolean; onDecline: () => void } | null;
   circle: MapCircle | null;
   quote: ProviderQuoteProps;
   onBack: () => void;

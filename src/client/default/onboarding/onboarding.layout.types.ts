@@ -12,6 +12,8 @@ export const MIN_SKILLS = 3;
 export const MAX_SKILLS = 15;
 
 export type SkillsLayoutProps = WithLoading<{
+  /** Changing skills from Profile: no sign-up steps, "Save" returns to Profile */
+  editing: boolean;
   /** Catalogue couldn't load; offer a retry */
   loadError: boolean;
   onRetry: () => void;
@@ -35,6 +37,8 @@ export interface ServiceSetupFormValues {
 }
 
 export type ServiceAreaLayoutProps = WithLoading<{
+  /** Changing the area from Profile: no sign-up steps, "Save" returns to Profile */
+  editing: boolean;
   loadError: boolean;
   onRetry: () => void;
   form: FormInstance<ServiceSetupFormValues>;

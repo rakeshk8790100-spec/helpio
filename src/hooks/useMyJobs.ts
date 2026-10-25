@@ -33,7 +33,7 @@ export const useMyJobs = (): MyJobsLayoutProps => {
   const tab = TABS.find((t) => t.value === params.get('tab')) ?? TABS[0];
 
   const open = (job: Job) => navigate(toPath(RouterKeys.JOB_DETAIL, { id: job.id }));
-  const continueDraft = (job: Job) => navigate(withQuery(RouterKeys.POST_JOB, { draft: job.id }));
+  const continueDraft = (job: Job) => navigate(withQuery(RouterKeys.POST_JOB, { job: job.id }));
 
   return {
     tab: tab.value,

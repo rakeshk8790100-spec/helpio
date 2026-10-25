@@ -1,7 +1,7 @@
 import { baseApi, dispatchOnSuccess } from '../config/base_service/base.api';
 import { sessionStarted, signedOut, userUpdated } from '../redux/authSlice';
 import type { AuthSession, AuthUser, Job, JobQuote, MapCircle, NearbyJob, Service, SkillCategory } from './CommonDto';
-import type { JobStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
+import type { InviteStatus, JobStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
 import { MOCK_SERVICES } from './CommonMock';
 
 /* ── Wire format (snake_case) of the session endpoints, mapped once here ── */
@@ -58,6 +58,7 @@ export interface JobApiDto {
   quote_count: number;
   lowest_quote_paise: number | null;
   updated_at: string;
+  edited_at: string | null;
 }
 
 export interface QuoteApiDto {
@@ -83,6 +84,9 @@ export interface NearbyJobApiDto {
   progress_pct: number;
   quote_count: number;
   my_quote: QuoteApiDto | null;
+  edited_after_my_quote: boolean;
+  invite_status: InviteStatus | null;
+  invite_message: string | null;
   area_circle: MapCircleApiDto | null;
 }
 
@@ -113,6 +117,7 @@ export const toJob = (dto: JobApiDto): Job => ({
   quoteCount: dto.quote_count,
   lowestQuote: toRupees(dto.lowest_quote_paise),
   updatedAt: dto.updated_at,
+  editedAt: dto.edited_at,
 });
 
 export const toJobQuote = (dto: QuoteApiDto): JobQuote => ({
@@ -138,6 +143,9 @@ export const toNearbyJob = (dto: NearbyJobApiDto): NearbyJob => ({
   progressPct: dto.progress_pct,
   quoteCount: dto.quote_count,
   myQuote: dto.my_quote && toJobQuote(dto.my_quote),
+  editedAfterMyQuote: dto.edited_after_my_quote,
+  inviteStatus: dto.invite_status,
+  inviteMessage: dto.invite_message,
   areaCircle: dto.area_circle && toMapCircle(dto.area_circle),
 });
 
@@ -184,6 +192,33 @@ export const commonApi = baseApi.injectEndpoints({
       onQueryStarted: dispatchOnSuccess<AuthUser>(userUpdated),
     }),
 
+    /** Signs out other devices; this one continues with the returned session. */
+    changePassword: builder.mutation<AuthSession, { currentPassword: string; newPassword: string }>({
+      query: ({ currentPassword, newPassword }) => ({
+        url: '/auth/change-password',
+        method: 'POST',
+        body: { current_password: currentPassword, new_password: newPassword },
+      }),
+      transformResponse: toAuthSession,
+      onQueryStarted: startSessionOnSuccess,
+    }),
+
+    uploadAvatar: builder.mutation<AuthUser, File>({
+      query: (file) => {
+        const body = new FormData();
+        body.append('file', file);
+        return { url: '/auth/me/avatar', method: 'POST', body, timeout: 60_000 };
+      },
+      transformResponse: toAuthUser,
+      onQueryStarted: dispatchOnSuccess<AuthUser>(userUpdated),
+    }),
+
+    removeAvatar: builder.mutation<AuthUser, void>({
+      query: () => ({ url: '/auth/me/avatar', method: 'DELETE' }),
+      transformResponse: toAuthUser,
+      onQueryStarted: dispatchOnSuccess<AuthUser>(userUpdated),
+    }),
+
     /** Revokes the token on the server. The local session ends even if that call fails. */
     logout: builder.mutation<void, void>({
       query: () => ({ url: '/auth/logout', method: 'POST' }),
@@ -201,5 +236,8 @@ export const {
   useGetSkillCatalogQuery,
   useGetMeQuery,
   useUpdateMeMutation,
+  useChangePasswordMutation,
+  useUploadAvatarMutation,
+  useRemoveAvatarMutation,
   useLogoutMutation,
 } = commonApi;

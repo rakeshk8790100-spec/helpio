@@ -1,4 +1,13 @@
-import type { ChecklistState, JobStatus, OnboardingStatus, Proficiency, QuoteStatus, UserRole } from './CommonEnum';
+import type {
+  AddressLabel,
+  ChecklistState,
+  InviteStatus,
+  JobStatus,
+  OnboardingStatus,
+  Proficiency,
+  QuoteStatus,
+  UserRole,
+} from './CommonEnum';
 
 /* Shared entities used by pages and by reusable components in src/component. */
 
@@ -112,6 +121,8 @@ export interface ServiceArea {
 
 export interface ProviderOnboarding {
   status: OnboardingStatus;
+  /** Shown on the public profile */
+  bio: string | null;
   skills: ProviderSkill[];
   availability: AvailabilitySlot[];
   serviceArea: ServiceArea | null;
@@ -142,6 +153,8 @@ export interface Job {
   quoteCount: number;
   lowestQuote: number | null;
   updatedAt: string;
+  /** Last change after posting; null if never edited */
+  editedAt: string | null;
 }
 
 export interface JobQuote {
@@ -170,6 +183,11 @@ export interface NearbyJob {
   progressPct: number;
   quoteCount: number;
   myQuote: JobQuote | null;
+  /** The customer changed the job after my quote was sent */
+  editedAfterMyQuote: boolean;
+  /** The customer asked me directly; null when found nearby */
+  inviteStatus: InviteStatus | null;
+  inviteMessage: string | null;
   /** Approximate area, offset from the real spot; null when posted without a location */
   areaCircle: MapCircle | null;
 }
@@ -197,9 +215,19 @@ export interface CustomerQuote extends JobQuote {
   approxDistanceKm: number | null;
 }
 
+/** A pro the customer sent the job to directly */
+export interface JobInvite {
+  providerId: string;
+  /** e.g. "Ravi S." */
+  providerLabel: string;
+  avatarUrl: string | null;
+  status: InviteStatus;
+}
+
 export interface JobDetail extends Job {
   attachments: JobAttachment[];
   quotes: CustomerQuote[];
+  invites: JobInvite[];
 }
 
 export interface NearbyJobDetail extends NearbyJob {
@@ -234,7 +262,67 @@ export interface ProviderHome {
   canQuote: boolean;
   activeJob: NearbyJob | null;
   quotes: { pending: number; accepted: number; rejected: number };
+  /** Direct requests waiting for my quote */
+  invites: NearbyJob[];
   nearby: NearbyJob[];
   nearbyCount: number;
   earnings: { week: number; wallet: number };
+}
+
+/* ── Customer addresses ─────────────────── */
+
+export interface Address {
+  id: string;
+  label: AddressLabel;
+  /** Full address: shared with a pro only after hire */
+  addressLine: string | null;
+  areaName: string;
+  pincode: string;
+  coordinates: Coordinates | null;
+  isDefault: boolean;
+}
+
+/* ── Provider directory (public: no exact location, pincode or phone) ── */
+
+export interface PublicSkill {
+  skillId: string;
+  name: string;
+  categoryId: string;
+  categoryName: string;
+  proficiency: Proficiency;
+  yearsExperience: number | null;
+}
+
+export interface ProviderCard {
+  id: string;
+  /** e.g. "Ravi S." */
+  displayName: string;
+  avatarUrl: string | null;
+  bioSnippet: string | null;
+  areaName: string | null;
+  /** Rounded to 0.5 km; null when matched by pincode only */
+  approxDistanceKm: number | null;
+  /** Skills matching the search first, up to 3 */
+  skills: PublicSkill[];
+  skillCount: number;
+  topProficiency: Proficiency;
+  maxYearsExperience: number | null;
+  /** 0 = Monday */
+  workDays: number[];
+  memberSince: string;
+}
+
+export interface ProviderSearchResult {
+  /** Area the search was made from, e.g. "Mira Road" */
+  near: string | null;
+  providers: ProviderCard[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface ProviderProfile extends ProviderCard {
+  bio: string | null;
+  categories: { id: string; name: string; skills: PublicSkill[] }[];
+  availability: AvailabilitySlot[];
+  radiusKm: number | null;
 }

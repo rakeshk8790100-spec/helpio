@@ -38,7 +38,7 @@ const UserMenu = ({ user, onLogout }: Props) => {
       }}
     >
       <button type="button" aria-label={`Account menu for ${displayName}`} className="rounded-full active:scale-95">
-        <Avatar name={displayName} size="sm" />
+        <Avatar name={displayName} src={user.avatarUrl} size="sm" />
       </button>
     </Dropdown>
   );

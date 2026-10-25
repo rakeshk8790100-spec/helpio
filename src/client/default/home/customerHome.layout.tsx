@@ -1,12 +1,11 @@
 import { Skeleton } from 'antd';
-import { ClipboardList, Siren } from 'lucide-react';
+import { ClipboardList, Search, Siren } from 'lucide-react';
 import {
   ActiveJobCard,
   CategoryGrid,
   JobCard,
   PostJobComposer,
-  SearchBox,
-  ServiceCard,
+  ProviderCard,
 } from '../../../component/marketplace';
 import { AlertBanner, EmptyState, HScroll, SectionHeader } from '../../../component/ui';
 import type { CustomerHomeLayoutProps, JobItem } from './home.layout.types';
@@ -36,7 +35,17 @@ const CustomerHomeLayout = (p: CustomerHomeLayoutProps) => {
         <div className="text-xl font-bold text-slate-900">Hi, {p.firstName}</div>
         <div className="mt-1 text-sm text-slate-600">What needs doing today?</div>
       </div>
-      <SearchBox {...p.search} />
+      <button
+        type="button"
+        onClick={p.onSearch}
+        className="sticky -top-5 z-20 -mx-5 -mt-4 bg-white px-5 py-2 text-left"
+        aria-label="Find a pro"
+      >
+        <span className="flex h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-400">
+          <Search size={18} />
+          Find a plumber, electrician, cleaner…
+        </span>
+      </button>
 
       {/* ② Jobs, by urgency */}
       {jobs.status === 'loading' && (
@@ -80,14 +89,16 @@ const CustomerHomeLayout = (p: CustomerHomeLayoutProps) => {
         <SectionHeader title="Browse categories" />
         <CategoryGrid categories={p.categories.items} onSelect={p.categories.onSelect} onMore={p.categories.onMore} />
       </section>
-      <section>
-        <SectionHeader title="Popular services" actionLabel="See all" onAction={p.popular.onSeeAll} />
-        <HScroll>
-          {p.popular.items.map((s) => (
-            <ServiceCard key={s.id} service={s} onBook={() => p.popular.onBook(s)} />
-          ))}
-        </HScroll>
-      </section>
+      {p.pros && (
+        <section>
+          <SectionHeader title="Pros near you" actionLabel="See all" onAction={p.pros.onSeeAll} />
+          <HScroll>
+            {p.pros.items.map(({ provider, onOpen }) => (
+              <ProviderCard key={provider.id} provider={provider} onOpen={onOpen} compact />
+            ))}
+          </HScroll>
+        </section>
+      )}
     </div>
   );
 };
