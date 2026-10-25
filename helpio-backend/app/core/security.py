@@ -40,12 +40,14 @@ def verify_secret(secret: str, stored_hash: str) -> bool:
         return False
 
 
-def create_access_token(*, subject: str, role: str) -> str:
+def create_access_token(*, subject: str, role: str, version: int = 0) -> str:
     settings = get_settings()
     now = datetime.now(timezone.utc)
     payload: dict[str, Any] = {
         "sub": subject,
         "role": role,
+        # The user's token_version at issue time; a later bump invalidates this token.
+        "ver": version,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(minutes=settings.auth_token_minutes)).timestamp()),
         "nonce": token_urlsafe(8),
@@ -93,6 +95,9 @@ def decode_access_token(token: str) -> dict[str, Any]:
             raise ValueError
         UUID(payload["sub"])
         if payload.get("role") not in {"admin", "customer", "provider"}:
+            raise ValueError
+        # Tokens issued before versions existed count as version 0.
+        if type(payload.setdefault("ver", 0)) is not int:
             raise ValueError
         if not isinstance(payload.get("nonce"), str) or not payload["nonce"]:
             raise ValueError

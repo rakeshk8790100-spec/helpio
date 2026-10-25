@@ -7,19 +7,8 @@ PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=
 # Indian mobile number as typed (10 digits), stored in E.164 form.
 IndianMobile = Annotated[str, Field(pattern=r"^[6-9]\d{9}$"), AfterValidator(lambda digits: f"+91{digits}")]
 Otp = Annotated[str, Field(pattern=r"^\d{6}$")]
+NewPassword = Annotated[str, Field(min_length=8, max_length=128)]
 SelfServiceRole = Literal["customer", "provider"]
-OtpLoginPurpose = Literal["signup", "login"]
-
-
-class OtpStartRequest(BaseModel):
-    email: Email
-    role: SelfServiceRole
-
-
-class NextStepResponse(BaseModel):
-    """`otp`: a code was emailed. `details`: no account yet, collect name and phone and register."""
-
-    next: Literal["otp", "details"]
 
 
 class RegisterRequest(BaseModel):
@@ -27,19 +16,7 @@ class RegisterRequest(BaseModel):
     email: Email
     phone: IndianMobile
     role: SelfServiceRole
-    # Optional; lets a customer log in with email + password as well as an emailed code.
-    password: str | None = Field(default=None, min_length=8, max_length=128)
-
-
-class VerifyOtpRequest(BaseModel):
-    email: Email
-    otp: Otp
-    purpose: OtpLoginPurpose
-
-
-class ResendOtpRequest(BaseModel):
-    email: Email
-    purpose: OtpLoginPurpose
+    password: NewPassword
 
 
 class GoogleLoginRequest(BaseModel):
@@ -77,6 +54,9 @@ class SessionResponse(BaseModel):
 class LoginRequest(BaseModel):
     email: Email
     password: str = Field(min_length=1, max_length=128)
+    # Sent by the customer and provider login pages so each only signs in its own audience.
+    # Administrators omit it.
+    role: SelfServiceRole | None = None
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -86,7 +66,7 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     email: Email
     otp: Otp
-    new_password: str = Field(min_length=8, max_length=128)
+    new_password: NewPassword
 
 
 class MessageResponse(BaseModel):

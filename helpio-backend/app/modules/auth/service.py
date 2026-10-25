@@ -31,15 +31,11 @@ from app.modules.auth.schema import (
     ForgotPasswordRequest,
     GoogleLoginRequest,
     LoginRequest,
-    NextStepResponse,
-    OtpStartRequest,
     RegisterRequest,
-    ResendOtpRequest,
     ResetPasswordRequest,
     SessionResponse,
     UpdateMeRequest,
     UserResponse,
-    VerifyOtpRequest,
 )
 from app.modules.providers.model import ProviderProfile
 from app.modules.providers.repository import ProviderRepository
@@ -57,7 +53,7 @@ def default_otp_factory() -> str:
 
 
 def unusable_password_hash() -> str:
-    """Passwordless and Google accounts get a random secret nobody knows."""
+    """Google-only accounts get a random secret nobody knows."""
     return hash_secret(token_urlsafe(32))
 
 
@@ -77,64 +73,36 @@ class AuthService:
         self.otp_factory = otp_factory
         self.google_token_verifier = google_token_verifier or GoogleOAuthTokenVerifier()
 
-    # ── Passwordless sign-in (customers and providers) ────────────────────────────
+    # ── Sign-up and log-in ───────────────────────────────────────────────────────
 
-    def start_otp(self, db: Session, payload: OtpStartRequest) -> NextStepResponse:
+    def register(self, db: Session, payload: RegisterRequest) -> SessionResponse:
+        """Create a customer or provider account and sign it in. Google or a password reset proves the email later."""
         repo = AuthRepository(db)
-        user = repo.get_user_by_email(payload.email)
-        if user is None or not user.email_verified:
-            return NextStepResponse(next="details")
-        self._ensure_can_sign_in(user, UserRole(payload.role))
-        self._issue_otp(repo, user=user, purpose=OtpPurpose.LOGIN)
-        db.commit()
-        return NextStepResponse(next="otp")
-
-    def register(self, db: Session, payload: RegisterRequest) -> NextStepResponse:
-        repo = AuthRepository(db)
-        user = repo.get_user_by_email(payload.email)
-        if user is not None and user.email_verified:
+        if repo.get_user_by_email(payload.email) is not None:
             raise EmailInUseError
-        if user is None:
-            # An unverified account from an abandoned sign-up is reused, so people can simply try again.
-            user = repo.add_user(
-                AuthUser(email=payload.email, password_hash=unusable_password_hash(), role=UserRole(payload.role))
+        user = repo.add_user(
+            AuthUser(
+                email=payload.email, name=payload.name, password_hash=hash_secret(payload.password),
+                role=UserRole(payload.role),
             )
-        user.name = payload.name
-        user.role = UserRole(payload.role)
-        # Optional: customers who set one can later log in with email + password.
-        user.password_hash = hash_secret(payload.password) if payload.password else unusable_password_hash()
-        self._claim_phone(db, repo, user=user, phone=payload.phone)
-        self._issue_otp(repo, user=user, purpose=OtpPurpose.SIGNUP)
+        )
+        self._claim_phone(repo, user=user, phone=payload.phone)
+        if user.role == UserRole.PROVIDER:
+            ProviderRepository(db).add_profile(ProviderProfile(user_id=user.id))
         self._commit(db)
-        return NextStepResponse(next="otp")
-
-    def verify_otp(self, db: Session, payload: VerifyOtpRequest) -> SessionResponse:
-        repo = AuthRepository(db)
-        user = repo.get_user_by_email(payload.email)
-        if user is None:
-            raise InvalidOtpError
-        if not user.is_active:
-            raise AccountDisabledError
-        purpose = OtpPurpose(payload.purpose)
-        self._consume_otp(db, repo, user=user, otp=payload.otp, purpose=purpose)
-        if purpose == OtpPurpose.SIGNUP:
-            user.email_verified = True
-            providers = ProviderRepository(db)
-            if user.role == UserRole.PROVIDER and providers.get_status(user.id) is None:
-                providers.add_profile(ProviderProfile(user_id=user.id))
-        db.commit()
         return self._session(db, user)
 
-    def resend_otp(self, db: Session, payload: ResendOtpRequest) -> NextStepResponse:
-        """Always answers the same way so the endpoint can't be used to discover accounts."""
-        repo = AuthRepository(db)
-        user = repo.get_user_by_email(payload.email)
-        purpose = OtpPurpose(payload.purpose)
-        # Signup codes are for unverified accounts, login codes for verified ones.
-        if user is not None and user.is_active and user.email_verified == (purpose == OtpPurpose.LOGIN):
-            self._issue_otp(repo, user=user, purpose=purpose)
-            db.commit()
-        return NextStepResponse(next="otp")
+    def login(self, db: Session, payload: LoginRequest) -> SessionResponse:
+        """Email + password for everyone. The customer and provider pages send `role`; administrators don't."""
+        user = AuthRepository(db).get_user_by_email(payload.email)
+        if user is None or not verify_secret(payload.password, user.password_hash):
+            raise InvalidCredentialsError
+        if not user.is_active:
+            raise AccountDisabledError
+        # Checked only after the password matched, so it can't be used to discover accounts.
+        if payload.role is not None and user.role != UserRole(payload.role):
+            raise RoleMismatchError(user.role)
+        return self._session(db, user)
 
     def google_login(self, db: Session, payload: GoogleLoginRequest) -> SessionResponse:
         id_info = self._verify_google_payload(payload.id_token)
@@ -159,6 +127,11 @@ class AuthService:
                 raise EmailInUseError
             if user.role != UserRole.CUSTOMER:
                 raise RoleMismatchError(user.role)
+            if not user.email_verified:
+                # Whoever chose this password never proved the email; Google just did. Drop the password
+                # and its sessions, so registering someone else's email doesn't keep you in their account.
+                user.password_hash = unusable_password_hash()
+                user.token_version += 1
             user.google_sub = google_sub
             user.email_verified = True
         if not user.is_active:
@@ -169,6 +142,34 @@ class AuthService:
         user.avatar_url = str(id_info.get("picture") or "") or user.avatar_url
         self._commit(db)
         return self._session(db, user)
+
+    # ── Forgotten password ───────────────────────────────────────────────────────
+
+    def forgot_password(self, db: Session, payload: ForgotPasswordRequest) -> None:
+        """Email a reset code to an active account. The caller can't tell whether one was sent."""
+        repo = AuthRepository(db)
+        user = repo.get_user_by_email(payload.email)
+        if user is None or not user.is_active:
+            return
+        try:
+            self._issue_otp(repo, user=user, purpose=OtpPurpose.PASSWORD_RESET)
+        except OtpRateLimitedError:
+            # A 429 would confirm the account exists; the resend countdown lives in the client.
+            return
+        db.commit()
+
+    def reset_password(self, db: Session, payload: ResetPasswordRequest) -> None:
+        repo = AuthRepository(db)
+        user = repo.get_user_by_email(payload.email)
+        if user is None or not user.is_active:
+            raise InvalidOtpError
+        self._consume_otp(db, repo, user=user, otp=payload.otp, purpose=OtpPurpose.PASSWORD_RESET)
+        user.password_hash = hash_secret(payload.new_password)
+        # The code proved the email. End every existing session, including any opened by someone
+        # who registered this email before its owner did.
+        user.email_verified = True
+        user.token_version += 1
+        db.commit()
 
     # ── Current user ─────────────────────────────────────────────────────────────
 
@@ -185,7 +186,7 @@ class AuthService:
         if payload.name is not None:
             user.name = payload.name
         if payload.phone is not None:
-            self._claim_phone(db, AuthRepository(db), user=user, phone=payload.phone)
+            self._claim_phone(AuthRepository(db), user=user, phone=payload.phone)
         self._commit(db)
         return self._user_response(db, user)
 
@@ -202,7 +203,7 @@ class AuthService:
         ).on_conflict_do_nothing(index_elements=["token_hash"]))
         db.commit()
 
-    # ── Email + password (administrators; customers who set a password) ──────────
+    # ── Administrators ───────────────────────────────────────────────────────────
 
     def create_admin(self, db: Session, *, email: str, password: str, name: str) -> AuthUser:
         repo = AuthRepository(db)
@@ -217,40 +218,11 @@ class AuthService:
         db.commit()
         return user
 
-    def login(self, db: Session, payload: LoginRequest) -> SessionResponse:
-        """Administrators, and customers who set a password at sign-up. Others have an unusable hash."""
-        user = AuthRepository(db).get_user_by_email(payload.email)
-        if (
-            user is None
-            or user.role not in (UserRole.ADMIN, UserRole.CUSTOMER)
-            or not user.is_active
-            or not user.email_verified
-            or not verify_secret(payload.password, user.password_hash)
-        ):
-            raise InvalidCredentialsError
-        return self._session(db, user)
-
-    def forgot_password(self, db: Session, payload: ForgotPasswordRequest) -> None:
-        repo = AuthRepository(db)
-        user = repo.get_user_by_email(payload.email)
-        if user is not None and user.role == UserRole.ADMIN and user.is_active:
-            self._issue_otp(repo, user=user, purpose=OtpPurpose.PASSWORD_RESET)
-            db.commit()
-
-    def reset_password(self, db: Session, payload: ResetPasswordRequest) -> None:
-        repo = AuthRepository(db)
-        user = repo.get_user_by_email(payload.email)
-        if user is None or user.role != UserRole.ADMIN:
-            raise InvalidOtpError
-        self._consume_otp(db, repo, user=user, otp=payload.otp, purpose=OtpPurpose.PASSWORD_RESET)
-        user.password_hash = hash_secret(payload.new_password)
-        db.commit()
-
     # ── Internals ────────────────────────────────────────────────────────────────
 
     def _session(self, db: Session, user: AuthUser) -> SessionResponse:
         return SessionResponse(
-            access_token=create_access_token(subject=user.id, role=user.role.value),
+            access_token=create_access_token(subject=user.id, role=user.role.value, version=user.token_version),
             user=self._user_response(db, user),
         )
 
@@ -266,20 +238,10 @@ class AuthService:
             onboarding_status=status.value if status else None,
         )
 
-    def _ensure_can_sign_in(self, user: AuthUser, role: UserRole) -> None:
-        if user.role != role:
-            raise RoleMismatchError(user.role)
-        if not user.is_active:
-            raise AccountDisabledError
-
-    def _claim_phone(self, db: Session, repo: AuthRepository, *, user: AuthUser, phone: str) -> None:
+    def _claim_phone(self, repo: AuthRepository, *, user: AuthUser, phone: str) -> None:
         holder = repo.get_user_by_phone(phone)
         if holder is not None and holder.id != user.id:
-            if holder.email_verified:
-                raise PhoneInUseError
-            # Release the number from an abandoned, never-verified sign-up.
-            holder.phone = None
-            db.flush()
+            raise PhoneInUseError
         user.phone = phone
 
     def _commit(self, db: Session) -> None:
@@ -296,7 +258,12 @@ class AuthService:
         except ValueError as error:
             raise InvalidAccessTokenError from error
         user = db.get(AuthUser, claims["sub"])
-        if not user or not user.is_active or not user.email_verified or user.role.value != claims["role"]:
+        if (
+            not user
+            or not user.is_active
+            or user.role.value != claims["role"]
+            or user.token_version != claims["ver"]
+        ):
             raise InvalidAccessTokenError
         return user, claims
 

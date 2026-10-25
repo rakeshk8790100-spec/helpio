@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, time
 from enum import StrEnum
 
-from sqlalchemy import ForeignKey, Numeric, SmallInteger, String, Time, Uuid
+from sqlalchemy import ForeignKey, Integer, Numeric, SmallInteger, String, Time, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, UtcDateTime, str_enum, utc_now
@@ -37,7 +37,8 @@ class ProviderProfile(Base):
     longitude: Mapped[float | None] = mapped_column(Numeric(9, 6, asdecimal=False), nullable=True)
     pincode: Mapped[str | None] = mapped_column(String(6), nullable=True)
     area_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    radius_km: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    # Travel radius in metres (500 m to 50 km)
+    radius_m: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now, onupdate=utc_now)
 

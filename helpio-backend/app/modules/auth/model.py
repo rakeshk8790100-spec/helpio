@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, ForeignKey, Index, SmallInteger, String, Text, Uuid
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, SmallInteger, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, UtcDateTime, str_enum, utc_now
@@ -38,6 +38,8 @@ class AuthUser(Base):
     auth_provider: Mapped[str] = mapped_column(String(20), nullable=False, default="email")
     google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Access tokens carry the version they were issued with; bumping it signs the user out everywhere.
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now, onupdate=utc_now)
 

@@ -17,13 +17,13 @@ SERVICE_SETUP = {
         {"day": 5, "start": "10:00", "end": "14:00"},
     ],
     "service_area": {"latitude": 12.9352, "longitude": 77.6245, "pincode": "560034", "area_name": "Koramangala"},
-    "radius_km": 10,
+    "radius_m": 500,
 }
 
 
 @pytest.fixture
-def provider_token(client, email_client) -> str:
-    return sign_up(client, email_client, role="provider", email="ravi@example.com", phone="9123456780")["access_token"]
+def provider_token(client) -> str:
+    return sign_up(client, role="provider", email="ravi@example.com", phone="9123456780")["access_token"]
 
 
 def test_catalog_is_public_and_grouped(client):
@@ -54,7 +54,7 @@ def test_full_onboarding(client, provider_token):
         {"day": 5, "start": "10:00:00", "end": "14:00:00"},
     ]
     assert body["service_area"] == {
-        "latitude": 12.9352, "longitude": 77.6245, "pincode": "560034", "area_name": "Koramangala", "radius_km": 10,
+        "latitude": 12.9352, "longitude": 77.6245, "pincode": "560034", "area_name": "Koramangala", "radius_m": 500,
     }
     skill = next(item for item in body["skills"] if item["skill_id"] == "plumbing-tap-leak")
     assert skill == {
@@ -109,8 +109,8 @@ def test_unknown_skill(client, provider_token):
     {"availability": [{"day": 0, "start": "09:00", "end": "18:00"}, {"day": 0, "start": "10:00", "end": "12:00"}]},
     {"availability": [{"day": 7, "start": "09:00", "end": "18:00"}]},
     {"availability": []},
-    {"radius_km": 0},
-    {"radius_km": 51},
+    {"radius_m": 499},
+    {"radius_m": 50001},
     {"service_area": {"latitude": 12.9, "pincode": "560034", "area_name": "Koramangala"}},
     {"service_area": {"pincode": "060034", "area_name": "Koramangala"}},
     {"service_area": {"pincode": "560034", "area_name": " "}},
@@ -130,7 +130,16 @@ def test_pincode_without_location_is_allowed(client, provider_token):
     assert response.json()["service_area"]["latitude"] is None
 
 
-def test_only_providers_can_onboard(client, email_client):
-    customer_token = sign_up(client, email_client)["access_token"]
+def test_only_providers_can_onboard(client):
+    customer_token = sign_up(client)["access_token"]
     assert client.get(ONBOARDING, headers=bearer(customer_token)).status_code == 403
     assert client.get(ONBOARDING).status_code == 401
+
+
+@pytest.mark.parametrize("radius_m", [500, 50_000])
+def test_radius_runs_from_500_m_to_50_km(client, provider_token, radius_m):
+    headers = bearer(provider_token)
+    client.put(SKILLS, json={"skills": THREE_SKILLS}, headers=headers)
+    response = client.put(SETUP, json=SERVICE_SETUP | {"radius_m": radius_m}, headers=headers)
+    assert response.status_code == 200
+    assert client.get(ONBOARDING, headers=headers).json()["service_area"]["radius_m"] == radius_m

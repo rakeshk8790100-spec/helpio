@@ -2,6 +2,8 @@ from app.core.exceptions import AppError
 
 BEARER_CHALLENGE = {"WWW-Authenticate": "Bearer"}
 ROLE_LABELS = {"admin": "an administrator", "customer": "a customer", "provider": "a professional"}
+# Customers and providers have separate login pages; point people at theirs.
+LOGIN_HINTS = {"admin": "", "customer": " Use the customer login.", "provider": " Use the professional login."}
 
 
 class AuthError(AppError):
@@ -22,7 +24,9 @@ class RoleMismatchError(AuthError):
     status_code = 409
 
     def __init__(self, registered_role: str) -> None:
-        super().__init__(f"This email is registered as {ROLE_LABELS[registered_role]} account")
+        super().__init__(
+            f"This email is registered as {ROLE_LABELS[registered_role]} account.{LOGIN_HINTS[registered_role]}"
+        )
 
 
 class InvalidCredentialsError(AuthError):

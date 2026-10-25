@@ -52,7 +52,7 @@ class ProviderService:
         profile.longitude = area.longitude
         profile.pincode = area.pincode
         profile.area_name = area.area_name
-        profile.radius_km = payload.radius_km
+        profile.radius_m = payload.radius_m
         profile.onboarding_status = OnboardingStatus.COMPLETE
         db.commit()
         return self.get_onboarding(db, user)
@@ -64,7 +64,7 @@ class ProviderService:
         return profile
 
     def _response(self, profile: ProviderProfile) -> OnboardingResponse:
-        has_area = profile.pincode is not None and profile.area_name is not None and profile.radius_km is not None
+        has_area = profile.pincode is not None and profile.area_name is not None and profile.radius_m is not None
         return OnboardingResponse(
             status=profile.onboarding_status,
             skills=[
@@ -80,6 +80,6 @@ class ProviderService:
             ],
             service_area=ServiceAreaResponse(
                 latitude=profile.latitude, longitude=profile.longitude, pincode=profile.pincode,
-                area_name=profile.area_name, radius_km=profile.radius_km,
+                area_name=profile.area_name, radius_m=profile.radius_m,
             ) if has_area else None,
         )

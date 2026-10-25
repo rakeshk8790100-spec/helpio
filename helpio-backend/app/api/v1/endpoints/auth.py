@@ -9,59 +9,38 @@ from app.modules.auth.schema import (
     GoogleLoginRequest,
     LoginRequest,
     MessageResponse,
-    NextStepResponse,
-    OtpStartRequest,
     RegisterRequest,
-    ResendOtpRequest,
     ResetPasswordRequest,
     SessionResponse,
     UpdateMeRequest,
     UserResponse,
-    VerifyOtpRequest,
 )
 from app.modules.auth.service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# ── Customers and providers: passwordless email code ─────────────────────────
+# ── Sign-up and log-in ───────────────────────────────────────────────────────
 
 
-@router.post("/otp/start", response_model=NextStepResponse)
-def start_otp(
-    payload: OtpStartRequest,
-    db: Session = Depends(get_db),
-    service: AuthService = Depends(get_auth_service),
-) -> NextStepResponse:
-    """Email a login code to an existing account, or ask the client to collect sign-up details."""
-    return service.start_otp(db, payload)
-
-
-@router.post("/register", response_model=NextStepResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/register", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
 def register(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
     service: AuthService = Depends(get_auth_service),
-) -> NextStepResponse:
+) -> SessionResponse:
+    """Customers and providers: create the account and sign in."""
     return service.register(db, payload)
 
 
-@router.post("/verify-otp", response_model=SessionResponse)
-def verify_otp(
-    payload: VerifyOtpRequest,
+@router.post("/login", response_model=SessionResponse)
+def login(
+    payload: LoginRequest,
     db: Session = Depends(get_db),
     service: AuthService = Depends(get_auth_service),
 ) -> SessionResponse:
-    return service.verify_otp(db, payload)
-
-
-@router.post("/otp/resend", response_model=NextStepResponse, status_code=status.HTTP_202_ACCEPTED)
-def resend_otp(
-    payload: ResendOtpRequest,
-    db: Session = Depends(get_db),
-    service: AuthService = Depends(get_auth_service),
-) -> NextStepResponse:
-    return service.resend_otp(db, payload)
+    """Email + password. `role` keeps the customer and provider login pages to their own audience."""
+    return service.login(db, payload)
 
 
 @router.post("/google", response_model=SessionResponse)
@@ -72,6 +51,29 @@ def google_login(
 ) -> SessionResponse:
     """Customers only: verify a Google ID token and sign in, creating the account if needed."""
     return service.google_login(db, payload)
+
+
+# ── Forgotten password ───────────────────────────────────────────────────────
+
+
+@router.post("/forgot-password", response_model=MessageResponse, status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(
+    payload: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    service.forgot_password(db, payload)
+    return MessageResponse(message="If the email exists, a reset code has been sent")
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(
+    payload: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+    service: AuthService = Depends(get_auth_service),
+) -> MessageResponse:
+    service.reset_password(db, payload)
+    return MessageResponse(message="Password has been reset")
 
 
 # ── Signed-in user ───────────────────────────────────────────────────────────
@@ -104,36 +106,3 @@ def logout(
 ) -> MessageResponse:
     service.logout(db, token)
     return MessageResponse(message="Logged out successfully")
-
-
-# ── Email + password: administrators, and customers who set a password ───────
-
-
-@router.post("/login", response_model=SessionResponse)
-def password_login(
-    payload: LoginRequest,
-    db: Session = Depends(get_db),
-    service: AuthService = Depends(get_auth_service),
-) -> SessionResponse:
-    """Administrators, and verified customers who set a password at sign-up."""
-    return service.login(db, payload)
-
-
-@router.post("/forgot-password", response_model=MessageResponse, status_code=status.HTTP_202_ACCEPTED)
-def forgot_password(
-    payload: ForgotPasswordRequest,
-    db: Session = Depends(get_db),
-    service: AuthService = Depends(get_auth_service),
-) -> MessageResponse:
-    service.forgot_password(db, payload)
-    return MessageResponse(message="If the email exists, a reset code has been sent")
-
-
-@router.post("/reset-password", response_model=MessageResponse)
-def reset_password(
-    payload: ResetPasswordRequest,
-    db: Session = Depends(get_db),
-    service: AuthService = Depends(get_auth_service),
-) -> MessageResponse:
-    service.reset_password(db, payload)
-    return MessageResponse(message="Password has been reset")

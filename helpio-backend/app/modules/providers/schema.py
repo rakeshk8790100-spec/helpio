@@ -7,6 +7,9 @@ from app.modules.providers.model import OnboardingStatus, Proficiency
 
 MIN_SKILLS = 3
 MAX_SKILLS = 15
+# Travel radius, in metres
+MIN_RADIUS_M = 500
+MAX_RADIUS_M = 50_000
 
 
 class ProviderSkillInput(BaseModel):
@@ -53,7 +56,7 @@ class ServiceArea(BaseModel):
 class SaveServiceSetupRequest(BaseModel):
     availability: list[AvailabilitySlot] = Field(min_length=1, max_length=7)
     service_area: ServiceArea
-    radius_km: int = Field(ge=1, le=50)
+    radius_m: int = Field(ge=MIN_RADIUS_M, le=MAX_RADIUS_M)
 
     @model_validator(mode="after")
     def unique_days(self) -> "SaveServiceSetupRequest":
@@ -71,7 +74,7 @@ class ProviderSkillResponse(BaseModel):
 
 
 class ServiceAreaResponse(ServiceArea):
-    radius_km: int
+    radius_m: int
 
 
 class OnboardingResponse(BaseModel):

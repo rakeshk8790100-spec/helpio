@@ -103,19 +103,21 @@ def rewind_otps(engine: Engine):
     return rewind
 
 
+PASSWORD = "s3cret-pass"
+
+
 def bearer(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
 def sign_up(
-    client: TestClient, email_client: FakeEmailClient, *, role: str = "customer",
-    email: str = "asha@example.com", phone: str = "9876543210", name: str = "Asha Kumar",
+    client: TestClient, *, role: str = "customer", email: str = "asha@example.com",
+    phone: str = "9876543210", name: str = "Asha Kumar", password: str = PASSWORD,
 ) -> dict:
-    response = client.post("/api/v1/auth/register", json={"name": name, "email": email, "phone": phone, "role": role})
-    assert response.status_code == 202, response.text
+    """Register an account; sign-up signs the user straight in and returns the session."""
     response = client.post(
-        "/api/v1/auth/verify-otp",
-        json={"email": email, "otp": email_client.last_code(email), "purpose": "signup"},
+        "/api/v1/auth/register",
+        json={"name": name, "email": email, "phone": phone, "role": role, "password": password},
     )
-    assert response.status_code == 200, response.text
+    assert response.status_code == 201, response.text
     return response.json()

@@ -22,3 +22,14 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.helpio.commands]
+dev = "uvicorn main:app --reload --port 8000"
+db-status = "supabase migration list"
+db-migrate = "supabase db push"
+test = "pytest"

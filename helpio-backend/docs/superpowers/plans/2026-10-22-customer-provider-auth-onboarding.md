@@ -1,5 +1,7 @@
 # Customer & Provider Login + Provider Onboarding: Implementation Plan
 
+> **Superseded in part (2026-10-24):** customers and providers now log in with email + password, sign-up no longer sends an email code, and customer and provider auth pages are separate. See `2026-10-24-password-login-separate-auth.md`. The skills catalogue and onboarding steps below still apply; the service radius is now `radius_m` (500 m to 50 km).
+
 > **For agentic workers:** Follow the `helpio-fullstack` skill. Backend tasks follow `helpio-backend`; frontend tasks follow `helpio-frontend/.claude/skills/helpio-design` (page → layout → component, design system, checklist). Steps use checkbox syntax.
 
 **Goal:** Customers sign in simply (email + one-time code, or Google) and give their name and mobile number once. Providers join in three short steps: (1) name, email, mobile, then verify the email code; (2) at least 3 skills with a proficiency level; (3) weekly availability, service location and service radius. A provider counts as fully signed up only after all three steps.
