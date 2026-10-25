@@ -15,8 +15,15 @@ const PAGES = {
   [UserRole.PROVIDER]: { signup: RouterKeys.PRO_SIGNUP, forgot: RouterKeys.PRO_FORGOT_PASSWORD, other: RouterKeys.LOGIN },
 };
 
+interface LoginOptions {
+  /** Runs before leaving for another page (the log-in popup closes itself) */
+  onNavigate?: () => void;
+  /** Replaces the jump to the other audience's log-in page (the popup switches in place) */
+  onSwitchAudience?: () => void;
+}
+
 /** /login and /pro/login behaviour (reads `?next=` and `?email=`). The page redirects once signed in. */
-export const useLogin = (audience: SelfServiceRole): LoginLayoutProps => {
+export const useLogin = (audience: SelfServiceRole, { onNavigate, onSwitchAudience }: LoginOptions = {}): LoginLayoutProps => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
@@ -44,10 +51,14 @@ export const useLogin = (audience: SelfServiceRole): LoginLayoutProps => {
     google: audience === UserRole.CUSTOMER ? google : null,
     onForgotPassword: () => {
       const email = form.getFieldValue('email');
+      onNavigate?.();
       navigate(typeof email === 'string' && email.trim() ? withQuery(pages.forgot, { email: email.trim() }) : pages.forgot);
     },
     // Customers come back to what they were opening; providers always continue into onboarding
-    onSignup: () => navigate(next && audience === UserRole.CUSTOMER ? withQuery(pages.signup, { next }) : pages.signup),
-    onSwitchAudience: () => navigate(pages.other),
+    onSignup: () => {
+      onNavigate?.();
+      navigate(next && audience === UserRole.CUSTOMER ? withQuery(pages.signup, { next }) : pages.signup);
+    },
+    onSwitchAudience: onSwitchAudience ?? (() => navigate(pages.other)),
   };
 };

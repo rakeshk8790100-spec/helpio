@@ -1,4 +1,5 @@
 
+import { useCallback, useState } from "react";
 import { Layout } from "antd";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { CalendarDays, Home, Search, UserRound } from "lucide-react";
@@ -6,6 +7,7 @@ import { useGetMeQuery, useLogoutMutation } from "../../common/CommonApi";
 import { RouterKeys } from "../../config/router/RouterKeys";
 import { useAppSelector } from "../../redux";
 import { selectCurrentUser, selectToken } from "../../redux/authSlice";
+import LoginModal from "../../pages/auth/LoginModal";
 import { HelpioLogo, UserMenu } from "../marketplace";
 
 const { Header, Content, Footer } = Layout;
@@ -29,6 +31,8 @@ const AppLayout = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [logout] = useLogoutMutation();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const closeLogin = useCallback(() => setLoginOpen(false), []);
   // Refresh the stored user (and validate the token) once per visit
   useGetMeQuery(undefined, { skip: !token });
 
@@ -53,15 +57,17 @@ const AppLayout = () => {
             <UserMenu user={user} onLogout={onLogout} />
           ) : (
             !onAuthScreen && (
-              <NavLink
-                to={RouterKeys.LOGIN}
-                className="flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold !text-white"
+              <button
+                type="button"
+                onClick={() => setLoginOpen(true)}
+                className="flex h-10 items-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white active:scale-95"
               >
                 Log in
-              </NavLink>
+              </button>
             )
           )}
         </Header>
+        {loginOpen && !user && <LoginModal onClose={closeLogin} />}
 
         {/* Dynamic page content */}
         <Content className="!min-h-0 !flex-1 !overflow-y-auto !bg-white !px-5 !py-5">
