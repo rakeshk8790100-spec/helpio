@@ -1,3 +1,5 @@
+from collections.abc import Collection, Sequence
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -22,3 +24,12 @@ class ProviderRepository:
         self.db.add(profile)
         self.db.flush()
         return profile
+
+    def get_profiles(self, user_ids: Collection[str]) -> Sequence[ProviderProfile]:
+        if not user_ids:
+            return []
+        return self.db.scalars(
+            select(ProviderProfile)
+            .where(ProviderProfile.user_id.in_(user_ids))
+            .options(selectinload(ProviderProfile.skills))
+        ).all()

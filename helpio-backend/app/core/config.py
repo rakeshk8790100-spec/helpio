@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     brevo_from_email: str = ""
     google_client_id: str = ""
 
+    # Cloudinary stores job photos and videos; only their URLs are saved in the database.
+    cloudinary_cloud_name: str = ""
+    # Unsigned upload preset: uploads then need only the cloud name, not an API key with create permission.
+    cloudinary_upload_preset: str = ""
+    cloudinary_api_key: str = ""
+    # Server-only: never send this to the browser.
+    cloudinary_api_secret: SecretStr = SecretStr("")
+
     # Comma-separated browser origins allowed to call the API, e.g. "https://app.helpio.in".
     cors_origins: str = ""
 

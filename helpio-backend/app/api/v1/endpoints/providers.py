@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.modules.auth.model import AuthUser
+from app.modules.jobs.dependencies import get_job_service
+from app.modules.jobs.schema import ProviderHomeResponse
+from app.modules.jobs.service import JobService
 from app.modules.providers.dependencies import current_provider, get_provider_service
 from app.modules.providers.schema import OnboardingResponse, SaveServiceSetupRequest, SaveSkillsRequest
 from app.modules.providers.service import ProviderService
@@ -39,3 +42,13 @@ def save_service_setup(
 ) -> OnboardingResponse:
     """Weekly availability, service location and radius. Completes provider sign-up."""
     return service.save_service_setup(db, user, payload)
+
+
+@router.get("/home", response_model=ProviderHomeResponse)
+def provider_home(
+    user: AuthUser = Depends(current_provider),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> ProviderHomeResponse:
+    """Everything the provider home screen needs: sign-up checklist, active job, quotes, nearby jobs, earnings."""
+    return service.provider_home(db, user)

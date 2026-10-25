@@ -123,6 +123,42 @@ After creating their account, providers finish sign-up in two more steps. Endpoi
 
 Status only moves forward; providers can re-save either step later.
 
+## Jobs and home screens
+
+Customers post custom jobs; nearby providers quote on them. Money is in paise.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/jobs` | Customer. `title` plus optional `description`, `category_id`, `latitude`/`longitude`, `pincode`, `area_name`, `budget_paise`, `scheduled_at`, `duration_mins`, `is_emergency`. Saved as a draft unless `submit: true`, which needs description, category, area and pincode and opens it to providers. |
+| `PATCH /api/v1/jobs/{id}` | Customer. Edit a draft; `submit: true` posts it. 409 once posted. |
+| `GET /api/v1/jobs/mine` | Customer. Own jobs with `quote_count` and `lowest_quote_paise`. |
+| `GET /api/v1/jobs/{id}` | Customer, own job. Adds photo URLs and the quotes received: amount, message, status, provider as "Ravi S.", their proficiency and experience in the job's category, and distance rounded to 0.5 km. |
+| `POST /api/v1/jobs/{id}/attachments` (multipart `file`) | Customer, before a pro is hired. Up to 6 files (JPG/PNG/WebP/MP4, 10 MB). The API uploads the file to Cloudinary (folder `helpio/jobs/<job id>`) and saves its URL; returns `{id, content_type, url}`. |
+| `DELETE /api/v1/jobs/{id}/attachments/{attachment_id}` | Customer. Deletes the file from Cloudinary and the job. |
+| `GET /api/v1/customers/me/home` | Customer home: `active_job`, `awaiting_decision` (open jobs with quotes), `waiting_for_quotes`, `drafts`. |
+| `GET /api/v1/jobs/nearby` `?category_id&max_km&has_budget&urgent_only` | Provider. `{area, jobs}`: their own centre and radius (null without coordinates) and the open jobs in their skill categories within `radius_m` (or the same pincode when either side has no coordinates); emergencies first, then closest. Masked: no customer contact, coordinates or pincode, distance rounded to 0.5 km, customer as "Asha K.", and `area_circle`, a 600 m circle whose centre is moved 200–400 m from the real spot (keyed by `AUTH_SECRET_KEY`, so the offset can't be worked out). |
+| `GET /api/v1/jobs/nearby/{id}` | Provider. One nearby job as above, plus photo URLs and `can_quote`. |
+| `DELETE /api/v1/jobs/{id}/quotes/mine` | Provider. Withdraws a pending quote; quoting again re-opens it. |
+| `POST /api/v1/jobs/{id}/quotes` `{amount_paise, message?}` | Provider with finished sign-up, on a job they can see nearby. One quote per job (409 on a second). |
+| `GET /api/v1/providers/me/home` | Provider home: sign-up checklist, `can_quote`, active job, quote counts, top 3 nearby jobs and `nearby_count`, earnings (zero until payouts exist). |
+
+## Photos and videos (Cloudinary)
+
+Job photos and videos are stored on Cloudinary; the database keeps only each file's URL, Cloudinary id and type.
+
+Uploads use an **unsigned upload preset**, so the API key needs no create permission. In the Cloudinary console
+(Settings > Upload > Upload presets) add a preset named `helpio_jobs`: Signing mode **Unsigned**, folder
+`helpio/jobs`, allowed formats `jpg,png,webp,mp4`, overwrite off. Then set `CLOUDINARY_CLOUD_NAME` (the badge on the
+API Keys page, not the key's name) and `CLOUDINARY_UPLOAD_PRESET`. The preset's folder takes priority over the
+per-job folder the API sends; files stay unique because their id is a random UUID.
+
+Deleting a file uses the signed API (`CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET`) and needs the key to have
+delete permission. If Cloudinary refuses, the photo is still removed from the job and the file stays in the Media
+Library until it is deleted there.
+
+Without a preset the API falls back to signed uploads with the key and secret. Without either, uploads answer 503
+and everything else keeps working.
+
 ## Migrations
 
 Apply these in order in the Supabase SQL editor (each is safe to re-run):
@@ -133,6 +169,9 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 4. `migrations/202610220002_catalog_and_providers.sql`: skills catalogue (seeded) and provider onboarding tables
 5. `migrations/202610240001_auth_password_sessions.sql`: token version, so a password reset signs out every device
 6. `migrations/202610240002_provider_radius_metres.sql`: service radius in metres (converts radii saved in km)
+7. `migrations/202610250001_jobs_and_quotes.sql`: custom jobs and provider quotes
+8. `migrations/202610260001_job_attachments.sql`: the `job_attachments` table (its Supabase Storage bucket is no longer used)
+9. `migrations/202610270001_job_attachments_cloudinary.sql`: photos move to Cloudinary; the table keeps each file's URL and Cloudinary id
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.
