@@ -2,8 +2,14 @@ export const RouterKeys = {
   HOME: '/',
   SEARCH: '/search',
   PROFILE: '/profile',
+  /** Customer log-in, sign-up and password reset */
   LOGIN: '/login',
-  REGISTER: '/register',
+  SIGNUP: '/signup',
+  FORGOT_PASSWORD: '/forgot-password',
+  /** Provider log-in, sign-up step 1 and password reset */
+  PRO_LOGIN: '/pro/login',
+  PRO_SIGNUP: '/pro/signup',
+  PRO_FORGOT_PASSWORD: '/pro/forgot-password',
   /** Provider sign-up step 2 */
   ONBOARDING_SKILLS: '/onboarding/skills',
   /** Provider sign-up step 3 */

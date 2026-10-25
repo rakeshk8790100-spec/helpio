@@ -21,6 +21,10 @@ All components are pure: data comes in through props and actions go out through 
 | `Avatar` | Initials avatar on the brand gradient | `name`, `size: sm \| md \| lg` | coloured initial circles |
 | `IconTile` | Icon square + caption for grids | `Icon`, `label`, `onClick?` | category/shortcut tiles |
 | `PageSkeleton` | Page-level loading skeleton | none | spinners |
+| `ChipMultiSelect` | Multi-select chip group; works inside antd `Form.Item` | `options: { value, label }[]`, `value?`, `onChange?`, `ariaLabel` | checkbox groups for days/tags |
+| `ChipSelect` | Single-choice chip group that wraps (e.g. service radius); works inside `Form.Item` | `options`, `value?`, `onChange?`, `ariaLabel` | `Segmented` with too many options for 360px |
+| `StepProgress` | Segmented "Step N of M" bar for multi-screen flows | `steps: string[]`, `current` (1-based) | ad-hoc progress bars |
+| `GoogleButton` | Official Google Identity Services button | `clientId`, `onCredential(idToken)` | custom Google buttons |
 
 ## `src/component/marketplace` (Helpio domain)
 
@@ -34,11 +38,14 @@ All components are pure: data comes in through props and actions go out through 
 | `AudienceCard` | Entry card for one audience on a shared page ("I need help" / "I want to earn") | `Icon`, `eyebrow`, `title`, `highlight`, `ctaLabel`, `onClick`, `tone: 'brand' \| 'dark'` |
 | `EarningsCalculator` | Provider earnings estimate: skill chips + hours slider + live total (for dark sections) | `rates`, `skillId`, `onSkillChange`, `hours`, `onHoursChange`, `monthlyEstimate`, `benefits` |
 | `TestimonialCard` | Rated quote with a Customer/Provider badge (carousel) | `testimonial` |
+| `HelpioLogo` | Brand mark + "helpio" wordmark (header) | `size?: 'sm' \| 'md'` |
+| `SkillPicker` | Provider skills: category tabs, skill chips, proficiency per selected skill | see the component's props |
+| `UserMenu` | Signed-in header avatar with account details and Log out | `user`, `onLogout` |
 
 ## `src/component/layout` (app shell)
 | Component | Purpose |
 |---|---|
-| `AppLayout` | 430px mobile shell: header, scrolling content (`<Outlet/>`), public bottom tabs, Log in button |
+| `AppLayout` | 430px mobile shell: header with `HelpioLogo`, scrolling content (`<Outlet/>`), bottom tabs and Log in button (both hidden on log-in, sign-up and password pages) |
 | `ComingSoon` | Placeholder for routes not built yet (catch-all child route) |
 
 ## Before creating a new component
@@ -48,3 +55,5 @@ All components are pure: data comes in through props and actions go out through 
 
 ## Removed (restore from git history if a future screen needs them)
 The earlier customer/provider dashboard used `ProgressBar`, `Stepper`, `AlertBanner`, `EmptyState`, and job/quote/provider cards (active-job cards, milestone progress, approx map, earnings, onboarding). They were deleted with the dashboard. Rebuild them pure, following these rules, when a screen needs them.
+
+`OtpVerify` (enter an emailed 6-digit code, with resend) was removed when log-in moved to email + password; the password-reset layout uses antd `Input.OTP` directly.

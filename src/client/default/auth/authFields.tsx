@@ -1,6 +1,6 @@
 import { Form, Input } from 'antd';
 
-/* Form fields shared by the login and provider sign-up layouts. Use inside an antd `Form`. */
+/* Form fields shared by the log-in, sign-up and password layouts. Use inside an antd `Form`. */
 
 const digitsOnly = (value: string | undefined) => (value ?? '').replace(/\D/g, '');
 
@@ -27,6 +27,32 @@ export const NameField = () => (
     ]}
   >
     <Input size="large" autoComplete="name" placeholder="As on your ID" maxLength={80} />
+  </Form.Item>
+);
+
+/** `new-password` when creating one, `current-password` when logging in (lets password managers help). */
+export const PasswordField = ({
+  autoComplete = 'new-password',
+  label = 'Password',
+}: {
+  autoComplete?: 'new-password' | 'current-password';
+  label?: string;
+}) => (
+  <Form.Item
+    name="password"
+    label={label}
+    rules={[
+      { required: true, message: 'Enter a password' },
+      ...(autoComplete === 'new-password' ? [{ min: 8, message: 'Use at least 8 characters' }] : []),
+      { max: 128, message: 'Use at most 128 characters' },
+    ]}
+  >
+    <Input.Password
+      size="large"
+      autoComplete={autoComplete}
+      placeholder={autoComplete === 'new-password' ? 'At least 8 characters' : 'Your password'}
+      maxLength={128}
+    />
   </Form.Item>
 );
 

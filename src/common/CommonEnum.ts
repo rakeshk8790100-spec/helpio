@@ -7,6 +7,9 @@ export const UserRole = {
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
+/** Roles that sign themselves up; each has its own log-in and sign-up pages. */
+export type SelfServiceRole = typeof UserRole.CUSTOMER | typeof UserRole.PROVIDER;
+
 /** Provider sign-up progress: the next step to complete, or `complete`. */
 export const OnboardingStatus = {
   SKILLS: 'skills',
@@ -22,12 +25,5 @@ export const Proficiency = {
 } as const;
 export type Proficiency = (typeof Proficiency)[keyof typeof Proficiency];
 
-/** Why an email code was sent: creating an account, or signing in to an existing one. */
-export const OtpPurpose = {
-  SIGNUP: 'signup',
-  LOGIN: 'login',
-} as const;
-export type OtpPurpose = (typeof OtpPurpose)[keyof typeof OtpPurpose];
-
-/** Digits in an emailed sign-in code */
+/** Digits in an emailed password-reset code */
 export const OTP_LENGTH = 6;

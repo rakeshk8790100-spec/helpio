@@ -17,7 +17,7 @@ const DEFAULTS: ServiceSetupFormValues = {
   end: '18:00',
   pincode: '',
   areaName: '',
-  radiusKm: 10,
+  radiusM: 10_000,
 };
 
 const GEO_ERRORS: Record<number, string> = {
@@ -38,7 +38,7 @@ const savedValues = (data: ProviderOnboarding | undefined): ServiceSetupFormValu
     end: data.availability[0].end,
     pincode: area.pincode,
     areaName: area.areaName,
-    radiusKm: area.radiusKm,
+    radiusM: area.radiusM,
   };
 };
 
@@ -96,7 +96,7 @@ export const useServiceSetup = (): ServiceAreaLayoutProps => {
     },
     saving,
     error,
-    onSubmit: async ({ days, start, end, pincode, areaName, radiusKm }) => {
+    onSubmit: async ({ days, start, end, pincode, areaName, radiusM }) => {
       setError(undefined);
       try {
         await save({
@@ -106,7 +106,7 @@ export const useServiceSetup = (): ServiceAreaLayoutProps => {
             longitude: coordinates?.longitude ?? null,
             pincode,
             areaName: areaName.trim(),
-            radiusKm,
+            radiusM,
           },
         }).unwrap();
         message.success("You're all set! We'll show you jobs near you.");

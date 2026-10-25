@@ -26,11 +26,11 @@ export interface OnboardingApiDto {
   status: OnboardingStatus;
   skills: ProviderSkillApiDto[];
   availability: AvailabilitySlotApiDto[];
-  service_area: (ServiceAreaApiDto & { radius_km: number }) | null;
+  service_area: (ServiceAreaApiDto & { radius_m: number }) | null;
 }
 
 export interface SaveServiceSetupApiDto {
   availability: AvailabilitySlotApiDto[];
   service_area: ServiceAreaApiDto;
-  radius_km: number;
+  radius_m: number;
 }

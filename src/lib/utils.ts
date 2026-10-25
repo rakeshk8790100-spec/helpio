@@ -44,3 +44,7 @@ export const formatDays = (days: number[]) => {
     .map((run) => (run.length >= 3 ? `${WEEKDAY_SHORT[run[0]]}–${WEEKDAY_SHORT[run[run.length - 1]]}` : run.map((d) => WEEKDAY_SHORT[d]).join(', ')))
     .join(', ');
 };
+
+/** Metres → "500 m", "2 km" or "2.5 km" */
+export const formatDistance = (metres: number) =>
+  metres < 1000 ? `${metres} m` : `${+(metres / 1000).toFixed(1)} km`;

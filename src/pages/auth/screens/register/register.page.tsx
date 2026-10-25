@@ -8,7 +8,7 @@ import { useRegister } from '../../../../hooks/useRegister';
 
 const SignUp = () => <RegisterLayout {...useRegister()} />;
 
-/** /register: provider sign-up step 1. Signed-in users continue where they belong. */
+/** /pro/signup: provider sign-up step 1. Signed-in users continue where they belong (new providers: skills). */
 const RegisterPage = () => {
   const user = useAppSelector(selectCurrentUser);
   const [params] = useSearchParams();

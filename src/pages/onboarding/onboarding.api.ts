@@ -13,7 +13,7 @@ const toOnboarding = (dto: OnboardingApiDto): ProviderOnboarding => ({
     longitude: dto.service_area.longitude,
     pincode: dto.service_area.pincode,
     areaName: dto.service_area.area_name,
-    radiusKm: dto.service_area.radius_km,
+    radiusM: dto.service_area.radius_m,
   },
 });
 
@@ -58,7 +58,7 @@ export const onboardingApi = baseApi.injectEndpoints({
             pincode: serviceArea.pincode,
             area_name: serviceArea.areaName,
           },
-          radius_km: serviceArea.radiusKm,
+          radius_m: serviceArea.radiusM,
         } satisfies SaveServiceSetupApiDto,
       }),
       transformResponse: toOnboarding,

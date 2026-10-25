@@ -1,6 +1,4 @@
-import type { ComponentProps } from 'react';
 import type { FormInstance } from 'antd';
-import type { OtpVerify } from '../../../component/marketplace';
 import type { DetailsFormValues } from './login.layout.types';
 
 /* Contract between pages/auth/screens/register (behaviour) and client/default/auth/register.layout (markup). */
@@ -8,6 +6,7 @@ import type { DetailsFormValues } from './login.layout.types';
 /** Provider sign-up step 1 */
 export interface RegisterFormValues extends DetailsFormValues {
   email: string;
+  password: string;
   agree: boolean;
 }
 
@@ -18,6 +17,6 @@ export interface RegisterLayoutProps {
   submitting: boolean;
   error?: string;
   onLogin: () => void;
-  /** Code step; replaces the form while set */
-  otp: ComponentProps<typeof OtpVerify> | null;
+  /** Customer sign-up */
+  onSwitchAudience: () => void;
 }

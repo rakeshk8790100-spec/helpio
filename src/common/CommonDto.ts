@@ -101,7 +101,8 @@ export interface ServiceArea {
   longitude: number | null;
   pincode: string;
   areaName: string;
-  radiusKm: number;
+  /** Travel radius in metres */
+  radiusM: number;
 }
 
 export interface ProviderOnboarding {

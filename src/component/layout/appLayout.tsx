@@ -6,7 +6,7 @@ import { useGetMeQuery, useLogoutMutation } from "../../common/CommonApi";
 import { RouterKeys } from "../../config/router/RouterKeys";
 import { useAppSelector } from "../../redux";
 import { selectCurrentUser, selectToken } from "../../redux/authSlice";
-import { UserMenu } from "../marketplace";
+import { HelpioLogo, UserMenu } from "../marketplace";
 
 const { Header, Content, Footer } = Layout;
 
@@ -15,6 +15,12 @@ const tabs = [
   { label: "Search", path: RouterKeys.SEARCH, Icon: Search },
   { label: "Bookings", path: RouterKeys.BOOKINGS, Icon: CalendarDays },
   { label: "Profile", path: RouterKeys.PROFILE, Icon: UserRound },
+];
+
+/** Log-in, sign-up and password pages: no "Log in" button and no bottom tabs, so the form has the screen */
+const AUTH_SCREENS: string[] = [
+  RouterKeys.LOGIN, RouterKeys.SIGNUP, RouterKeys.FORGOT_PASSWORD,
+  RouterKeys.PRO_LOGIN, RouterKeys.PRO_SIGNUP, RouterKeys.PRO_FORGOT_PASSWORD,
 ];
 
 const AppLayout = () => {
@@ -32,15 +38,15 @@ const AppLayout = () => {
     await logout();
     navigate(RouterKeys.HOME);
   };
-  const onAuthScreen = pathname === RouterKeys.LOGIN || pathname === RouterKeys.REGISTER;
+  const onAuthScreen = AUTH_SCREENS.includes(pathname);
 
   return (
     <div className="min-h-dvh w-full bg-slate-100 sm:flex sm:justify-center">
       <Layout className="!h-dvh !w-full !max-w-[430px] !overflow-hidden !bg-white sm:border-x sm:border-slate-200">
         {/* Header */}
         <Header className="!flex !h-16 !shrink-0 !items-center !justify-between !border-b !border-slate-100 !bg-white !px-5 !leading-normal">
-          <NavLink to={RouterKeys.HOME} className="text-xl font-bold tracking-tight !text-slate-900">
-            helpio
+          <NavLink to={RouterKeys.HOME} className="rounded-lg active:scale-95">
+            <HelpioLogo />
           </NavLink>
 
           {user ? (
@@ -63,7 +69,7 @@ const AppLayout = () => {
         </Content>
 
         {/* Bottom tab navigation */}
-        <Footer className="!shrink-0 !border-t !border-slate-200 !bg-white !p-0">
+        <Footer hidden={onAuthScreen} className="!shrink-0 !border-t !border-slate-200 !bg-white !p-0">
           <nav
             aria-label="Bottom navigation"
             className="grid grid-cols-4"

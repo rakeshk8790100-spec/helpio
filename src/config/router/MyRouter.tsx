@@ -12,7 +12,7 @@ const myRouter = createBrowserRouter([
     path: "/",
     element: <AppLayout />,
     children: [
-      // Public: landing page, login, provider sign-up step 1
+      // Public: landing page, customer and provider log-in, sign-up and password reset
       { index: true, element: <HeroPage /> },
       ...authRoutes,
       // Provider sign-up steps 2 and 3

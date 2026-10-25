@@ -1,12 +1,13 @@
-import { Alert, Button, Form, Input, Segmented, Select } from 'antd';
+import { Alert, Button, Form, Input, Select } from 'antd';
 import { CircleCheck, LocateFixed, MapPin } from 'lucide-react';
-import { ChipMultiSelect, PageSkeleton, StepProgress } from '../../../component/ui';
-import { WEEKDAY_SHORT, formatDays, formatTime } from '../../../lib/utils';
+import { ChipMultiSelect, ChipSelect, PageSkeleton, StepProgress } from '../../../component/ui';
+import { WEEKDAY_SHORT, formatDays, formatDistance, formatTime } from '../../../lib/utils';
 import { PROVIDER_SIGNUP_STEPS } from './onboarding.layout.types';
 import type { ServiceAreaLayoutProps, ServiceSetupFormValues } from './onboarding.layout.types';
 
 const DAY_OPTIONS = WEEKDAY_SHORT.map((label, day) => ({ value: day, label }));
-const RADIUS_OPTIONS = [2, 5, 10, 15, 25].map((km) => ({ value: km, label: `${km} km` }));
+/** Metres, from a few streets away to across the city */
+const RADIUS_OPTIONS = [500, 1_000, 2_000, 5_000, 10_000, 15_000, 25_000].map((m) => ({ value: m, label: formatDistance(m) }));
 /** Every half hour, 00:00 to 23:30 */
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const value = `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`;
@@ -14,10 +15,10 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 });
 
 const Summary = ({ values }: { values: Partial<ServiceSetupFormValues> }) => {
-  if (!values.days?.length || !values.start || !values.end || values.end <= values.start || !values.radiusKm) return null;
+  if (!values.days?.length || !values.start || !values.end || values.end <= values.start || !values.radiusM) return null;
   return (
     <div role="status" className="rounded-xl bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
-      You'll get jobs within <span className="font-semibold">{values.radiusKm} km</span> of{' '}
+      You'll get jobs within <span className="font-semibold">{formatDistance(values.radiusM)}</span> of{' '}
       <span className="font-semibold">{values.areaName?.trim() || 'your area'}</span>,{' '}
       {formatDays(values.days)}, {formatTime(values.start)}–{formatTime(values.end)}.
     </div>
@@ -135,9 +136,10 @@ const ServiceAreaLayout = (p: ServiceAreaLayoutProps) => {
         </section>
 
         <section className="rounded-2xl border border-slate-100 p-4 shadow-sm">
-          <div className="mb-3 text-base font-semibold text-slate-900">How far will you travel for a job?</div>
-          <Form.Item name="radiusKm" className="!mb-0">
-            <Segmented block options={RADIUS_OPTIONS} aria-label="Service radius" />
+          <div className="text-base font-semibold text-slate-900">How far will you travel for a job?</div>
+          <div className="mt-1 mb-3 text-xs text-slate-500">Measured from where you're based.</div>
+          <Form.Item name="radiusM" className="!mb-0">
+            <ChipSelect options={RADIUS_OPTIONS} ariaLabel="Service radius" />
           </Form.Item>
         </section>
 

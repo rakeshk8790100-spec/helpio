@@ -5,8 +5,8 @@ import type { WithLoading } from '../layout.types';
 
 /* Contract between pages/onboarding (behaviour) and client/default/onboarding (markup). */
 
-/** Provider sign-up steps, shown by StepProgress on every step (step 1 is /register) */
-export const PROVIDER_SIGNUP_STEPS = ['Your details', 'Skills', 'Availability & area'];
+/** Provider sign-up steps, shown by StepProgress on every step (step 1 is /pro/signup) */
+export const PROVIDER_SIGNUP_STEPS = ['Your details', 'Skills', 'Service area'];
 
 export const MIN_SKILLS = 3;
 export const MAX_SKILLS = 15;
@@ -30,7 +30,8 @@ export interface ServiceSetupFormValues {
   end: string;
   pincode: string;
   areaName: string;
-  radiusKm: number;
+  /** Travel radius in metres */
+  radiusM: number;
 }
 
 export interface Coordinates {

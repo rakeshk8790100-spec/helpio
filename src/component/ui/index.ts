@@ -1,6 +1,7 @@
 export { default as Avatar } from './Avatar';
 export { default as Chip } from './Chip';
 export { default as ChipMultiSelect } from './ChipMultiSelect';
+export { default as ChipSelect } from './ChipSelect';
 export type { ChipOption } from './ChipMultiSelect';
 export { default as FaqList } from './FaqList';
 export type { FaqListItem } from './FaqList';

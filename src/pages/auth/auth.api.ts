@@ -1,43 +1,46 @@
 import { startSessionOnSuccess, toAuthSession } from '../../common/CommonApi';
 import type { AuthSession } from '../../common/CommonDto';
 import { baseApi } from '../../config/base_service/base.api';
-import type { GoogleLoginDto, NextStepDto, OtpStartDto, RegisterDto, ResendOtpDto, VerifyOtpDto } from './types/auth.dto';
+import type { ForgotPasswordDto, GoogleLoginDto, LoginDto, RegisterDto, ResetPasswordDto } from './types/auth.dto';
 
 /**
- * Sign-in endpoints. Customers and providers sign in with an emailed code; customers can also use Google.
- * Successful sign-ins store the session (see `startSessionOnSuccess`).
+ * Sign-in endpoints. Customers and providers sign up and log in with email + password; customers can
+ * also use Google. Successful sign-ins store the session (see `startSessionOnSuccess`).
  */
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    /** Emails a login code to an existing account, or answers `details` for a new email. */
-    startOtp: builder.mutation<NextStepDto, OtpStartDto>({
-      query: (body) => ({ url: '/auth/otp/start', method: 'POST', body }),
-    }),
-    /** Creates (or refreshes an unverified) account and emails a sign-up code. */
-    register: builder.mutation<NextStepDto, RegisterDto>({
+    /** Creates the account and signs in. */
+    register: builder.mutation<AuthSession, RegisterDto>({
       query: (body) => ({ url: '/auth/register', method: 'POST', body }),
-    }),
-    verifyOtp: builder.mutation<AuthSession, VerifyOtpDto>({
-      query: (body) => ({ url: '/auth/verify-otp', method: 'POST', body }),
       transformResponse: toAuthSession,
       onQueryStarted: startSessionOnSuccess,
     }),
-    resendOtp: builder.mutation<NextStepDto, ResendOtpDto>({
-      query: (body) => ({ url: '/auth/otp/resend', method: 'POST', body }),
+    login: builder.mutation<AuthSession, LoginDto>({
+      query: (body) => ({ url: '/auth/login', method: 'POST', body }),
+      transformResponse: toAuthSession,
+      onQueryStarted: startSessionOnSuccess,
     }),
     googleLogin: builder.mutation<AuthSession, GoogleLoginDto>({
       query: (body) => ({ url: '/auth/google', method: 'POST', body }),
       transformResponse: toAuthSession,
       onQueryStarted: startSessionOnSuccess,
     }),
+    /** Emails a reset code. Answers the same whether or not the account exists. */
+    forgotPassword: builder.mutation<void, ForgotPasswordDto>({
+      query: (body) => ({ url: '/auth/forgot-password', method: 'POST', body }),
+    }),
+    /** Sets the new password and signs the account out everywhere; the user then logs in again. */
+    resetPassword: builder.mutation<void, ResetPasswordDto>({
+      query: (body) => ({ url: '/auth/reset-password', method: 'POST', body }),
+    }),
   }),
   overrideExisting: false,
 });
 
 export const {
-  useStartOtpMutation,
   useRegisterMutation,
-  useVerifyOtpMutation,
-  useResendOtpMutation,
+  useLoginMutation,
   useGoogleLoginMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
 } = authApi;

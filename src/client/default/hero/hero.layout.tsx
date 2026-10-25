@@ -36,9 +36,9 @@ const CUSTOMER_STEPS: StepListItem[] = [
 ];
 
 const PROVIDER_STEPS: StepListItem[] = [
-  { Icon: UserPlus, title: 'Sign up', text: 'Create your provider account with your phone number.' },
+  { Icon: UserPlus, title: 'Sign up', text: 'Create your account with your email, mobile number and a password.' },
   { Icon: BadgeCheck, title: 'Get verified', text: 'Quick KYC and a selfie check build customer trust.' },
-  { Icon: ListChecks, title: 'Add your skills & area', text: 'Choose 5+ skills, your service radius and hours.' },
+  { Icon: ListChecks, title: 'Add your skills & area', text: 'Choose 3+ skills, your service radius and hours.' },
   { Icon: BriefcaseBusiness, title: 'Start earning', text: 'Quote on nearby jobs and get paid weekly.' },
 ];
 

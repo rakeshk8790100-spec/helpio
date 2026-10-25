@@ -1,101 +1,53 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Form } from 'antd';
-import { LoginStep, LoginTab } from '../client/default/auth/login.layout.types';
-import type {
-  DetailsFormValues,
-  EmailFormValues,
-  LoginLayoutProps,
-} from '../client/default/auth/login.layout.types';
-import { OtpPurpose } from '../common/CommonEnum';
-import { envConfig } from '../config/env.config';
+import type { LoginFormValues, LoginLayoutProps } from '../client/default/auth/login.layout.types';
+import { UserRole } from '../common/CommonEnum';
+import type { SelfServiceRole } from '../common/CommonEnum';
 import { RouterKeys, withQuery } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
-import { useGoogleLoginMutation, useRegisterMutation, useStartOtpMutation } from '../pages/auth/auth.api';
-import { useOtpStep } from './useOtpStep';
+import { useLoginMutation } from '../pages/auth/auth.api';
+import { safeNext } from '../pages/auth/authRedirect';
+import { useGoogleSignIn } from './useGoogleSignIn';
 
-/** /login behaviour. Once a session exists, LoginPage redirects. */
-export const useLogin = (): LoginLayoutProps => {
+const PAGES = {
+  [UserRole.CUSTOMER]: { signup: RouterKeys.SIGNUP, forgot: RouterKeys.FORGOT_PASSWORD, other: RouterKeys.PRO_LOGIN },
+  [UserRole.PROVIDER]: { signup: RouterKeys.PRO_SIGNUP, forgot: RouterKeys.PRO_FORGOT_PASSWORD, other: RouterKeys.LOGIN },
+};
+
+/** /login and /pro/login behaviour (reads `?next=` and `?email=`). The page redirects once signed in. */
+export const useLogin = (audience: SelfServiceRole): LoginLayoutProps => {
   const navigate = useNavigate();
-  const [params, setParams] = useSearchParams();
-  const tab = params.get('tab') === LoginTab.PROVIDER ? LoginTab.PROVIDER : LoginTab.CUSTOMER;
-
-  const [step, setStep] = useState<LoginStep>(LoginStep.EMAIL);
-  const [email, setEmail] = useState('');
+  const [params] = useSearchParams();
+  const next = safeNext(params.get('next'));
+  const [form] = Form.useForm<LoginFormValues>();
+  const [login, { isLoading }] = useLoginMutation();
   const [error, setError] = useState<string>();
-  const [emailForm] = Form.useForm<EmailFormValues>();
-  const [detailsForm] = Form.useForm<DetailsFormValues>();
-
-  const [startOtp, { isLoading: starting }] = useStartOtpMutation();
-  const [register, { isLoading: registering }] = useRegisterMutation();
-  const [googleLogin, { isLoading: googleLoading }] = useGoogleLoginMutation();
-  const otp = useOtpStep();
-
-  const backToEmail = () => {
-    setStep(LoginStep.EMAIL);
-    setError(undefined);
-  };
+  const google = useGoogleSignIn(setError);
+  const pages = PAGES[audience];
 
   return {
-    tab,
-    onTabChange: (next) => {
-      const updated = new URLSearchParams(params);
-      updated.set('tab', next);
-      // Keep `next` and other params; replace so tab switches don't fill the history
-      setParams(updated, { replace: true });
-      backToEmail();
-    },
-    step,
-    email,
-    onChangeEmail: backToEmail,
+    audience,
+    continuing: next !== null,
+    form,
+    initialValues: { email: params.get('email') ?? undefined },
+    submitting: isLoading,
     error,
-
-    google: envConfig.googleClientId && tab === LoginTab.CUSTOMER
-      ? {
-        clientId: envConfig.googleClientId,
-        loading: googleLoading,
-        onCredential: async (credential) => {
-          setError(undefined);
-          try {
-            await googleLogin({ id_token: credential }).unwrap();
-          } catch (e) {
-            setError(apiErrorMessage(e));
-          }
-        },
+    onSubmit: async ({ email, password }) => {
+      setError(undefined);
+      try {
+        await login({ email, password, role: audience }).unwrap();
+      } catch (e) {
+        setError(apiErrorMessage(e));
       }
-      : null,
-
-    emailForm: {
-      form: emailForm,
-      submitting: starting,
-      onSubmit: async (values) => {
-        setError(undefined);
-        try {
-          const { next } = await startOtp({ email: values.email, role: tab }).unwrap();
-          setEmail(values.email);
-          if (next === 'otp') otp.open({ email: values.email, purpose: OtpPurpose.LOGIN });
-          else setStep(tab === LoginTab.CUSTOMER ? LoginStep.DETAILS : LoginStep.NOT_FOUND);
-        } catch (e) {
-          setError(apiErrorMessage(e));
-        }
-      },
     },
-
-    detailsForm: {
-      form: detailsForm,
-      submitting: registering,
-      onSubmit: async ({ name, phone }) => {
-        setError(undefined);
-        try {
-          await register({ name: name.trim(), email, phone, role: 'customer' }).unwrap();
-          otp.open({ email, purpose: OtpPurpose.SIGNUP });
-        } catch (e) {
-          setError(apiErrorMessage(e));
-        }
-      },
+    google: audience === UserRole.CUSTOMER ? google : null,
+    onForgotPassword: () => {
+      const email = form.getFieldValue('email');
+      navigate(typeof email === 'string' && email.trim() ? withQuery(pages.forgot, { email: email.trim() }) : pages.forgot);
     },
-
-    onJoinProvider: () => navigate(email ? withQuery(RouterKeys.REGISTER, { email }) : RouterKeys.REGISTER),
-    otp: otp.props,
+    // Customers come back to what they were opening; providers always continue into onboarding
+    onSignup: () => navigate(next && audience === UserRole.CUSTOMER ? withQuery(pages.signup, { next }) : pages.signup),
+    onSwitchAudience: () => navigate(pages.other),
   };
 };

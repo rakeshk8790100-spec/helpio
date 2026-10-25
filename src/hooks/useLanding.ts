@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { EARN_SECTION_ID } from '../client/default/hero/hero.layout.types';
 import type { LandingLayoutProps } from '../client/default/hero/hero.layout.types';
 import { useSearchServicesQuery } from '../common/CommonApi';
-import { UserRole } from '../common/CommonEnum';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { useDebouncedValue } from './useDebouncedValue';
 import { draftJobDescription } from '../lib/utils';
@@ -34,7 +33,7 @@ export const useLanding = (): LandingLayoutProps => {
   const monthlyEstimate = Math.round((rate.hourlyAvg * hours * WEEKS_PER_MONTH) / 100) * 100;
 
   const postJob = (params: Record<string, string> = {}) => navigate(withQuery(RouterKeys.POST_JOB, params));
-  const joinProvider = () => navigate(withQuery(RouterKeys.REGISTER, { role: UserRole.PROVIDER, skill: rate.skillId }));
+  const joinProvider = () => navigate(withQuery(RouterKeys.PRO_SIGNUP, { skill: rate.skillId }));
 
   return {
     loading: false,
