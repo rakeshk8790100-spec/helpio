@@ -1,8 +1,7 @@
-from app.modules.auth.dependencies import require_role
-from app.modules.auth.model import UserRole
+from app.modules.customers.dependencies import current_customer
 from app.modules.jobs.service import JobService
 
-current_customer = require_role(UserRole.CUSTOMER)
+__all__ = ["current_customer", "get_job_service"]
 
 
 def get_job_service() -> JobService:

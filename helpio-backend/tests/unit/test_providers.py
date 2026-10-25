@@ -38,7 +38,7 @@ def test_catalog_is_public_and_grouped(client):
 def test_full_onboarding(client, provider_token):
     headers = bearer(provider_token)
     initial = client.get(ONBOARDING, headers=headers).json()
-    assert initial == {"status": "skills", "skills": [], "availability": [], "service_area": None}
+    assert initial == {"status": "skills", "bio": None, "skills": [], "availability": [], "service_area": None}
 
     after_skills = client.put(SKILLS, json={"skills": THREE_SKILLS}, headers=headers)
     assert after_skills.status_code == 200

@@ -75,6 +75,8 @@ All endpoints are under `/api/v1/auth`:
 | `POST /reset-password` `{email, otp, new_password}` | Sets the new password, marks the email verified and signs the user out on every device. |
 | `GET /me`, `PATCH /me` `{name?, phone?}` | Current user; Google customers add their mobile number here. |
 | `POST /logout` | Revokes the bearer token (other devices stay signed in). |
+| `POST /change-password` `{current_password, new_password}` | Signs out every other device and returns a fresh session for this one. 400 for a wrong current password or the same new password. |
+| `POST /me/avatar` (multipart `file`), `DELETE /me/avatar` | Profile photo (JPG/PNG/WebP, 5 MB) on Cloudinary; its URL is `avatar_url`. |
 
 `user.onboarding_status` is `skills`, `service_setup` or `complete` for providers and `null` for others.
 
@@ -130,7 +132,7 @@ Customers post custom jobs; nearby providers quote on them. Money is in paise.
 | Endpoint | Purpose |
 |---|---|
 | `POST /api/v1/jobs` | Customer. `title` plus optional `description`, `category_id`, `latitude`/`longitude`, `pincode`, `area_name`, `budget_paise`, `scheduled_at`, `duration_mins`, `is_emergency`. Saved as a draft unless `submit: true`, which needs description, category, area and pincode and opens it to providers. |
-| `PATCH /api/v1/jobs/{id}` | Customer. Edit a draft; `submit: true` posts it. 409 once posted. |
+| `PATCH /api/v1/jobs/{id}` | Customer. Edit a draft (`submit: true` posts it) or a posted job until a pro is hired (409 after). A posted job keeps its quotes, must keep description, category, area and pincode, and gets `edited_at`; pros who quoted earlier see `edited_after_my_quote: true` on the job until they re-quote. |
 | `GET /api/v1/jobs/mine` | Customer. Own jobs with `quote_count` and `lowest_quote_paise`. |
 | `GET /api/v1/jobs/{id}` | Customer, own job. Adds photo URLs and the quotes received: amount, message, status, provider as "Ravi S.", their proficiency and experience in the job's category, and distance rounded to 0.5 km. |
 | `POST /api/v1/jobs/{id}/attachments` (multipart `file`) | Customer, before a pro is hired. Up to 6 files (JPG/PNG/WebP/MP4, 10 MB). The API uploads the file to Cloudinary (folder `helpio/jobs/<job id>`) and saves its URL; returns `{id, content_type, url}`. |
@@ -141,6 +143,17 @@ Customers post custom jobs; nearby providers quote on them. Money is in paise.
 | `DELETE /api/v1/jobs/{id}/quotes/mine` | Provider. Withdraws a pending quote; quoting again re-opens it. |
 | `POST /api/v1/jobs/{id}/quotes` `{amount_paise, message?}` | Provider with finished sign-up, on a job they can see nearby. One quote per job (409 on a second). |
 | `GET /api/v1/providers/me/home` | Provider home: sign-up checklist, `can_quote`, active job, quote counts, top 3 nearby jobs and `nearby_count`, earnings (zero until payouts exist). |
+
+## Profiles, addresses and finding pros
+
+| Endpoint | Purpose |
+|---|---|
+| `GET/POST /api/v1/customers/me/addresses`, `PATCH/DELETE /api/v1/customers/me/addresses/{id}` | Customer saved addresses (up to 5): `label` home/work/other, private `address_line`, `area_name`, `pincode`, optional coordinates. One is the default (the first, or one saved with `is_default: true`; deleting it promotes the next). Every call returns the whole list. |
+| `PATCH /api/v1/providers/me/profile` `{bio}` | Provider's public bio (up to 500 characters). Skills and service area are edited with the onboarding endpoints. |
+| `GET /api/v1/providers/search` `?q&category_id&address_id` or `?latitude&longitude` or `?pincode`, `&page` | Pros with finished sign-up who serve that place (within their radius, or the same pincode when either side has no coordinates). Defaults to the customer's default address; 422 without any location. `q` matches skill and category names; best matching skill level first, then closest. Cards show "Ravi S.", photo, bio snippet, area, distance rounded to 0.5 km and up to 3 skills, never coordinates, pincode or phone. 20 per page. |
+| `GET /api/v1/providers/{id}` `?address_id` | A pro's public profile: the card plus full bio, skills by category, working hours and travel radius. |
+| `POST /api/v1/jobs/{id}/invites` `{provider_id, message?}` | Customer, open jobs only: send the job straight to a chosen pro (up to 5 per job, 409 on a repeat). The pro sees it first in their jobs whatever the distance or category, and replies with a quote or declines. `GET /jobs/{id}` lists `invites` with each status (`pending`, `quoted`, `declined`). |
+| `POST /api/v1/jobs/{id}/invite/decline` | Provider: turn down a direct request (a pending quote on it is withdrawn). Provider home lists `invites` still waiting for a quote; nearby jobs carry `invite_status` and `invite_message`. |
 
 ## Photos and videos (Cloudinary)
 
@@ -172,6 +185,9 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 7. `migrations/202610250001_jobs_and_quotes.sql`: custom jobs and provider quotes
 8. `migrations/202610260001_job_attachments.sql`: the `job_attachments` table (its Supabase Storage bucket is no longer used)
 9. `migrations/202610270001_job_attachments_cloudinary.sql`: photos move to Cloudinary; the table keeps each file's URL and Cloudinary id
+10. `migrations/202610280001_job_edited_at.sql`: `jobs.edited_at`, set when a customer edits a posted job
+11. `migrations/202610290001_profiles_addresses.sql`: customer saved addresses and the provider bio
+12. `migrations/202610290002_job_invites.sql`: direct requests from a customer to a chosen pro
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

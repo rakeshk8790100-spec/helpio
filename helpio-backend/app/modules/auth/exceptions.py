@@ -80,3 +80,18 @@ class InvalidAccessTokenError(AuthError):
 class ForbiddenError(AuthError):
     status_code = 403
     detail = "You don't have access to this resource"
+
+
+class WrongCurrentPasswordError(AuthError):
+    status_code = 400
+    detail = "Your current password is incorrect. Signed up with Google? Use Forgot password to set one."
+
+
+class SamePasswordError(AuthError):
+    status_code = 400
+    detail = "Choose a password different from your current one"
+
+
+class UnsupportedAvatarError(AuthError):
+    status_code = 422
+    detail = "Use a JPG, PNG or WebP photo up to 5 MB"

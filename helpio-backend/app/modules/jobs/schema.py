@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, Field, StringConstraints, model_validator
 
-from app.modules.jobs.model import JobStatus, QuoteStatus
+from app.modules.jobs.model import InviteStatus, JobStatus, QuoteStatus
 from app.modules.providers.model import OnboardingStatus, Proficiency
 
 # Money is in paise: ₹100 to ₹10 lakh
@@ -68,6 +68,8 @@ class JobResponse(BaseModel):
     lowest_quote_paise: int | None
     created_at: datetime
     updated_at: datetime
+    # Last change after posting; null if never edited
+    edited_at: datetime | None
 
 
 class CreateQuoteRequest(BaseModel):
@@ -113,6 +115,12 @@ class NearbyJobResponse(BaseModel):
     progress_pct: int
     quote_count: int
     my_quote: QuoteResponse | None
+    # The customer changed the job after my quote was sent
+    edited_after_my_quote: bool
+    # The customer asked me directly: "pending" or "quoted"; null when found nearby
+    invite_status: InviteStatus | None
+    # The customer's note with the request
+    invite_message: str | None
     # Null when the job was posted without coordinates
     area_circle: MapCircle | None
     created_at: datetime
@@ -152,6 +160,8 @@ class ProviderHomeResponse(BaseModel):
     can_quote: bool
     active_job: NearbyJobResponse | None
     quotes: QuoteCounts
+    # Direct requests still waiting for my quote
+    invites: list[NearbyJobResponse]
     nearby: list[NearbyJobResponse]
     nearby_count: int
     earnings: EarningsSummary
@@ -185,9 +195,24 @@ class CustomerQuoteResponse(QuoteResponse):
     approx_distance_km: float | None
 
 
+class InviteResponse(BaseModel):
+    provider_id: str
+    # "Ravi S."
+    provider_label: str
+    avatar_url: str | None
+    status: InviteStatus
+    created_at: datetime
+
+
+class CreateInviteRequest(BaseModel):
+    provider_id: str = Field(min_length=36, max_length=36)
+    message: Description | None = None
+
+
 class JobDetailResponse(JobResponse):
     attachments: list[AttachmentResponse]
     quotes: list[CustomerQuoteResponse]
+    invites: list[InviteResponse]
 
 
 class NearbyJobDetailResponse(NearbyJobResponse):

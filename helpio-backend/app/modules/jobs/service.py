@@ -1,17 +1,24 @@
 import hashlib
 import hmac
 from dataclasses import dataclass
-from math import asin, cos, pi, radians, sin, sqrt
+from math import cos, pi, radians, sin
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.database import utc_now
+from app.core.geo import METRES_PER_DEGREE, approx_km, bounding_box, distance_m, short_name
 from app.integrations.cloudinary import JOB_ATTACHMENTS_FOLDER, CloudinaryStorage, FileStorage
 from app.modules.auth.model import AuthUser
 from app.modules.catalog.model import CatalogCategory
 from app.modules.jobs.exceptions import (
+    AlreadyInvitedError,
     AlreadyQuotedError,
+    InviteNotAllowedError,
+    InviteNotFoundError,
+    ProviderUnavailableError,
+    TooManyInvitesError,
     AttachmentNotFoundError,
     JobClosedForChangesError,
     JobIncompleteError,
@@ -25,7 +32,16 @@ from app.modules.jobs.exceptions import (
     UnsupportedAttachmentError,
     UnknownCategoryError,
 )
-from app.modules.jobs.model import ACTIVE_STATUSES, Job, JobAttachment, JobQuote, JobStatus, QuoteStatus
+from app.modules.jobs.model import (
+    ACTIVE_STATUSES,
+    InviteStatus,
+    Job,
+    JobAttachment,
+    JobInvite,
+    JobQuote,
+    JobStatus,
+    QuoteStatus,
+)
 from app.modules.jobs.repository import JobRepository
 from app.modules.jobs.schema import (
     ATTACHMENT_TYPES,
@@ -35,7 +51,9 @@ from app.modules.jobs.schema import (
     CategoryOption,
     ChecklistItem,
     CreateJobRequest,
+    CreateInviteRequest,
     CreateQuoteRequest,
+    InviteResponse,
     CustomerHomeResponse,
     CustomerQuoteResponse,
     EarningsSummary,
@@ -55,14 +73,20 @@ from app.modules.providers.exceptions import ProviderProfileNotFoundError
 from app.modules.providers.model import OnboardingStatus, Proficiency, ProviderProfile
 from app.modules.providers.repository import ProviderRepository
 
-EARTH_RADIUS_M = 6_371_000
-METRES_PER_DEGREE = 111_320
 HOME_NEARBY_LIMIT = 3
 # Approximate job area on the map: the real spot sits 200–400 m from the centre, inside a 600 m circle
 FUZZ_MIN_M, FUZZ_SPREAD_M, FUZZ_RADIUS_M = 200, 200, 600
 # Photos may change until a pro is hired
 EDITABLE_PHOTO_STATUSES = (JobStatus.DRAFT, JobStatus.OPEN)
 PROFICIENCY_RANK = {Proficiency.BEGINNER: 0, Proficiency.INTERMEDIATE: 1, Proficiency.EXPERT: 2}
+MAX_INVITES = 5
+
+
+@dataclass(frozen=True)
+class Match:
+    job: Job
+    # Metres from the provider; None when matched by pincode or only by invitation
+    metres: float | None
 
 
 @dataclass(frozen=True)
@@ -74,26 +98,6 @@ class NearbyFilters:
 
 
 NO_FILTERS = NearbyFilters()
-
-
-def distance_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    """Great-circle (haversine) distance in metres."""
-    dlat, dlng = radians(lat2 - lat1), radians(lng2 - lng1)
-    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlng / 2) ** 2
-    return 2 * EARTH_RADIUS_M * asin(sqrt(a))
-
-
-def approx_km(metres: float) -> float:
-    """Round to the nearest 0.5 km (at least 0.5) so a provider can't pinpoint the customer."""
-    return max(0.5, round(metres / 500) / 2)
-
-
-def short_name(name: str | None, fallback: str) -> str:
-    """"Asha Kumar" → "Asha K."; used for both sides before hire."""
-    parts = (name or "").split()
-    if not parts:
-        return fallback
-    return f"{parts[0]} {parts[-1][0].upper()}." if len(parts) > 1 else parts[0]
 
 
 def fuzzed_circle(job: Job) -> MapCircle | None:
@@ -137,11 +141,16 @@ class JobService:
 
     def update_job(self, db: Session, user: AuthUser, job_id: str, payload: UpdateJobRequest) -> JobResponse:
         job = self._own_job(db, user, job_id)
-        if job.status != JobStatus.DRAFT:
+        # Editable until a pro is hired; quotes already sent stay, and their pros see the job was changed
+        if job.status not in (JobStatus.DRAFT, JobStatus.OPEN):
             raise JobNotEditableError
+        posted = job.status == JobStatus.OPEN
         if payload.title is not None:
             job.title = payload.title
-        self._apply(db, job, payload)
+        # A posted job must keep everything posting needs
+        self._apply(db, job, payload, require_complete=posted)
+        if posted:
+            job.edited_at = utc_now()
         db.commit()
         return self._job_response(job)
 
@@ -156,7 +165,35 @@ class JobService:
             **self._job_response(job).model_dump(),
             attachments=self._attachments(job),
             quotes=[self._customer_quote(job, quote, profiles.get(quote.provider_id)) for quote in quotes],
+            invites=[
+                InviteResponse(
+                    provider_id=invite.provider_id, provider_label=short_name(invite.provider.name, "Helpio pro"),
+                    avatar_url=invite.provider.avatar_url, status=invite.status, created_at=invite.created_at,
+                )
+                for invite in job.invites
+            ],
         )
+
+    def invite_provider(self, db: Session, user: AuthUser, job_id: str, payload: CreateInviteRequest) -> JobDetailResponse:
+        """Send an open job straight to a chosen pro; they see it first, wherever they work, and reply with a quote."""
+        job = self._own_job(db, user, job_id)
+        if job.status != JobStatus.OPEN:
+            raise InviteNotAllowedError
+        if any(invite.provider_id == payload.provider_id for invite in job.invites):
+            raise AlreadyInvitedError
+        if len(job.invites) >= MAX_INVITES:
+            raise TooManyInvitesError(MAX_INVITES)
+        profile = ProviderRepository(db).get_profile(payload.provider_id)
+        provider = db.get(AuthUser, payload.provider_id)
+        if profile is None or profile.onboarding_status != OnboardingStatus.COMPLETE or not provider or not provider.is_active:
+            raise ProviderUnavailableError
+        quoted = any(q.provider_id == provider.id and q.status == QuoteStatus.PENDING for q in job.quotes)
+        job.invites.append(JobInvite(
+            provider_id=provider.id, message=payload.message,
+            status=InviteStatus.QUOTED if quoted else InviteStatus.PENDING,
+        ))
+        db.commit()
+        return self.get_job(db, user, job.id)
 
     def customer_home(self, db: Session, user: AuthUser) -> CustomerHomeResponse:
         jobs = JobRepository(db).list_for_customer(user.id)
@@ -214,18 +251,17 @@ class JobService:
                     {(item.skill.category.id, item.skill.category.name) for item in profile.skills}, key=lambda c: c[1]
                 )
             ],
-            jobs=[self._nearby_response(job, user, metres) for job, metres in self._matches(db, user, profile, filters)],
+            jobs=[self._nearby_response(m.job, user, m.metres) for m in self._matches(db, user, profile, filters)],
         )
 
     def nearby_job(self, db: Session, user: AuthUser, job_id: str) -> NearbyJobDetailResponse:
         profile = self._provider_profile(db, user)
-        match = next(((job, metres) for job, metres in self._matches(db, user, profile) if job.id == job_id), None)
+        match = next((m for m in self._matches(db, user, profile) if m.job.id == job_id), None)
         if match is None:
             raise JobNotFoundError
-        job, metres = match
         return NearbyJobDetailResponse(
-            **self._nearby_response(job, user, metres).model_dump(),
-            attachments=self._attachments(job),
+            **self._nearby_response(match.job, user, match.metres).model_dump(),
+            attachments=self._attachments(match.job),
             can_quote=profile.onboarding_status == OnboardingStatus.COMPLETE,
         )
 
@@ -239,8 +275,8 @@ class JobService:
             raise JobNotFoundError
         if job.status != JobStatus.OPEN:
             raise JobNotOpenError
-        # Providers may only quote on jobs they can see nearby
-        if job.id not in {match.id for match, _ in self._matches(db, user, profile)}:
+        # Providers may only quote on jobs they can see: nearby, or sent to them directly
+        if job.id not in {m.job.id for m in self._matches(db, user, profile)}:
             raise JobNotFoundError
         quote = repo.get_quote(job.id, user.id)
         if quote is not None and quote.status != QuoteStatus.WITHDRAWN:
@@ -254,8 +290,25 @@ class JobService:
             quote.amount_paise = payload.amount_paise
             quote.message = payload.message
             quote.status = QuoteStatus.PENDING
+            # `created_at` means "last sent", so an earlier job edit no longer counts as newer
+            quote.created_at = utc_now()
+        self._set_invite(job, user.id, InviteStatus.QUOTED)
         db.commit()
         return self._quote_response(quote)
+
+    def decline_invite(self, db: Session, user: AuthUser, job_id: str) -> None:
+        job = JobRepository(db).get(job_id)
+        invite = next((i for i in job.invites if i.provider_id == user.id), None) if job else None
+        if invite is None:
+            raise InviteNotFoundError
+        if job.status != JobStatus.OPEN:
+            raise JobNotOpenError
+        invite.status = InviteStatus.DECLINED
+        # A pending quote goes too: declining means "not for me"
+        quote = next((q for q in job.quotes if q.provider_id == user.id and q.status == QuoteStatus.PENDING), None)
+        if quote is not None:
+            quote.status = QuoteStatus.WITHDRAWN
+        db.commit()
 
     def withdraw_quote(self, db: Session, user: AuthUser, job_id: str) -> QuoteResponse:
         quote = JobRepository(db).get_quote(job_id, user.id)
@@ -264,6 +317,10 @@ class JobService:
         if quote.status != QuoteStatus.PENDING:
             raise QuoteNotWithdrawableError
         quote.status = QuoteStatus.WITHDRAWN
+        # A direct request waits for a new quote again
+        job = JobRepository(db).get(job_id)
+        if job is not None and any(i.provider_id == user.id and i.status == InviteStatus.QUOTED for i in job.invites):
+            self._set_invite(job, user.id, InviteStatus.PENDING)
         db.commit()
         return self._quote_response(quote)
 
@@ -294,7 +351,12 @@ class JobService:
                 accepted=counts.get(QuoteStatus.ACCEPTED, 0),
                 rejected=counts.get(QuoteStatus.REJECTED, 0),
             ),
-            nearby=[self._nearby_response(job, user, metres) for job, metres in nearby[:HOME_NEARBY_LIMIT]],
+            invites=[
+                self._nearby_response(m.job, user, m.metres) for m in nearby
+                if self._invite_for(m.job, user.id) is not None
+                and self._invite_for(m.job, user.id).status == InviteStatus.PENDING
+            ],
+            nearby=[self._nearby_response(m.job, user, m.metres) for m in nearby[:HOME_NEARBY_LIMIT]],
             nearby_count=len(nearby),
             # Wallet and payouts arrive with escrow
             earnings=EarningsSummary(week_paise=0, wallet_paise=0),
@@ -302,13 +364,13 @@ class JobService:
 
     # ----- Helpers -----
 
-    def _apply(self, db: Session, job: Job, fields: JobFields) -> None:
+    def _apply(self, db: Session, job: Job, fields: JobFields, *, require_complete: bool = False) -> None:
         values = fields.model_dump(exclude_unset=True, exclude={"title", "submit"})
         if values.get("category_id") is not None and db.get(CatalogCategory, values["category_id"]) is None:
             raise UnknownCategoryError
         for name, value in values.items():
             setattr(job, name, value)
-        if fields.submit:
+        if fields.submit or require_complete:
             missing = [
                 label for label, value in (
                     ("a description", job.description), ("a category", job.category_id),
@@ -333,8 +395,11 @@ class JobService:
 
     def _matches(
         self, db: Session, user: AuthUser, profile: ProviderProfile, filters: NearbyFilters = NO_FILTERS
-    ) -> list[tuple[Job, float | None]]:
-        """Open jobs in the provider's skill categories and travel radius: emergencies first, then closest, then newest."""
+    ) -> list[Match]:
+        """
+        Jobs sent to the provider directly (any distance or category), then open jobs in their skill categories
+        and travel radius: direct requests first, then emergencies, then closest, then newest.
+        """
         if profile.onboarding_status == OnboardingStatus.SKILLS:
             return []
         categories = {item.skill.category_id for item in profile.skills}
@@ -343,15 +408,25 @@ class JobService:
         has_point = profile.latitude is not None and profile.longitude is not None and profile.radius_m is not None
         box = None
         if has_point:
-            dlat = profile.radius_m / METRES_PER_DEGREE
-            dlng = profile.radius_m / (METRES_PER_DEGREE * max(cos(radians(profile.latitude)), 0.01))
-            box = (profile.latitude - dlat, profile.latitude + dlat, profile.longitude - dlng, profile.longitude + dlng)
+            box = bounding_box(profile.latitude, profile.longitude, profile.radius_m)
 
-        results: list[tuple[Job, float | None]] = []
-        for job in JobRepository(db).open_candidates(categories, pincode=profile.pincode, box=box):
+        results: list[Match] = []
+        repo = JobRepository(db)
+        for job in repo.invited_open_jobs(user.id):
+            if (filters.category_id and job.category_id != filters.category_id) or self._excluded(job, filters):
+                continue
+            metres = None
+            if has_point and job.latitude is not None and job.longitude is not None:
+                metres = distance_m(profile.latitude, profile.longitude, job.latitude, job.longitude)
+            results.append(Match(job, metres))
+        invited = {m.job.id for m in results}
+
+        for job in repo.open_candidates(categories, pincode=profile.pincode, box=box):
+            if job.id in invited:
+                continue
             if job.customer_id == user.id:
                 continue
-            if (filters.has_budget and job.budget_paise is None) or (filters.urgent_only and not job.is_emergency):
+            if self._excluded(job, filters):
                 continue
             metres = None
             if has_point and job.latitude is not None and job.longitude is not None:
@@ -361,10 +436,23 @@ class JobService:
             # A distance limit drops jobs matched by pincode only: their distance is unknown
             if filters.max_km is not None and (metres is None or metres > filters.max_km * 1000):
                 continue
-            results.append((job, metres))
+            results.append(Match(job, metres))
 
-        results.sort(key=lambda item: (not item[0].is_emergency, item[1] is None, item[1] or 0, -item[0].created_at.timestamp()))
+        results.sort(key=lambda m: (
+            m.job.id not in invited, not m.job.is_emergency, m.metres is None, m.metres or 0, -m.job.created_at.timestamp(),
+        ))
         return results
+
+    def _excluded(self, job: Job, filters: NearbyFilters) -> bool:
+        return (filters.has_budget and job.budget_paise is None) or (filters.urgent_only and not job.is_emergency)
+
+    def _invite_for(self, job: Job, provider_id: str) -> JobInvite | None:
+        return next((invite for invite in job.invites if invite.provider_id == provider_id), None)
+
+    def _set_invite(self, job: Job, provider_id: str, status: InviteStatus) -> None:
+        invite = self._invite_for(job, provider_id)
+        if invite is not None and invite.status != InviteStatus.DECLINED:
+            invite.status = status
 
     def _attachments(self, job: Job) -> list[AttachmentResponse]:
         return [self._attachment_response(item) for item in job.attachments]
@@ -389,6 +477,7 @@ class JobService:
 
     def _nearby_response(self, job: Job, user: AuthUser, metres: float | None) -> NearbyJobResponse:
         mine = next((quote for quote in job.quotes if quote.provider_id == user.id), None)
+        invite = self._invite_for(job, user.id)
         return NearbyJobResponse(
             id=job.id, title=job.title, description=job.description,
             category_id=job.category_id, category_name=job.category.name if job.category else None,
@@ -397,6 +486,9 @@ class JobService:
             scheduled_at=job.scheduled_at, duration_mins=job.duration_mins, is_emergency=job.is_emergency,
             status=job.status, progress_pct=job.progress_pct, quote_count=len(pending_quotes(job)),
             my_quote=self._quote_response(mine) if mine else None,
+            edited_after_my_quote=bool(mine and job.edited_at and job.edited_at > mine.created_at),
+            invite_status=invite.status if invite and invite.status != InviteStatus.DECLINED else None,
+            invite_message=invite.message if invite and invite.status != InviteStatus.DECLINED else None,
             area_circle=fuzzed_circle(job), created_at=job.created_at,
         )
 
@@ -409,7 +501,7 @@ class JobService:
             budget_paise=job.budget_paise, scheduled_at=job.scheduled_at, duration_mins=job.duration_mins,
             is_emergency=job.is_emergency, status=job.status, progress_pct=job.progress_pct,
             quote_count=len(quotes), lowest_quote_paise=min((quote.amount_paise for quote in quotes), default=None),
-            created_at=job.created_at, updated_at=job.updated_at,
+            created_at=job.created_at, updated_at=job.updated_at, edited_at=job.edited_at,
         )
 
     def _quote_response(self, quote: JobQuote) -> QuoteResponse:

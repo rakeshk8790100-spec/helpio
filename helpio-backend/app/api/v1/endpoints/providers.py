@@ -7,7 +7,12 @@ from app.modules.jobs.dependencies import get_job_service
 from app.modules.jobs.schema import ProviderHomeResponse
 from app.modules.jobs.service import JobService
 from app.modules.providers.dependencies import current_provider, get_provider_service
-from app.modules.providers.schema import OnboardingResponse, SaveServiceSetupRequest, SaveSkillsRequest
+from app.modules.providers.schema import (
+    OnboardingResponse,
+    SaveServiceSetupRequest,
+    SaveSkillsRequest,
+    UpdateProviderProfileRequest,
+)
 from app.modules.providers.service import ProviderService
 
 router = APIRouter(prefix="/providers/me", tags=["providers"])
@@ -42,6 +47,17 @@ def save_service_setup(
 ) -> OnboardingResponse:
     """Weekly availability, service location and radius. Completes provider sign-up."""
     return service.save_service_setup(db, user, payload)
+
+
+@router.patch("/profile", response_model=OnboardingResponse)
+def update_profile(
+    payload: UpdateProviderProfileRequest,
+    user: AuthUser = Depends(current_provider),
+    db: Session = Depends(get_db),
+    service: ProviderService = Depends(get_provider_service),
+) -> OnboardingResponse:
+    """The short bio on the provider's public profile."""
+    return service.update_profile(db, user, payload)
 
 
 @router.get("/home", response_model=ProviderHomeResponse)

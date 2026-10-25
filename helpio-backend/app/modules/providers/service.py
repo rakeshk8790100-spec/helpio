@@ -12,6 +12,7 @@ from app.modules.providers.schema import (
     SaveServiceSetupRequest,
     SaveSkillsRequest,
     ServiceAreaResponse,
+    UpdateProviderProfileRequest,
 )
 
 
@@ -57,6 +58,12 @@ class ProviderService:
         db.commit()
         return self.get_onboarding(db, user)
 
+    def update_profile(self, db: Session, user: AuthUser, payload: UpdateProviderProfileRequest) -> OnboardingResponse:
+        profile = self._profile(db, user)
+        profile.bio = payload.bio or None
+        db.commit()
+        return self.get_onboarding(db, user)
+
     def _profile(self, db: Session, user: AuthUser) -> ProviderProfile:
         profile = ProviderRepository(db).get_profile(user.id)
         if profile is None:
@@ -67,6 +74,7 @@ class ProviderService:
         has_area = profile.pincode is not None and profile.area_name is not None and profile.radius_m is not None
         return OnboardingResponse(
             status=profile.onboarding_status,
+            bio=profile.bio,
             skills=[
                 ProviderSkillResponse(
                     skill_id=item.skill_id, skill_name=item.skill.name, category_id=item.skill.category_id,

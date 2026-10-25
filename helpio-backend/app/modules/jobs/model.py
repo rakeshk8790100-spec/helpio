@@ -29,6 +29,14 @@ class JobStatus(StrEnum):
 ACTIVE_STATUSES = (JobStatus.ACCEPTED, JobStatus.FUNDED, JobStatus.IN_PROGRESS)
 
 
+class InviteStatus(StrEnum):
+    """A direct request from a customer to one pro: waiting, answered with a quote, or turned down."""
+
+    PENDING = "pending"
+    QUOTED = "quoted"
+    DECLINED = "declined"
+
+
 class QuoteStatus(StrEnum):
     PENDING = "pending"
     ACCEPTED = "accepted"
@@ -64,6 +72,8 @@ class Job(Base):
     status: Mapped[JobStatus] = mapped_column(str_enum(JobStatus), nullable=False, default=JobStatus.DRAFT)
     # Approved work: 0, 25, 50, 75 or 100
     progress_pct: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    # Last change to a posted job; quotes sent before it may be out of date
+    edited_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now, onupdate=utc_now)
 
@@ -71,6 +81,10 @@ class Job(Base):
     category: Mapped[CatalogCategory | None] = relationship(lazy="joined")
     quotes: Mapped[list[JobQuote]] = relationship(
         back_populates="job", cascade="all, delete-orphan", passive_deletes=True, order_by="JobQuote.created_at"
+    )
+    # Pros the customer asked directly; loaded with the job
+    invites: Mapped[list[JobInvite]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True, lazy="selectin", order_by="JobInvite.created_at"
     )
     attachments: Mapped[list[JobAttachment]] = relationship(
         cascade="all, delete-orphan", passive_deletes=True, order_by="JobAttachment.created_at"
@@ -114,3 +128,22 @@ class JobAttachment(Base):
     content_type: Mapped[str] = mapped_column(String(20), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+
+class JobInvite(Base):
+    __tablename__ = "job_invites"
+    __table_args__ = (
+        UniqueConstraint("job_id", "provider_id", name="ux_job_invites_job_provider"),
+        Index("ix_job_invites_provider_status", "provider_id", "status"),
+    )
+
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    job_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    provider_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("auth_users.id", ondelete="CASCADE"), nullable=False
+    )
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[InviteStatus] = mapped_column(str_enum(InviteStatus), nullable=False, default=InviteStatus.PENDING)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+    provider: Mapped[AuthUser] = relationship(lazy="joined")

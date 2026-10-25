@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import utc_now
 from app.core.security import access_token_hash, create_access_token, decode_access_token, hash_secret, verify_secret
+from app.integrations.cloudinary import CloudinaryStorage, FileStorage
 from app.integrations.email import OtpEmailClient, get_otp_email_client
 from app.integrations.google import GoogleOAuthTokenVerifier, GoogleTokenVerifier
 from app.modules.auth.exceptions import (
@@ -23,11 +24,15 @@ from app.modules.auth.exceptions import (
     OtpRateLimitedError,
     PhoneInUseError,
     RoleMismatchError,
+    SamePasswordError,
     TooManyOtpAttemptsError,
+    UnsupportedAvatarError,
+    WrongCurrentPasswordError,
 )
 from app.modules.auth.model import AuthOtp, AuthUser, OtpPurpose, RevokedAccessToken, UserRole
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.schema import (
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     GoogleLoginRequest,
     LoginRequest,
@@ -46,6 +51,10 @@ OTP_HOURLY_LIMIT = 5
 OTP_MAX_ATTEMPTS = 5
 
 OtpFactory = Callable[[], str]
+
+AVATAR_TYPES = ("image/jpeg", "image/png", "image/webp")
+MAX_AVATAR_BYTES = 5 * 1024 * 1024
+AVATARS_FOLDER = "helpio/avatars"
 
 
 def default_otp_factory() -> str:
@@ -188,6 +197,34 @@ class AuthService:
         if payload.phone is not None:
             self._claim_phone(AuthRepository(db), user=user, phone=payload.phone)
         self._commit(db)
+        return self._user_response(db, user)
+
+    def change_password(self, db: Session, user: AuthUser, payload: ChangePasswordRequest) -> SessionResponse:
+        """Signs out every other device; the returned session keeps this one signed in."""
+        if not verify_secret(payload.current_password, user.password_hash):
+            raise WrongCurrentPasswordError
+        if payload.new_password == payload.current_password:
+            raise SamePasswordError
+        user.password_hash = hash_secret(payload.new_password)
+        user.token_version += 1
+        db.commit()
+        return self._session(db, user)
+
+    def set_avatar(
+        self, db: Session, user: AuthUser, content: bytes, content_type: str, storage: FileStorage | None = None
+    ) -> UserResponse:
+        if content_type not in AVATAR_TYPES or not 0 < len(content) <= MAX_AVATAR_BYTES:
+            raise UnsupportedAvatarError
+        stored = (storage or CloudinaryStorage()).upload(
+            content, content_type=content_type, folder=AVATARS_FOLDER, public_id=f"avatar-{token_urlsafe(12)}"
+        )
+        user.avatar_url = stored.url
+        db.commit()
+        return self._user_response(db, user)
+
+    def remove_avatar(self, db: Session, user: AuthUser) -> UserResponse:
+        user.avatar_url = None
+        db.commit()
         return self._user_response(db, user)
 
     def logout(self, db: Session, token: str) -> None:

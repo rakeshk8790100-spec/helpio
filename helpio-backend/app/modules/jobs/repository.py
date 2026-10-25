@@ -3,7 +3,7 @@ from collections.abc import Collection, Sequence
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from app.modules.jobs.model import ACTIVE_STATUSES, Job, JobQuote, JobStatus, QuoteStatus
+from app.modules.jobs.model import ACTIVE_STATUSES, InviteStatus, Job, JobInvite, JobQuote, JobStatus, QuoteStatus
 
 
 class JobRepository:
@@ -75,3 +75,16 @@ class JobRepository:
             .order_by(Job.updated_at.desc())
             .limit(1)
         )
+
+    def invited_open_jobs(self, provider_id: str) -> Sequence[Job]:
+        """Open jobs whose customer asked this provider directly (and the provider hasn't declined)."""
+        return self.db.scalars(
+            select(Job)
+            .join(JobInvite, JobInvite.job_id == Job.id)
+            .where(
+                JobInvite.provider_id == provider_id,
+                JobInvite.status != InviteStatus.DECLINED,
+                Job.status == JobStatus.OPEN,
+            )
+            .options(selectinload(Job.quotes))
+        ).unique().all()

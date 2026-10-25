@@ -7,6 +7,7 @@ from app.modules.jobs.dependencies import current_customer, get_job_service
 from app.modules.jobs.schema import (
     MAX_ATTACHMENT_BYTES,
     AttachmentResponse,
+    CreateInviteRequest,
     CreateJobRequest,
     CreateQuoteRequest,
     JobDetailResponse,
@@ -85,6 +86,18 @@ def create_quote(
     return service.create_quote(db, user, job_id, payload)
 
 
+@router.post("/{job_id}/invite/decline", status_code=status.HTTP_204_NO_CONTENT)
+def decline_invite(
+    job_id: str,
+    user: AuthUser = Depends(current_provider),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> Response:
+    """Turn down a direct request (and withdraw a pending quote on it)."""
+    service.decline_invite(db, user, job_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.delete("/{job_id}/quotes/mine", response_model=QuoteResponse)
 def withdraw_quote(
     job_id: str,
@@ -108,6 +121,18 @@ def get_job(
 ) -> JobDetailResponse:
     """The customer's job with photos and the quotes received (providers shown as "Ravi S.")."""
     return service.get_job(db, user, job_id)
+
+
+@router.post("/{job_id}/invites", response_model=JobDetailResponse, status_code=status.HTTP_201_CREATED)
+def invite_provider(
+    job_id: str,
+    payload: CreateInviteRequest,
+    user: AuthUser = Depends(current_customer),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> JobDetailResponse:
+    """Send an open job to a chosen pro (up to 5 per job). They reply with a quote or decline."""
+    return service.invite_provider(db, user, job_id, payload)
 
 
 @router.patch("/{job_id}", response_model=JobResponse)

@@ -12,14 +12,14 @@ class JobNotFoundError(JobError):
 
 class JobNotEditableError(JobError):
     status_code = 409
-    detail = "Only draft jobs can be edited"
+    detail = "A job can't be edited once a pro is hired"
 
 
 class JobIncompleteError(JobError):
     status_code = 422
 
     def __init__(self, missing: list[str]) -> None:
-        super().__init__("Add " + ", ".join(missing) + " before posting the job")
+        super().__init__("A posted job needs " + ", ".join(missing))
 
 
 class UnknownCategoryError(JobError):
@@ -72,3 +72,30 @@ class QuoteNotWithdrawableError(JobError):
 class UnsupportedAttachmentError(JobError):
     status_code = 422
     detail = "Use a JPG, PNG or WebP photo, or an MP4 video, up to 10 MB"
+
+
+class InviteNotAllowedError(JobError):
+    status_code = 409
+    detail = "Post the job first, then send it to a pro"
+
+
+class AlreadyInvitedError(JobError):
+    status_code = 409
+    detail = "You've already sent this job to this pro"
+
+
+class TooManyInvitesError(JobError):
+    status_code = 409
+
+    def __init__(self, limit: int) -> None:
+        super().__init__(f"You can send a job to up to {limit} pros directly")
+
+
+class ProviderUnavailableError(JobError):
+    status_code = 404
+    detail = "This pro isn't available"
+
+
+class InviteNotFoundError(JobError):
+    status_code = 404
+    detail = "There's no request for you on this job"

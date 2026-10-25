@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.modules.auth.dependencies import get_auth_service, get_bearer_token, get_current_user
 from app.modules.auth.model import AuthUser
 from app.modules.auth.schema import (
+    ChangePasswordRequest,
     ForgotPasswordRequest,
     GoogleLoginRequest,
     LoginRequest,
@@ -15,7 +16,7 @@ from app.modules.auth.schema import (
     UpdateMeRequest,
     UserResponse,
 )
-from app.modules.auth.service import AuthService
+from app.modules.auth.service import MAX_AVATAR_BYTES, AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -96,6 +97,38 @@ def update_me(
     service: AuthService = Depends(get_auth_service),
 ) -> UserResponse:
     return service.update_me(db, user, payload)
+
+
+@router.post("/change-password", response_model=SessionResponse)
+def change_password(
+    payload: ChangePasswordRequest,
+    user: AuthUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    service: AuthService = Depends(get_auth_service),
+) -> SessionResponse:
+    """Checks the current password, signs out other devices and returns a fresh session for this one."""
+    return service.change_password(db, user, payload)
+
+
+@router.post("/me/avatar", response_model=UserResponse)
+async def set_avatar(
+    file: UploadFile = File(description="JPG, PNG or WebP, up to 5 MB"),
+    user: AuthUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    service: AuthService = Depends(get_auth_service),
+) -> UserResponse:
+    """Profile photo, stored on Cloudinary; its URL is saved as `avatar_url`."""
+    content = await file.read(MAX_AVATAR_BYTES + 1)
+    return service.set_avatar(db, user, content, file.content_type or "")
+
+
+@router.delete("/me/avatar", response_model=UserResponse)
+def remove_avatar(
+    user: AuthUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    service: AuthService = Depends(get_auth_service),
+) -> UserResponse:
+    return service.remove_avatar(db, user)
 
 
 @router.post("/logout", response_model=MessageResponse)

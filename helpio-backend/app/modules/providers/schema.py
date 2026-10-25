@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import datetime, time
 from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints, model_validator
@@ -77,8 +77,68 @@ class ServiceAreaResponse(ServiceArea):
     radius_m: int
 
 
+class UpdateProviderProfileRequest(BaseModel):
+    # Empty clears it
+    bio: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
+
+
 class OnboardingResponse(BaseModel):
     status: OnboardingStatus
+    bio: str | None
     skills: list[ProviderSkillResponse]
     availability: list[AvailabilitySlot]
     service_area: ServiceAreaResponse | None
+
+
+# ----- Public directory: search and profile (no exact location, pincode or phone) -----
+
+
+class PublicSkill(BaseModel):
+    skill_id: str
+    name: str
+    category_id: str
+    category_name: str
+    proficiency: Proficiency
+    years_experience: int | None
+
+
+class ProviderCardResponse(BaseModel):
+    id: str
+    # First name and initial, e.g. "Ravi S."
+    display_name: str
+    avatar_url: str | None
+    # First 140 characters
+    bio_snippet: str | None
+    area_name: str | None
+    # Rounded to 0.5 km; null when matched by pincode only
+    approx_distance_km: float | None
+    # Skills matching the search first, up to 3
+    skills: list[PublicSkill]
+    skill_count: int
+    top_proficiency: Proficiency
+    max_years_experience: int | None
+    # Working days, 0 = Monday
+    work_days: list[int]
+    member_since: datetime
+
+
+class ProviderSearchResponse(BaseModel):
+    # Where the search was made from, e.g. "Mira Road"
+    near: str | None
+    providers: list[ProviderCardResponse]
+    total: int
+    page: int
+    has_more: bool
+
+
+class PublicCategory(BaseModel):
+    id: str
+    name: str
+    skills: list[PublicSkill]
+
+
+class ProviderProfileResponse(ProviderCardResponse):
+    bio: str | None
+    categories: list[PublicCategory]
+    availability: list[AvailabilitySlot]
+    radius_km: float | None
