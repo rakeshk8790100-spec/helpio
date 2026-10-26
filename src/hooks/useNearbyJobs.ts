@@ -9,6 +9,7 @@ import { RouterKeys, toPath } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
 import { formatINR } from '../lib/utils';
 import { useGetNearbyJobsQuery, useGetProviderJobsQuery } from '../pages/jobs/jobs.api';
+import { useNow } from './useNow';
 
 /** Distance filter steps in km; 0 means any distance within the provider's radius */
 const DISTANCES = [0, 2, 5, 10, 25];
@@ -24,11 +25,19 @@ const HIRED_EMPTY: Record<ProJobsTab, string> = {
   [ProJobsTab.COMPLETED]: 'Jobs you finish, with every approved stage, show here.',
 };
 
+/** The current stage passed its target without an update */
+const isOverdue = (job: ProviderJob, now: number) =>
+  job.status === JobStatus.IN_PROGRESS &&
+  job.nextDueAt !== null &&
+  job.milestoneStatus !== MilestoneStatus.SUBMITTED &&
+  new Date(job.nextDueAt).getTime() < now;
+
 /** What the pro should do next on a hired job */
-const hiredBadge = (job: ProviderJob): { label: string; tone: BadgeTone } => {
+const hiredBadge = (job: ProviderJob, now: number): { label: string; tone: BadgeTone } => {
   if (job.status === JobStatus.COMPLETED) return { label: 'Completed', tone: 'success' };
   if (job.status === JobStatus.ACCEPTED) return { label: 'Start with PIN', tone: 'brand' };
   const pct = `${(job.milestoneStage ?? 1) * 25}%`;
+  if (isOverdue(job, now)) return { label: `${pct} overdue`, tone: 'error' };
   switch (job.milestoneStatus) {
     case MilestoneStatus.SUBMITTED:
       return { label: `${pct} waiting for approval`, tone: 'warning' };
@@ -40,10 +49,11 @@ const hiredBadge = (job: ProviderJob): { label: string; tone: BadgeTone } => {
 };
 
 /** Four stages for the card: approved up to the current one, which carries its own state */
-const hiredStages = (job: ProviderJob) =>
+const hiredStages = (job: ProviderJob, now: number) =>
   [1, 2, 3, 4].map((stage) => ({
     stage,
     percent: stage * 25,
+    overdue: stage === job.milestoneStage && isOverdue(job, now),
     status:
       job.status === JobStatus.COMPLETED || (job.milestoneStage !== null && stage < job.milestoneStage)
         ? MilestoneStatus.APPROVED
@@ -60,6 +70,7 @@ export const useNearbyJobs = (): NearbyJobsLayoutProps => {
   const active = useGetProviderJobsQuery('active');
   const completed = useGetProviderJobsQuery('completed', { skip: tab !== ProJobsTab.COMPLETED });
   const hired = tab === ProJobsTab.COMPLETED ? completed : active;
+  const now = useNow();
   const [categoryId, setCategoryId] = useState('');
   const [maxKm, setMaxKm] = useState(0);
   const [hasBudget, setHasBudget] = useState(false);
@@ -82,8 +93,8 @@ export const useNearbyJobs = (): NearbyJobsLayoutProps => {
     categoryName: job.categoryName,
     customerName: job.customerName ?? job.customerLabel,
     areaName: job.areaName,
-    badge: hiredBadge(job),
-    stages: hiredStages(job),
+    badge: hiredBadge(job, now),
+    stages: hiredStages(job, now),
     earned: job.earned,
     amount: job.amount,
     unreadMessages: job.unreadMessages,

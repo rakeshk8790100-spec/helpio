@@ -1,7 +1,7 @@
 import { Alert, Button, Collapse, Image, Input, Modal, Skeleton } from 'antd';
-import { Camera, CircleCheck, History, RotateCcw, ShieldCheck } from 'lucide-react';
+import { Camera, CircleCheck, History, RotateCcw, ShieldCheck, Timer } from 'lucide-react';
 import { MilestoneTracker, PhotoPicker } from '../../../component/marketplace';
-import { AlertBanner, SectionHeader, StatusBadge } from '../../../component/ui';
+import { AlertBanner, ChipSelect, SectionHeader, StatusBadge } from '../../../component/ui';
 import { formatINR } from '../../../lib/utils';
 import type { JobProgressProps, StageAttempt, StageReviewProps, StageSubmitProps } from './jobs.layout.types';
 
@@ -142,12 +142,52 @@ const JobProgressBlock = ({ progress: p }: { progress: JobProgressProps }) => {
           <MilestoneTracker stages={p.tracker} />
         </div>
         <div className="mt-3 text-xs text-slate-500">{p.earnedLabel}</div>
+        {p.scheduleLabel && (
+          <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+            <Timer size={12} className="shrink-0" />
+            {p.scheduleLabel}
+          </div>
+        )}
+        {p.currentTiming && (
+          <div
+            role="status"
+            className={`mt-3 rounded-xl px-3 py-2 text-sm font-semibold ${
+              p.currentTiming.late ? 'bg-red-50 text-red-700' : 'bg-indigo-50 text-indigo-800'
+            }`}
+          >
+            {p.currentTiming.text}
+          </div>
+        )}
         {p.headline && <div className="mt-2 text-sm text-slate-700">{p.headline}</div>}
+        {p.fixingLabel && <div className="mt-1 text-xs font-medium text-amber-700">{p.fixingLabel}</div>}
         <div className="mt-3 flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
           <ShieldCheck size={14} className="mt-px shrink-0 text-emerald-600" />
           Every update has photos and is approved by the customer. Both of you see the same history.
         </div>
       </section>
+
+      {p.setEstimate && (
+        <section className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <Timer size={16} className="text-indigo-600" />
+            How long will the whole job take?
+          </div>
+          <div className="mt-1 text-xs text-slate-500">
+            Each 25% gets a quarter of this time, counted from when you started. The customer sees the same targets.
+          </div>
+          <div className="mt-3">
+            <ChipSelect
+              options={p.setEstimate.picker.options}
+              value={p.setEstimate.picker.value ?? undefined}
+              onChange={p.setEstimate.picker.onChange}
+              ariaLabel="Estimated time"
+            />
+          </div>
+          <Button type="primary" size="large" block loading={p.setEstimate.saving} onClick={p.setEstimate.onSave} className="!mt-3">
+            Save estimate
+          </Button>
+        </section>
+      )}
 
       {p.review && <ReviewCard r={p.review} />}
       {p.submit && <SubmitCard s={p.submit} />}
@@ -168,6 +208,12 @@ const JobProgressBlock = ({ progress: p }: { progress: JobProgressProps }) => {
               ),
               children: (
                 <div className="flex flex-col gap-4">
+                  {(s.timing || s.fixingLabel) && (
+                    <div className="flex flex-col gap-0.5 text-xs">
+                      {s.timing && <span className={s.timing.late ? 'font-medium text-red-600' : 'text-slate-500'}>{s.timing.text}</span>}
+                      {s.fixingLabel && <span className="font-medium text-amber-700">{s.fixingLabel}</span>}
+                    </div>
+                  )}
                   {[...s.attempts].reverse().map((attempt, index) => (
                     <div key={attempt.id} className={index > 0 ? 'border-t border-slate-100 pt-4' : ''}>
                       {index === 1 && <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Earlier</div>}

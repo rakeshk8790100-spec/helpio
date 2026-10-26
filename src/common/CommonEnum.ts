@@ -88,6 +88,7 @@ export const JobEventType = {
   MILESTONE_SUBMITTED: 'milestone_submitted',
   MILESTONE_APPROVED: 'milestone_approved',
   CHANGES_REQUESTED: 'changes_requested',
+  STAGE_OVERDUE: 'stage_overdue',
   COMPLETED: 'completed',
 } as const;
 export type JobEventType = (typeof JobEventType)[keyof typeof JobEventType];

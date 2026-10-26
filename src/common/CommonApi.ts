@@ -1,5 +1,5 @@
 import { baseApi, dispatchOnSuccess } from '../config/base_service/base.api';
-import { sessionStarted, signedOut, userUpdated } from '../redux/authSlice';
+import { sessionRenewed, sessionStarted, signedOut, userUpdated } from '../redux/authSlice';
 import type { AuthSession, AuthUser, Job, JobQuote, MapCircle, NearbyJob, Service, SkillCategory } from './CommonDto';
 import type { InviteStatus, JobStatus, MilestoneStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
 import { MOCK_SERVICES } from './CommonMock';
@@ -14,6 +14,8 @@ export interface UserApiDto {
   role: UserRole;
   avatar_url: string | null;
   onboarding_status: OnboardingStatus | null;
+  favorite_skill_ids?: string[];
+  favorites_prompt_open?: boolean;
 }
 
 export interface SessionApiDto {
@@ -30,6 +32,8 @@ export const toAuthUser = (dto: UserApiDto): AuthUser => ({
   role: dto.role,
   avatarUrl: dto.avatar_url,
   onboardingStatus: dto.onboarding_status,
+  favoriteSkillIds: dto.favorite_skill_ids ?? [],
+  favoritesPromptOpen: dto.favorites_prompt_open ?? false,
 });
 
 export const toAuthSession = (dto: SessionApiDto): AuthSession => ({
@@ -81,6 +85,7 @@ export interface NearbyJobApiDto {
   customer_label: string;
   budget_paise: number | null;
   scheduled_at: string | null;
+  duration_mins: number | null;
   is_emergency: boolean;
   status: JobStatus;
   progress_pct: number;
@@ -142,6 +147,7 @@ export const toNearbyJob = (dto: NearbyJobApiDto): NearbyJob => ({
   customerLabel: dto.customer_label,
   budget: toRupees(dto.budget_paise),
   scheduledAt: dto.scheduled_at,
+  durationMins: dto.duration_mins,
   isEmergency: dto.is_emergency,
   status: dto.status,
   progressPct: dto.progress_pct,
@@ -204,7 +210,7 @@ export const commonApi = baseApi.injectEndpoints({
         body: { current_password: currentPassword, new_password: newPassword },
       }),
       transformResponse: toAuthSession,
-      onQueryStarted: startSessionOnSuccess,
+      onQueryStarted: dispatchOnSuccess<AuthSession>(sessionRenewed),
     }),
 
     uploadAvatar: builder.mutation<AuthUser, File>({

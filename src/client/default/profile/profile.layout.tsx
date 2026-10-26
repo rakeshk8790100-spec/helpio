@@ -3,6 +3,7 @@ import { Alert, Button, Drawer, Form, Input, Popconfirm, Skeleton } from 'antd';
 import {
   Briefcase,
   Eye,
+  Heart,
   House,
   KeyRound,
   LifeBuoy,
@@ -78,6 +79,7 @@ const ProfileLayout = (p: ProfileLayoutProps) => (
 
     <Section title="Your details">
       <MenuRow Icon={UserRound} label="Name and mobile" hint={p.account.phone ?? 'Add your mobile number'} onClick={p.details.onOpen} />
+      {p.favorites && <MenuRow Icon={Heart} label="Favourite services" hint={p.favorites.hint} onClick={p.favorites.onOpen} />}
     </Section>
 
     {/* ② Customer: saved addresses */}

@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 import type { Category, ChecklistItem, NearbyJob, ProviderCard } from '../../../common/CommonDto';
 import type { ActiveJobCard, JobCard, PostJobComposer } from '../../../component/marketplace';
+import type { ChipOption } from '../../../component/ui';
 import type { WithStatus } from '../layout.types';
 
 /*
@@ -31,6 +32,21 @@ export interface CustomerHomeLayoutProps {
   categories: { items: Category[]; onSelect: (category: Category) => void; onMore: () => void };
   /** Pros serving the default address; hidden when there's no address or nobody yet */
   pros: { items: { provider: ProviderCard; onOpen: () => void }[]; onSeeAll: () => void } | null;
+  /**
+   * "Available for your favourites": no favourites yet → a card to pick some; otherwise a chip per favourite
+   * ("All" first) and the pros who offer it. Hidden when there are favourites but no saved address.
+   */
+  favorites:
+    | { kind: 'pick'; onPick: () => void }
+    | {
+        kind: 'pros';
+        chips: ChipOption<string>[];
+        selected: string;
+        onSelect: (skillId: string) => void;
+        onEdit: () => void;
+        results: WithStatus<{ items: { provider: ProviderCard; onOpen: () => void }[] }>;
+      }
+    | null;
 }
 
 export interface ProviderHomeSections {

@@ -73,6 +73,16 @@ export interface AuthUser {
   avatarUrl: string | null;
   /** Providers only; null for customers */
   onboardingStatus: OnboardingStatus | null;
+  /** Customers only: favourite services (catalog skill ids), oldest first */
+  favoriteSkillIds: string[];
+  /** Customers only: show the favourites popup after sign-in */
+  favoritesPromptOpen: boolean;
+}
+
+/** The customer's favourite services, as every favourites call returns them */
+export interface Favorites {
+  skillIds: string[];
+  promptOpen: boolean;
 }
 
 export interface AuthSession {
@@ -183,6 +193,7 @@ export interface NearbyJob {
   customerLabel: string;
   budget: number | null;
   scheduledAt: string | null;
+  durationMins: number | null;
   isEmergency: boolean;
   status: JobStatus;
   progressPct: number;
@@ -282,6 +293,10 @@ export interface Milestone {
   /** This stage's share of the hired quote, ₹ */
   amount: number;
   approvedAt: string | null;
+  /** When this quarter of the work should be done; null until the pro sets an estimate */
+  dueAt: string | null;
+  /** Minutes spent fixing after the customer asked for changes (not charged) */
+  extraMins: number;
   /** Oldest first; the last one is the current attempt */
   submissions: MilestoneSubmission[];
 }
@@ -306,6 +321,11 @@ export interface JobProgress {
   earned: number;
   /** The first stage not yet approved; null when all are */
   currentStage: number | null;
+  /** The pro's estimate for the whole job, set when starting */
+  estimatedMins: number | null;
+  startedAt: string | null;
+  /** Fixing time across all stages (not charged) */
+  extraMinsTotal: number;
   milestones: Milestone[];
   /** Newest first */
   events: JobEvent[];
@@ -319,6 +339,8 @@ export interface ProviderJob extends NearbyJob {
   earned: number;
   milestoneStage: number | null;
   milestoneStatus: MilestoneStatus | null;
+  /** The current stage's target time */
+  nextDueAt: string | null;
   unreadMessages: number;
 }
 

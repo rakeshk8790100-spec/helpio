@@ -6,9 +6,17 @@ import { BriefcaseBusiness, ClipboardList, Home, Search, UserRound, Wallet } fro
 import { useGetMeQuery, useLogoutMutation } from "../../common/CommonApi";
 import { UserRole } from "../../common/CommonEnum";
 import { RouterKeys } from "../../config/router/RouterKeys";
-import { useAppSelector } from "../../redux";
-import { selectCurrentUser, selectToken } from "../../redux/authSlice";
+import { useAppDispatch, useAppSelector } from "../../redux";
+import {
+  favoritesEditorClosed,
+  favoritesPromptDismissed,
+  selectCurrentUser,
+  selectFavoritesEditorOpen,
+  selectFavoritesPromptPending,
+  selectToken,
+} from "../../redux/authSlice";
 import LoginModal from "../../pages/auth/LoginModal";
+import FavoritesModal from "../../pages/customer/FavoritesModal";
 import { useNotifications } from "../../hooks/useNotifications";
 import { HelpioLogo, NotificationBell, UserMenu } from "../marketplace";
 
@@ -44,6 +52,18 @@ const AppLayout = () => {
   const { pathname } = useLocation();
   const [logout] = useLogoutMutation();
   const [loginOpen, setLoginOpen] = useState(false);
+  const dispatch = useAppDispatch();
+  const favoritesPending = useAppSelector(selectFavoritesPromptPending);
+  const favoritesEditing = useAppSelector(selectFavoritesEditorOpen);
+  // Customers: edit from the profile or home, or the popup once after each sign-in while it's still open
+  const favoritesMode =
+    user?.role !== UserRole.CUSTOMER
+      ? null
+      : favoritesEditing
+        ? "edit"
+        : favoritesPending && user.favoritesPromptOpen
+          ? "add"
+          : null;
   const closeLogin = useCallback(() => setLoginOpen(false), []);
   // Refresh the stored user (and validate the token) once per visit
   useGetMeQuery(undefined, { skip: !token });
@@ -83,6 +103,14 @@ const AppLayout = () => {
           )}
         </Header>
         {loginOpen && !user && <LoginModal onClose={closeLogin} />}
+        {user && favoritesMode && (
+          <FavoritesModal
+            key={favoritesMode}
+            user={user}
+            mode={favoritesMode}
+            onDone={() => dispatch(favoritesMode === "edit" ? favoritesEditorClosed() : favoritesPromptDismissed())}
+          />
+        )}
 
         {/* Dynamic page content */}
         <Content className="!min-h-0 !flex-1 !overflow-y-auto !bg-white !px-5 !py-5">

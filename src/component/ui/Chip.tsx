@@ -17,16 +17,19 @@ interface Props {
   icon?: ReactNode;
   /** `dark` for use on slate-900 / gradient surfaces */
   tone?: keyof typeof TONES;
+  /** Shown but not changeable, e.g. a choice already saved */
+  disabled?: boolean;
   children: ReactNode;
 }
 
 /** Pill used for filters (toggle with `active`) and for compact action shortcuts. */
-const Chip = ({ active = false, onClick, icon, tone = 'light', children }: Props) => (
+const Chip = ({ active = false, onClick, icon, tone = 'light', disabled = false, children }: Props) => (
   <button
     type="button"
     onClick={onClick}
+    disabled={disabled}
     aria-pressed={onClick ? active : undefined}
-    className={`flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-95 ${
+    className={`flex shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition active:scale-95 disabled:opacity-60 disabled:active:scale-100 ${
       active ? TONES[tone].active : TONES[tone].idle
     }`}
   >

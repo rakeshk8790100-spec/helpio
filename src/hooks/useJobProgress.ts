@@ -5,13 +5,15 @@ import type { JobEvent, Milestone, MilestoneSubmission } from '../common/CommonD
 import { JobEventType, JobStatus, MilestoneStatus } from '../common/CommonEnum';
 import type { BadgeTone } from '../component/ui';
 import { apiErrorMessage } from '../lib/apiError';
-import { formatClock, formatINR } from '../lib/utils';
+import { estimateOptions, formatClock, formatDuration, formatINR } from '../lib/utils';
 import {
   useApproveMilestoneMutation,
   useGetJobProgressQuery,
   useRequestMilestoneChangesMutation,
+  useSetJobEstimateMutation,
   useSubmitMilestoneMutation,
 } from '../pages/jobs/jobs.api';
+import { useNow } from './useNow';
 
 type Role = 'customer' | 'provider';
 
@@ -41,6 +43,45 @@ const stageBadge = (m: Milestone, current: boolean, role: Role): { label: string
   }
 };
 
+/** 20 → "20 min", 135 → "2 hr 15 min" */
+const formatSpan = (mins: number) => {
+  const hours = Math.floor(mins / 60);
+  const rest = mins % 60;
+  return [hours && `${hours} hr`, (rest || !hours) && `${rest} min`].filter(Boolean).join(' ');
+};
+
+const minutesBetween = (from: string | number, to: string | number) =>
+  Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60_000);
+
+/** "early"/"late" against the target, for a stage that's been sent or approved */
+const versusTarget = (at: string, dueAt: string) => {
+  const diff = minutesBetween(dueAt, at);
+  if (Math.abs(diff) < 1) return { text: 'on time', late: false };
+  return diff > 0 ? { text: `${formatSpan(diff)} late`, late: true } : { text: `${formatSpan(-diff)} early`, late: false };
+};
+
+const stageTiming = (m: Milestone, now: number, open: boolean): { text: string; late: boolean } | null => {
+  if (!m.dueAt) return null;
+  const last = m.submissions.at(-1);
+  if (m.status === MilestoneStatus.APPROVED && m.approvedAt) {
+    // Measured by the first time the work was sent: fixing after that is the pro's own time
+    const firstSent = m.submissions[0]?.submittedAt ?? m.approvedAt;
+    const vs = versusTarget(firstSent, m.dueAt);
+    return { text: `Approved ${formatClock(m.approvedAt)} · sent ${vs.text}`, late: vs.late };
+  }
+  if (m.status === MilestoneStatus.SUBMITTED && last) {
+    const vs = versusTarget(m.submissions[0].submittedAt, m.dueAt);
+    return { text: `Sent ${formatClock(last.submittedAt)} · ${vs.text}`, late: vs.late };
+  }
+  const left = minutesBetween(now, m.dueAt);
+  if (!open) return { text: `Target ${formatClock(m.dueAt)}`, late: false };
+  return left >= 0
+    ? { text: `Due by ${formatClock(m.dueAt)} · in ${formatSpan(left)}`, late: false }
+    : { text: `Overdue by ${formatSpan(-left)} (target ${formatClock(m.dueAt)})`, late: true };
+};
+
+const fixingLabel = (mins: number) => (mins > 0 ? `+${formatSpan(mins)} fixing (not charged)` : null);
+
 const toAttempt = (s: MilestoneSubmission): StageAttempt => ({
   id: s.id,
   note: s.note,
@@ -68,6 +109,8 @@ const eventText = (e: JobEvent) => {
       return `${who} approved ${pct}`;
     case JobEventType.CHANGES_REQUESTED:
       return `${who} asked for changes on ${pct}`;
+    case JobEventType.STAGE_OVERDUE:
+      return `The ${pct} update is overdue`;
     default:
       return 'Job completed';
   }
@@ -87,6 +130,9 @@ export const useJobProgress = (jobId: string, role: Role, { skip, otherName }: O
   const [submitMilestone, { isLoading: submitting }] = useSubmitMilestoneMutation();
   const [approveMilestone, { isLoading: approving }] = useApproveMilestoneMutation();
   const [requestChanges, { isLoading: sendingChanges }] = useRequestMilestoneChangesMutation();
+  const [setJobEstimate, { isLoading: savingEstimate }] = useSetJobEstimateMutation();
+  const [estimate, setEstimate] = useState<number | null>(null);
+  const now = useNow();
   const [photos, setPhotos] = useState<{ id: string; file: File; url: string }[]>([]);
   const [note, setNote] = useState('');
   const [submitError, setSubmitError] = useState<string>();
@@ -158,12 +204,54 @@ export const useJobProgress = (jobId: string, role: Role, { skip, otherName }: O
       return prev.filter((p) => p.id !== id);
     });
 
+  const isOpen = (m: Milestone) => started && m.stage === data.currentStage;
+  const isOverdue = (m: Milestone) =>
+    isOpen(m) &&
+    m.dueAt !== null &&
+    m.status !== MilestoneStatus.SUBMITTED &&
+    new Date(m.dueAt).getTime() < now;
+  const finishAt = data.milestones.at(-1)?.dueAt ?? null;
+
   return {
     status: 'ready',
     progressPct: data.progressPct,
-    tracker: data.milestones.map(({ stage, percent, status }) => ({ stage, percent, status })),
+    tracker: data.milestones.map((m) => ({
+      stage: m.stage,
+      percent: m.percent,
+      status: m.status,
+      timeLabel: m.dueAt ? formatClock(m.dueAt) : null,
+      overdue: isOverdue(m),
+    })),
     earnedLabel: `${formatINR(data.earned)} of ${formatINR(data.amount)} approved`,
     headline,
+    scheduleLabel:
+      data.estimatedMins && data.startedAt
+        ? [
+            `Estimate ${formatDuration(data.estimatedMins)}`,
+            `started ${formatClock(data.startedAt)}`,
+            finishAt && `finish by ${formatClock(finishAt)}`,
+          ]
+            .filter(Boolean)
+            .join(' · ')
+        : null,
+    currentTiming: current && isOpen(current) ? stageTiming(current, now, true) : null,
+    fixingLabel: data.extraMinsTotal > 0 ? `+${formatSpan(data.extraMinsTotal)} fixing so far (not charged)` : null,
+    setEstimate:
+      role === 'provider' && started && data.estimatedMins === null
+        ? {
+            picker: { options: estimateOptions(null), value: estimate, onChange: setEstimate },
+            saving: savingEstimate,
+            onSave: async () => {
+              if (!estimate) return message.warning('Pick how long the whole job will take.');
+              try {
+                await setJobEstimate({ jobId, estimatedMins: estimate }).unwrap();
+                message.success('Time estimate saved. Each 25% now has a target time.');
+              } catch (e) {
+                message.error(apiErrorMessage(e));
+              }
+            },
+          }
+        : null,
     submit:
       canSubmit && current
         ? {
@@ -249,7 +337,9 @@ export const useJobProgress = (jobId: string, role: Role, { skip, otherName }: O
       percent: m.percent,
       title: STAGE_TITLE[m.stage] ?? `${m.percent}%`,
       amount: m.amount,
-      badge: stageBadge(m, m.stage === data.currentStage && started, role),
+      badge: isOverdue(m) ? { label: 'Overdue', tone: 'error' } : stageBadge(m, isOpen(m), role),
+      timing: stageTiming(m, now, isOpen(m)),
+      fixingLabel: fixingLabel(m.extraMins),
       attempts: m.submissions.map(toAttempt),
       current: m.stage === data.currentStage,
     })),

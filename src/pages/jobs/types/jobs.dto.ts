@@ -62,12 +62,17 @@ export interface MilestonesApiDto {
   amount_paise: number;
   earned_paise: number;
   current_stage: number | null;
+  estimated_mins: number | null;
+  started_at: string | null;
+  extra_mins_total: number;
   milestones: {
     stage: number;
     percent: number;
     status: MilestoneStatus;
     amount_paise: number;
     approved_at: string | null;
+    due_at: string | null;
+    extra_mins: number;
     submissions: MilestoneSubmissionApiDto[];
   }[];
   events: {
@@ -86,6 +91,7 @@ export interface ProviderJobApiDto extends NearbyJobApiDto {
   earned_paise: number;
   milestone_stage: number | null;
   milestone_status: MilestoneStatus | null;
+  next_due_at: string | null;
   unread_messages: number;
 }
 

@@ -45,6 +45,8 @@ export interface ProviderProfileApiDto extends ProviderCardApiDto {
 export interface ProviderSearchArgs {
   q?: string;
   categoryId?: string;
+  /** Only pros offering these services (e.g. the customer's favourites) */
+  skillIds?: string[];
   addressId?: string;
   latitude?: number;
   longitude?: number;

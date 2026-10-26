@@ -68,6 +68,13 @@ export interface MyJobsLayoutProps {
 
 // ----- Progress: four 25% stages (customer and hired pro) -----
 
+/** How long the whole job should take; each 25% stage gets a quarter of it */
+export interface EstimatePickerProps {
+  options: ChipOption<number>[];
+  value: number | null;
+  onChange: (minutes: number) => void;
+}
+
 export interface StageAttempt {
   id: string;
   note: string;
@@ -85,6 +92,10 @@ export interface StageItem {
   /** This stage's share of the quote, ₹ */
   amount: number;
   badge: { label: string; tone: BadgeTone };
+  /** e.g. "Target 4:45 PM", "Approved 4:40 PM · 5 min early"; red when late */
+  timing: { text: string; late: boolean } | null;
+  /** e.g. "+20 min fixing (not charged)" */
+  fixingLabel: string | null;
   /** Oldest first */
   attempts: StageAttempt[];
   /** The first stage not yet approved */
@@ -132,6 +143,14 @@ export type JobProgressProps = WithStatus<{
   earnedLabel: string;
   /** What happens next, in plain words */
   headline: string;
+  /** e.g. "Estimate 3 hr · started 4:00 PM · finish by 7:00 PM" */
+  scheduleLabel: string | null;
+  /** The open stage's countdown, e.g. "25% due by 4:45 PM · in 20 min"; red when overdue */
+  currentTiming: { text: string; late: boolean } | null;
+  /** e.g. "+20 min fixing so far (not charged)" */
+  fixingLabel: string | null;
+  /** Hired pro, job started before estimates existed: set it once */
+  setEstimate: { picker: EstimatePickerProps; saving: boolean; onSave: () => void } | null;
   /** Hired pro: the open stage's update form */
   submit: StageSubmitProps | null;
   /** Customer: an update waiting for approval */
@@ -268,7 +287,14 @@ export type ProviderJobLayoutProps = WithStatus<{
     address: string;
     coordinates: Coordinates | null;
     /** Until work starts: enter the customer's PIN */
-    start: { pin: string; onPinChange: (pin: string) => void; starting: boolean; error?: string; onStart: () => void } | null;
+    start: {
+      pin: string;
+      onPinChange: (pin: string) => void;
+      estimate: EstimatePickerProps;
+      starting: boolean;
+      error?: string;
+      onStart: () => void;
+    } | null;
     /** e.g. "In progress since 4:05 PM" */
     startedLabel: string | null;
     chat: { unread: number; onOpen: () => void };

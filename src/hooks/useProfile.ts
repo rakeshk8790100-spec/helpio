@@ -22,6 +22,9 @@ import { apiErrorMessage } from '../lib/apiError';
 import { formatDays, formatDistance, formatTime } from '../lib/utils';
 import { useGetOnboardingQuery, useUpdateBioMutation } from '../pages/onboarding/onboarding.api';
 import { useDeleteAddressMutation, useGetAddressesQuery, useUpdateAddressMutation } from '../pages/profile/profile.api';
+import { useAppDispatch } from '../redux';
+import { favoritesEditorOpened } from '../redux/authSlice';
+import { MAX_FAVORITES } from './useFavoritesPrompt';
 
 const MAX_ADDRESSES = 5;
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
@@ -44,6 +47,7 @@ export const useProfile = (user: AuthUser) => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const isProvider = user.role === UserRole.PROVIDER;
+  const dispatch = useAppDispatch();
   const addresses = useGetAddressesQuery(undefined, { skip: isProvider });
   const onboarding = useGetOnboardingQuery(undefined, { skip: !isProvider });
   const catalog = useGetSkillCatalogQuery(undefined, { skip: !isProvider });
@@ -160,6 +164,14 @@ export const useProfile = (user: AuthUser) => {
                 onDelete: () => void quietly(() => deleteAddress(address.id).unwrap(), 'Address removed.'),
               })),
             },
+    favorites: isProvider
+      ? null
+      : {
+          hint: user.favoriteSkillIds.length
+            ? `${user.favoriteSkillIds.length} of ${MAX_FAVORITES} picked`
+            : 'Pick services to see matching pros on home',
+          onOpen: () => dispatch(favoritesEditorOpened()),
+        },
     provider: isProvider
       ? {
           bio: onboarding.data?.bio ?? null,

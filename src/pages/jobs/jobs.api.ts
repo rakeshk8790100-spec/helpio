@@ -79,12 +79,17 @@ const toJobProgress = (dto: MilestonesApiDto): JobProgress => ({
   amount: dto.amount_paise / 100,
   earned: dto.earned_paise / 100,
   currentStage: dto.current_stage,
+  estimatedMins: dto.estimated_mins,
+  startedAt: dto.started_at,
+  extraMinsTotal: dto.extra_mins_total,
   milestones: dto.milestones.map((m) => ({
     stage: m.stage,
     percent: m.percent,
     status: m.status,
     amount: m.amount_paise / 100,
     approvedAt: m.approved_at,
+    dueAt: m.due_at,
+    extraMins: m.extra_mins,
     submissions: m.submissions.map((s) => ({
       id: s.id,
       note: s.note,
@@ -113,6 +118,7 @@ const toProviderJob = (dto: ProviderJobApiDto): ProviderJob => ({
   earned: dto.earned_paise / 100,
   milestoneStage: dto.milestone_stage,
   milestoneStatus: dto.milestone_status,
+  nextDueAt: dto.next_due_at,
   unreadMessages: dto.unread_messages,
 });
 
@@ -245,6 +251,12 @@ export const jobsApi = baseApi.injectEndpoints({
       transformResponse: toJobProgress,
       invalidatesTags: ['Milestones', 'Jobs', 'Notifications'],
     }),
+    /** Jobs started before estimates existed: the pro sets it once */
+    setJobEstimate: builder.mutation<JobProgress, { jobId: string; estimatedMins: number }>({
+      query: ({ jobId, estimatedMins }) => ({ url: `/jobs/${jobId}/estimate`, method: 'POST', body: { estimated_mins: estimatedMins } }),
+      transformResponse: toJobProgress,
+      invalidatesTags: ['Milestones', 'Jobs'],
+    }),
     approveMilestone: builder.mutation<JobProgress, { jobId: string; stage: number }>({
       query: ({ jobId, stage }) => ({ url: `/jobs/${jobId}/milestones/${stage}/approve`, method: 'POST' }),
       transformResponse: toJobProgress,
@@ -268,8 +280,13 @@ export const jobsApi = baseApi.injectEndpoints({
       providesTags: ['Jobs', 'Milestones'],
     }),
     /** Start work with the PIN the customer shares at the door */
-    startJob: builder.mutation<NearbyJobDetail, { jobId: string; pin: string }>({
-      query: ({ jobId, pin }) => ({ url: `/jobs/${jobId}/start`, method: 'POST', body: { pin } }),
+    /** Also sets the time the whole job should take: each 25% stage gets a quarter of it */
+    startJob: builder.mutation<NearbyJobDetail, { jobId: string; pin: string; estimatedMins: number }>({
+      query: ({ jobId, pin, estimatedMins }) => ({
+        url: `/jobs/${jobId}/start`,
+        method: 'POST',
+        body: { pin, estimated_mins: estimatedMins },
+      }),
       transformResponse: toNearbyJobDetail,
       invalidatesTags: ['Jobs', 'Milestones'],
     }),
@@ -337,6 +354,7 @@ export const {
   useGetJobProgressQuery,
   useSubmitMilestoneMutation,
   useApproveMilestoneMutation,
+  useSetJobEstimateMutation,
   useRequestMilestoneChangesMutation,
   useGetProviderJobsQuery,
   useGetMessagesQuery,

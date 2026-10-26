@@ -4,6 +4,15 @@ export const formatINR = (amount: number) =>
 export const formatDuration = (mins: number) =>
   mins < 60 ? `${mins} min` : `${+(mins / 60).toFixed(1)} hr`;
 
+/** Time estimates a pro can pick when starting a job, in minutes */
+export const ESTIMATE_MINUTES = [30, 60, 90, 120, 180, 240, 360, 480];
+
+/** Estimate chips; the job's own duration is added when it isn't one of the steps */
+export const estimateOptions = (jobMins: number | null) =>
+  [...new Set([...ESTIMATE_MINUTES, ...(jobMins ? [jobMins] : [])])]
+    .sort((a, b) => a - b)
+    .map((value) => ({ value, label: formatDuration(value) }));
+
 export const initials = (name: string) =>
   name
     .split(' ')

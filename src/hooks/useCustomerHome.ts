@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CustomerHomeLayoutProps } from '../client/default/home/home.layout.types';
 import type { AuthUser, Job } from '../common/CommonDto';
+import { useGetSkillCatalogQuery } from '../common/CommonApi';
 import { JobStatus, MilestoneStatus } from '../common/CommonEnum';
 import { MOCK_CATEGORIES } from '../common/CommonMock';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
@@ -10,6 +11,8 @@ import { draftJobDescription, firstName } from '../lib/utils';
 import { useGetCustomerHomeQuery } from '../pages/home/home.api';
 import { useGetAddressesQuery } from '../pages/profile/profile.api';
 import { useSearchProvidersQuery } from '../pages/pros/pros.api';
+import { useAppDispatch } from '../redux';
+import { favoritesEditorOpened } from '../redux/authSlice';
 import { callEmergency } from '../lib/safety';
 import { toJobItem } from './jobItems';
 
@@ -49,6 +52,18 @@ export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
   // Searches from the default address; skipped until the customer has one
   const pros = useSearchProvidersQuery({}, { skip: !addresses.data?.length });
   const [jobText, setJobText] = useState('');
+  const dispatch = useAppDispatch();
+  const favoriteIds = user.favoriteSkillIds;
+  // '' = all favourites
+  const [favoriteFilter, setFavoriteFilter] = useState('');
+  const activeFilter = favoriteIds.includes(favoriteFilter) ? favoriteFilter : '';
+  const catalog = useGetSkillCatalogQuery(undefined, { skip: !favoriteIds.length });
+  const favoritePros = useSearchProvidersQuery(
+    { skillIds: activeFilter ? [activeFilter] : favoriteIds },
+    { skip: !favoriteIds.length || !addresses.data?.length },
+  );
+  const skillNames = new Map(catalog.data?.flatMap((c) => c.skills.map((s) => [s.id, s.name] as const)) ?? []);
+  const openPro = (id: string) => navigate(toPath(RouterKeys.PRO_PROFILE, { id }));
 
   const openJob = (job: Job) => navigate(toPath(RouterKeys.JOB_DETAIL, { id: job.id }));
   const postJob = (params: Record<string, string> = {}) => navigate(withQuery(RouterKeys.POST_JOB, params));
@@ -108,5 +123,30 @@ export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
           onSeeAll: () => navigate(RouterKeys.SEARCH),
         }
       : null,
+    favorites: !favoriteIds.length
+      ? { kind: 'pick', onPick: () => dispatch(favoritesEditorOpened()) }
+      : !addresses.data?.length
+        ? null
+        : {
+            kind: 'pros',
+            chips: [
+              { value: '', label: 'All' },
+              ...favoriteIds.map((id) => ({ value: id, label: skillNames.get(id) ?? 'Service' })),
+            ],
+            selected: activeFilter,
+            onSelect: setFavoriteFilter,
+            onEdit: () => dispatch(favoritesEditorOpened()),
+            results: favoritePros.isLoading || (favoritePros.isFetching && !favoritePros.data)
+              ? { status: 'loading' }
+              : !favoritePros.data
+                ? { status: 'error', message: apiErrorMessage(favoritePros.error), onRetry: favoritePros.refetch }
+                : {
+                    status: 'ready',
+                    items: favoritePros.data.providers.slice(0, HOME_PROS).map((provider) => ({
+                      provider,
+                      onOpen: () => openPro(provider.id),
+                    })),
+                  },
+          },
   };
 };

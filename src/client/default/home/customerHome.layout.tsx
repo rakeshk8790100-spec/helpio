@@ -1,5 +1,5 @@
 import { Skeleton } from 'antd';
-import { ClipboardList, Search, Siren } from 'lucide-react';
+import { ClipboardList, Heart, Search, SearchX, Siren } from 'lucide-react';
 import {
   ActiveJobCard,
   CategoryGrid,
@@ -7,7 +7,7 @@ import {
   PostJobComposer,
   ProviderCard,
 } from '../../../component/marketplace';
-import { AlertBanner, EmptyState, HScroll, SectionHeader } from '../../../component/ui';
+import { AlertBanner, Chip, EmptyState, HScroll, SectionHeader } from '../../../component/ui';
 import type { CustomerHomeLayoutProps, JobItem } from './home.layout.types';
 
 const JobList = ({ title, items, actionLabel, onAction }: { title: string; items: JobItem[]; actionLabel?: string; onAction?: () => void }) =>
@@ -24,7 +24,7 @@ const JobList = ({ title, items, actionLabel, onAction }: { title: string; items
 
 /** Signed-in customer home: live job first, then quotes to decide on, jobs in flight, drafts, then discovery. */
 const CustomerHomeLayout = (p: CustomerHomeLayoutProps) => {
-  const { jobs } = p;
+  const { jobs, favorites } = p;
   const noJobs =
     jobs.status === 'ready' && !jobs.active && !jobs.decisions.length && !jobs.waiting.length && !jobs.drafts.length;
 
@@ -89,6 +89,47 @@ const CustomerHomeLayout = (p: CustomerHomeLayoutProps) => {
         <SectionHeader title="Browse categories" />
         <CategoryGrid categories={p.categories.items} onSelect={p.categories.onSelect} onMore={p.categories.onMore} />
       </section>
+      {favorites?.kind === 'pick' && (
+        <button
+          type="button"
+          onClick={favorites.onPick}
+          className="flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/60 p-4 text-left active:scale-[.98]"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-rose-500">
+            <Heart size={20} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-slate-900">Pick your favourite services</span>
+            <span className="block text-xs text-slate-600">We'll show pros near you who offer them, right here.</span>
+          </span>
+        </button>
+      )}
+      {favorites?.kind === 'pros' && (
+        <section>
+          <SectionHeader title="Available for your favourites" actionLabel="Edit" onAction={favorites.onEdit} />
+          <div className="scrollbar-none -mx-5 mb-3 flex gap-2 overflow-x-auto px-5">
+            {favorites.chips.map((chip) => (
+              <Chip key={chip.value} active={chip.value === favorites.selected} onClick={() => favorites.onSelect(chip.value)}>
+                {chip.label}
+              </Chip>
+            ))}
+          </div>
+          {favorites.results.status === 'loading' && <Skeleton active paragraph={{ rows: 2 }} />}
+          {favorites.results.status === 'error' && (
+            <AlertBanner message={favorites.results.message} onRetry={favorites.results.onRetry} />
+          )}
+          {favorites.results.status === 'ready' &&
+            (favorites.results.items.length ? (
+              <HScroll>
+                {favorites.results.items.map(({ provider, onOpen }) => (
+                  <ProviderCard key={provider.id} provider={provider} onOpen={onOpen} compact />
+                ))}
+              </HScroll>
+            ) : (
+              <EmptyState Icon={SearchX} text="No pros near you offer these yet. New pros join every week." />
+            ))}
+        </section>
+      )}
       {p.pros && (
         <section>
           <SectionHeader title="Pros near you" actionLabel="See all" onAction={p.pros.onSeeAll} />

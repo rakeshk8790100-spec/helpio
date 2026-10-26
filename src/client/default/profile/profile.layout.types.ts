@@ -55,6 +55,8 @@ export interface ProfileLayoutProps {
     max: number;
     onAdd: () => void;
   }> | null;
+  /** Customers only: e.g. "3 of 8 picked"; opens the favourites popup to edit */
+  favorites: { hint: string; onOpen: () => void } | null;
   /** Providers only */
   provider: {
     bio: string | null;

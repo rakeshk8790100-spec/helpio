@@ -2,7 +2,7 @@ import { Alert, Button, Form, Input, InputNumber, Popconfirm } from 'antd';
 import { CircleCheck, CirclePlay, Lock, MapPin, MessageCircle, MessageCircleQuestion, Send, UserRound } from 'lucide-react';
 import { QuoteStatus } from '../../../common/CommonEnum';
 import { JobMap } from '../../../component/marketplace';
-import { AlertBanner, Chip, PageSkeleton, StatusBadge } from '../../../component/ui';
+import { AlertBanner, Chip, ChipSelect, PageSkeleton, StatusBadge } from '../../../component/ui';
 import { formatINR } from '../../../lib/utils';
 import JobProgressBlock from './jobProgress';
 import JobSummaryBlock from './jobSummary';
@@ -136,6 +136,18 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
               <div className="mt-0.5 text-xs text-slate-500">At the door, ask {p.hired.customerName} for their 4-digit start PIN.</div>
               <div className="mt-3 flex justify-center">
                 <Input.OTP length={4} value={p.hired.start.pin} onChange={p.hired.start.onPinChange} size="large" aria-label="Start PIN" />
+              </div>
+              <div className="mt-4 text-sm font-semibold text-slate-900">How long will the whole job take?</div>
+              <div className="mt-0.5 text-xs text-slate-500">
+                Each 25% gets a quarter of this time, with a target the customer sees. Fixing work isn't charged.
+              </div>
+              <div className="mt-2">
+                <ChipSelect
+                  options={p.hired.start.estimate.options}
+                  value={p.hired.start.estimate.value ?? undefined}
+                  onChange={p.hired.start.estimate.onChange}
+                  ariaLabel="Estimated time"
+                />
               </div>
               {p.hired.start.error && <Alert type="error" showIcon title={p.hired.start.error} className="!mt-3" />}
               <Button type="primary" size="large" block loading={p.hired.start.starting} onClick={p.hired.start.onStart} className="!mt-3">

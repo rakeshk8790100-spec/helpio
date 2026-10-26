@@ -37,7 +37,10 @@ export const prosApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     searchProviders: builder.query<ProviderSearchResult, ProviderSearchArgs>({
       query: (a) => ({
-        url: '/providers/search',
+        // Repeated `skill_id=` params: `params` would join an array with commas
+        url: a.skillIds?.length
+          ? `/providers/search?${a.skillIds.map((id) => `skill_id=${encodeURIComponent(id)}`).join('&')}`
+          : '/providers/search',
         params: {
           ...(a.q && { q: a.q }),
           ...(a.categoryId && { category_id: a.categoryId }),

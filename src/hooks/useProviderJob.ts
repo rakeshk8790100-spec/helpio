@@ -5,7 +5,7 @@ import type { ProviderJobLayoutProps, ProviderQuoteProps, QuoteFormValues } from
 import type { AuthUser } from '../common/CommonDto';
 import { JobStatus, QuoteStatus } from '../common/CommonEnum';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
-import { formatClock } from '../lib/utils';
+import { estimateOptions, formatClock } from '../lib/utils';
 import { apiErrorMessage } from '../lib/apiError';
 import { pendingOnboardingPath } from '../pages/auth/authRedirect';
 import {
@@ -35,6 +35,8 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
   const [declineInvite, { isLoading: declining }] = useDeclineInviteMutation();
   const [startJob, { isLoading: starting }] = useStartJobMutation();
   const [pin, setPin] = useState('');
+  // Prefilled from the job's own duration until the pro picks
+  const [estimate, setEstimate] = useState<number | null>(null);
   const [startError, setStartError] = useState<string>();
   const [form] = Form.useForm<QuoteFormValues>();
   const [quoteError, setQuoteError] = useState<string>();
@@ -118,12 +120,22 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
                     setStartError(undefined);
                     setPin(value);
                   },
+                  estimate: {
+                    options: estimateOptions(job.durationMins),
+                    value: estimate ?? job.durationMins,
+                    onChange: (minutes) => {
+                      setStartError(undefined);
+                      setEstimate(minutes);
+                    },
+                  },
                   starting,
                   error: startError,
                   onStart: async () => {
                     if (!/^\d{4}$/.test(pin)) return setStartError('Enter the 4-digit PIN from the customer.');
+                    const estimatedMins = estimate ?? job.durationMins;
+                    if (!estimatedMins) return setStartError('Pick how long the job will take.');
                     try {
-                      await startJob({ jobId: job.id, pin }).unwrap();
+                      await startJob({ jobId: job.id, pin, estimatedMins }).unwrap();
                       message.success('Job started. Good luck!');
                     } catch (e) {
                       setPin('');
