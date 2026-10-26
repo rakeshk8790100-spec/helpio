@@ -42,6 +42,7 @@ def test_customer_sign_up_signs_in_without_an_email_code(client, email_client):
     assert session["user"] | {"id": None} == {
         "id": None, "email": "asha@example.com", "name": "Asha Kumar", "phone": "+919876543210",
         "role": "customer", "avatar_url": None, "onboarding_status": None,
+        "favorite_skill_ids": [], "favorites_prompt_open": True,
     }
     me = client.get(ME, headers=bearer(session["access_token"]))
     assert me.status_code == 200

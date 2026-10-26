@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text, Uuid
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base, UtcDateTime, str_enum, utc_now
@@ -33,3 +33,29 @@ class CustomerAddress(Base):
     longitude: Mapped[float | None] = mapped_column(Numeric(9, 6, asdecimal=False), nullable=True)
     is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+
+class CustomerFavoriteSkill(Base):
+    """A catalog service the customer marked as a favourite; their home shows pros who offer it."""
+
+    __tablename__ = "customer_favorite_skills"
+
+    user_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("auth_users.id", ondelete="CASCADE"), primary_key=True
+    )
+    skill_id: Mapped[str] = mapped_column(
+        String(60), ForeignKey("catalog_skills.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+
+class CustomerFavoritePrompt(Base):
+    """Popups skipped in a row; the favourites popup stops after a few. Saving resets it."""
+
+    __tablename__ = "customer_favorite_prompts"
+
+    user_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("auth_users.id", ondelete="CASCADE"), primary_key=True
+    )
+    skip_streak: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now, onupdate=utc_now)

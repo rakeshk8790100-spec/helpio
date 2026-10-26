@@ -43,6 +43,9 @@ class UserResponse(BaseModel):
     avatar_url: str | None
     # Providers only: the next sign-up step, or "complete".
     onboarding_status: Literal["skills", "service_setup", "complete"] | None
+    # Customers only: favourite services, and whether to show the popup at sign-in
+    favorite_skill_ids: list[str] = []
+    favorites_prompt_open: bool = False
 
 
 class SessionResponse(BaseModel):

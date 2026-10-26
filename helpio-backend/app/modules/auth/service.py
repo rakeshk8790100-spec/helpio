@@ -42,6 +42,7 @@ from app.modules.auth.schema import (
     UpdateMeRequest,
     UserResponse,
 )
+from app.modules.customers.service import favorite_skill_ids, favorites_prompt_open
 from app.modules.providers.model import ProviderProfile
 from app.modules.providers.repository import ProviderRepository
 
@@ -265,6 +266,7 @@ class AuthService:
 
     def _user_response(self, db: Session, user: AuthUser) -> UserResponse:
         status = ProviderRepository(db).get_status(user.id) if user.role == UserRole.PROVIDER else None
+        favorites = favorite_skill_ids(db, user.id) if user.role == UserRole.CUSTOMER else []
         return UserResponse(
             id=user.id,
             email=user.email,
@@ -273,6 +275,8 @@ class AuthService:
             role=user.role.value,
             avatar_url=user.avatar_url,
             onboarding_status=status.value if status else None,
+            favorite_skill_ids=favorites,
+            favorites_prompt_open=user.role == UserRole.CUSTOMER and favorites_prompt_open(db, user.id, len(favorites)),
         )
 
     def _claim_phone(self, repo: AuthRepository, *, user: AuthUser, phone: str) -> None:

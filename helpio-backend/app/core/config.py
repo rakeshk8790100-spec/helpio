@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     brevo_smtp_key: SecretStr = SecretStr("")
     brevo_from_email: str = ""
     google_client_id: str = ""
+    # Seconds between checks for late progress updates; 0 turns the check off
+    overdue_check_seconds: int = Field(default=60, ge=0)
     # The web app's address, for links in notification emails, e.g. "https://app.helpio.in"
     app_web_url: str = ""
 

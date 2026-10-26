@@ -163,3 +163,8 @@ class MilestonePhotosRequiredError(JobError):
 
     def __init__(self, limit: int) -> None:
         super().__init__(f"Add 1 to {limit} photos of the work")
+
+
+class EstimateAlreadySetError(JobError):
+    status_code = 409
+    detail = "The time estimate is already set for this job"

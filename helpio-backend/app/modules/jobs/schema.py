@@ -263,8 +263,17 @@ class NearbyJobsResponse(BaseModel):
     jobs: list[NearbyJobResponse]
 
 
+EstimatedMins = Annotated[int, Field(ge=15, le=24 * 60)]
+
+
 class StartJobRequest(BaseModel):
     pin: str = Field(pattern=r"^\d{4}$")
+    # How long the whole job should take; each 25% stage gets a quarter of it
+    estimated_mins: EstimatedMins
+
+
+class SetEstimateRequest(BaseModel):
+    estimated_mins: EstimatedMins
 
 
 class SendMessageRequest(BaseModel):
@@ -322,6 +331,10 @@ class MilestoneResponse(BaseModel):
     # This stage's share of the hired quote
     amount_paise: int
     approved_at: datetime | None
+    # When this quarter of the work should be done; null until the pro sets an estimate
+    due_at: datetime | None
+    # Minutes spent fixing after the customer asked for changes (not charged)
+    extra_mins: int
     # Oldest first; the last one is the current attempt
     submissions: list[MilestoneSubmissionResponse]
 
@@ -345,6 +358,10 @@ class MilestonesResponse(BaseModel):
     earned_paise: int
     # The first stage not yet approved; null when all are
     current_stage: int | None
+    estimated_mins: int | None
+    started_at: datetime | None
+    # Fixing time across all stages (not charged)
+    extra_mins_total: int
     milestones: list[MilestoneResponse]
     # Newest first
     events: list[JobEventResponse]
@@ -359,4 +376,6 @@ class ProviderJobResponse(NearbyJobResponse):
     earned_paise: int
     milestone_stage: int | None
     milestone_status: MilestoneStatus | None
+    # The current stage's target time, to flag it overdue
+    next_due_at: datetime | None
     unread_messages: int

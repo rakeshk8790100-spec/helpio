@@ -20,6 +20,8 @@ def get_directory() -> ProviderDirectory:
 def search_providers(
     q: str | None = Query(default=None, max_length=60),
     category_id: str | None = Query(default=None, max_length=40),
+    # Repeat for several, e.g. a customer's favourite services
+    skill_id: list[str] = Query(default=[], max_length=8),
     address_id: str | None = Query(default=None, max_length=36),
     latitude: float | None = Query(default=None, ge=-90, le=90),
     longitude: float | None = Query(default=None, ge=-180, le=180),
@@ -33,7 +35,8 @@ def search_providers(
     place = directory.resolve_place(
         db, user, address_id=address_id, latitude=latitude, longitude=longitude, pincode=pincode
     )
-    return directory.search(db, place, SearchQuery(q=q, category_id=category_id, page=page))
+    query = SearchQuery(q=q, category_id=category_id, skill_ids=frozenset(skill_id) or None, page=page)
+    return directory.search(db, place, query)
 
 
 @router.get("/{provider_id}", response_model=ProviderProfileResponse)

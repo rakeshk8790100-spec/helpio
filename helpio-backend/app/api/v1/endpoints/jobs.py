@@ -17,6 +17,7 @@ from app.modules.jobs.schema import (
     MilestonesResponse,
     ProviderJobResponse,
     RequestChangesRequest,
+    SetEstimateRequest,
     AttachmentResponse,
     ChatResponse,
     MessageResponse,
@@ -236,8 +237,11 @@ def start_job(
     db: Session = Depends(get_db),
     service: JobService = Depends(get_job_service),
 ) -> NearbyJobDetailResponse:
-    """Hired pro: start work with the 4-digit PIN the customer shares. 5 wrong tries lock it until the customer resets."""
-    return service.start_job(db, user, job_id, payload.pin, background)
+    """
+    Hired pro: start work with the 4-digit PIN the customer shares, and the time the whole job should take
+    (each 25% stage gets a quarter of it). 5 wrong tries lock the PIN until the customer resets it.
+    """
+    return service.start_job(db, user, job_id, payload.pin, payload.estimated_mins, background)
 
 
 @router.post("/{job_id}/start-pin/reset", response_model=JobDetailResponse)
@@ -265,6 +269,18 @@ def list_milestones(
 ) -> MilestonesResponse:
     """The four stages with every submitted update, and the job's timeline (customer or hired pro)."""
     return service.view(db, user, job_id)
+
+
+@router.post("/{job_id}/estimate", response_model=MilestonesResponse)
+def set_estimate(
+    job_id: str,
+    payload: SetEstimateRequest,
+    user: AuthUser = Depends(current_provider),
+    db: Session = Depends(get_db),
+    service: MilestoneService = Depends(get_milestone_service),
+) -> MilestonesResponse:
+    """Hired pro, job started without an estimate: set it once; stage targets count from the start."""
+    return service.set_estimate(db, user, job_id, payload.estimated_mins)
 
 
 @router.post("/{job_id}/milestones/{stage}/submit", response_model=MilestonesResponse)

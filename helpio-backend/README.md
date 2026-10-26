@@ -105,6 +105,8 @@ printed to the uvicorn console instead. Settings refuse this flag when `APP_ENV=
 **Notification emails** (hired, work started, each 25% update, approvals, changes requested, completed) use the
 same Brevo settings and are sent after the response. Set `APP_WEB_URL` (e.g. `https://app.helpio.in`) to add an
 "Open in Helpio" link; without it the email has no link. The in-app bell works either way.
+The API checks every `OVERDUE_CHECK_SECONDS` (default 60; `0` turns it off) for stages past their target
+time and notifies the customer and the pro once per stage.
 
 **Google:** set `GOOGLE_CLIENT_ID` to the Web Client ID from Google Cloud. The frontend uses the same ID
 as `VITE_GOOGLE_CLIENT_ID`, and every app origin (e.g. `http://localhost:5173`) must be listed under the
@@ -206,6 +208,8 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 12. `migrations/202610290002_job_invites.sql`: direct requests from a customer to a chosen pro
 13. `migrations/202610300001_job_start_pin_and_chat.sql`: start PIN on jobs and the job chat table
 14. `migrations/202610310001_job_milestones_notifications.sql`: four 25% stages per hired job (photo updates the customer approves), the job timeline and in-app notifications
+15. `migrations/202611010001_job_time_estimate.sql`: the pro's time estimate on starting, a target time per stage and a one-time overdue alert
+16. `migrations/202611020001_customer_favorite_skills.sql`: customer favourite services and the popup's skip count
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

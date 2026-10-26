@@ -55,6 +55,8 @@ class Place:
 class SearchQuery:
     q: str | None = None
     category_id: str | None = None
+    # Only these services (e.g. the customer's favourites)
+    skill_ids: frozenset[str] | None = None
     page: int = 1
 
 
@@ -85,8 +87,8 @@ class ProviderDirectory:
 
         ranked: list[tuple[tuple, ProviderCardResponse]] = []
         for profile, user in self._serving(db, place):
-            matched = self._matching_skills(profile.skills, terms, query.category_id)
-            if (terms or query.category_id) and not matched:
+            matched = self._matching_skills(profile.skills, terms, query.category_id, query.skill_ids)
+            if (terms or query.category_id or query.skill_ids) and not matched:
                 continue
             metres = self._distance(profile, place)
             best = max((PROFICIENCY_RANK[item.proficiency] for item in matched or profile.skills), default=0)
@@ -177,15 +179,18 @@ class ProviderDirectory:
         return distance_m(place.latitude, place.longitude, profile.latitude, profile.longitude)
 
     def _matching_skills(
-        self, skills: Sequence[ProviderSkill], terms: list[str], category_id: str | None
+        self, skills: Sequence[ProviderSkill], terms: list[str], category_id: str | None,
+        skill_ids: frozenset[str] | None = None,
     ) -> list[ProviderSkill]:
         def matches(item: ProviderSkill) -> bool:
             if category_id and item.skill.category_id != category_id:
                 return False
+            if skill_ids and item.skill_id not in skill_ids:
+                return False
             text = f"{item.skill.name} {item.skill.category.name}".lower()
             return all(term in text for term in terms)
 
-        return [item for item in skills if matches(item)] if (terms or category_id) else []
+        return [item for item in skills if matches(item)] if (terms or category_id or skill_ids) else []
 
     def _public_skill(self, item: ProviderSkill) -> PublicSkill:
         return PublicSkill(

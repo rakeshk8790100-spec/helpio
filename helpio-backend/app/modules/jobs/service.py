@@ -59,6 +59,7 @@ from app.modules.jobs.milestones import (
     earned,
     hired_amount,
     provider_link,
+    schedule_stages,
 )
 from app.modules.jobs.repository import JobRepository
 from app.modules.jobs.schema import (
@@ -136,6 +137,12 @@ def fuzzed_circle(job: Job) -> MapCircle | None:
     return MapCircle(
         latitude=round(job.latitude + dlat, 4), longitude=round(job.longitude + dlng, 4), radius_m=FUZZ_RADIUS_M
     )
+
+
+def format_minutes(minutes: int) -> str:
+    """90 → "1 hr 30 min" """
+    hours, mins = divmod(minutes, 60)
+    return " ".join(part for part in (f"{hours} hr" if hours else "", f"{mins} min" if mins else "") if part)
 
 
 def new_pin() -> str:
@@ -238,7 +245,8 @@ class JobService:
         return self.get_job(db, user, job.id)
 
     def start_job(
-        self, db: Session, user: AuthUser, job_id: str, pin: str, background: BackgroundTasks | None = None
+        self, db: Session, user: AuthUser, job_id: str, pin: str, estimated_mins: int,
+        background: BackgroundTasks | None = None,
     ) -> NearbyJobDetailResponse:
         """The hired pro starts work with the PIN the customer shares in person."""
         job = JobRepository(db).get(job_id)
@@ -258,14 +266,16 @@ class JobService:
         job.status = JobStatus.IN_PROGRESS
         job.started_at = utc_now()
         job.start_pin = None
+        job.estimated_mins = estimated_mins
         if not job.milestones:
             # Hired before milestones existed
             create_milestones(db, job, job.customer_id)
-        add_event(db, job, user.id, JobEventType.STARTED)
+        schedule_stages(job)
+        add_event(db, job, user.id, JobEventType.STARTED, estimated_mins=estimated_mins)
         self.notifications.notify(
             db, job.customer, type="job_started", title="Work has started",
-            body=f"{short_name(user.name, 'Your pro')} started \"{job.title}\". "
-                 "You'll be asked to approve each 25% of the work.",
+            body=f"{short_name(user.name, 'Your pro')} started \"{job.title}\" and expects it to take "
+                 f"{format_minutes(estimated_mins)}. You'll approve each 25% of the work as it's done.",
             job_id=job.id, link=customer_link(job.id), background=background,
         )
         db.commit()
@@ -468,6 +478,7 @@ class JobService:
                 amount_paise=hired_amount(job), earned_paise=earned(job),
                 milestone_stage=current.stage if current else None,
                 milestone_status=current.status if current else None,
+                next_due_at=current.due_at if current else None,
                 unread_messages=unread_count(db, job.id, user.id),
             ))
         return responses

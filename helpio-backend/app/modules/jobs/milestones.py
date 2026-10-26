@@ -1,16 +1,19 @@
 """Four 25% stages per hired job: the pro sends photos and a note, the customer approves or asks for changes."""
+from datetime import timedelta
 from uuid import uuid4
 
 from fastapi import BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.database import utc_now
 from app.core.geo import short_name
 from app.integrations.cloudinary import JOB_ATTACHMENTS_FOLDER, CloudinaryStorage, FileStorage
 from app.modules.auth.model import AuthUser
 from app.modules.jobs.chat import hired_provider_id
 from app.modules.jobs.exceptions import (
+    EstimateAlreadySetError,
     JobNotFoundError,
     JobNotInProgressError,
     MilestoneLockedError,
@@ -44,7 +47,7 @@ from app.modules.jobs.schema import (
     MilestonesResponse,
     MilestoneSubmissionResponse,
 )
-from app.modules.notifications.service import NotificationService
+from app.modules.notifications.service import NotificationService, send_email
 
 
 def hired_amount(job: Job) -> int:
@@ -82,6 +85,72 @@ def add_event(db: Session, job: Job, actor_id: str | None, type: JobEventType, *
     db.add(JobEvent(job_id=job.id, actor_id=actor_id, type=type, data=data))
 
 
+def schedule_stages(job: Job) -> None:
+    """Each stage's target: a quarter of the estimate after another, counted from the start. Set once, never moved."""
+    if job.started_at is None or job.estimated_mins is None:
+        return
+    for m in job.milestones:
+        m.due_at = job.started_at + timedelta(minutes=round(job.estimated_mins * m.stage / len(MILESTONE_STAGES)))
+
+
+def fixing_minutes(milestone: JobMilestone) -> int:
+    """Time between the customer sending a stage back and the pro's next update: fixing, not charged."""
+    total = 0
+    for previous, nxt in zip(milestone.submissions, milestone.submissions[1:]):
+        if previous.reviewed_at is not None:
+            total += max(0, round((nxt.submitted_at - previous.reviewed_at).total_seconds() / 60))
+    last = milestone.submissions[-1] if milestone.submissions else None
+    # Still fixing: count up to now
+    if last is not None and last.review_status == MilestoneStatus.CHANGES_REQUESTED and last.reviewed_at is not None:
+        total += max(0, round((utc_now() - last.reviewed_at).total_seconds() / 60))
+    return total
+
+
+def notify_overdue(db: Session, notifications: NotificationService | None = None) -> int:
+    """
+    Tell the customer and the pro, once per stage, that an in-progress job's current stage passed its target
+    without an update. Emails go out directly: there's no request to attach them to. Returns how many were flagged.
+    """
+    notifications = notifications or NotificationService()
+    late = db.scalars(
+        select(JobMilestone)
+        .join(Job, Job.id == JobMilestone.job_id)
+        .where(
+            Job.status == JobStatus.IN_PROGRESS,
+            JobMilestone.due_at.is_not(None),
+            JobMilestone.due_at < utc_now(),
+            JobMilestone.overdue_notified_at.is_(None),
+            JobMilestone.status.in_((MilestoneStatus.PENDING, MilestoneStatus.CHANGES_REQUESTED)),
+        )
+    ).all()
+    flagged = 0
+    emails: list[tuple[AuthUser, str, str, str]] = []
+    for milestone in late:
+        job = JobRepository(db).get(milestone.job_id)
+        # Only the stage being worked on; later stages wait for their turn
+        if job is None or current_milestone(job) is not milestone:
+            continue
+        provider_id = hired_provider_id(job)
+        provider = db.get(AuthUser, provider_id) if provider_id else None
+        milestone.overdue_notified_at = utc_now()
+        add_event(db, job, None, JobEventType.STAGE_OVERDUE, stage=milestone.stage)
+        due = f"{milestone.percent}% of \"{job.title}\" was due"
+        sides = [(job.customer, customer_link(job.id), f"{due}. Your pro hasn't sent the update yet.")]
+        if provider is not None:
+            sides.append((provider, provider_link(job.id), f"{due}. Send photos for approval as soon as it's done."))
+        for user, link, body in sides:
+            title = f"{stage_label(milestone)} update is late"
+            notifications.notify(db, user, type="stage_overdue", title=title, body=body, job_id=job.id, link=link)
+            emails.append((user, title, body, link))
+        flagged += 1
+    db.commit()
+    base = get_settings().app_web_url.rstrip("/")
+    for user, title, body, link in emails:
+        if user.email:
+            send_email(notifications.email_client, user.email, title, body, f"{base}{link}" if base else None)
+    return flagged
+
+
 def create_milestones(db: Session, job: Job, actor_id: str) -> None:
     """On hire: four pending 25% stages, and the first timeline entry."""
     if not job.milestones:
@@ -106,6 +175,20 @@ class MilestoneService:
 
     def view(self, db: Session, user: AuthUser, job_id: str) -> MilestonesResponse:
         job, _ = self._job_for(db, user, job_id)
+        return self._response(db, job, user)
+
+    def set_estimate(self, db: Session, user: AuthUser, job_id: str, minutes: int) -> MilestonesResponse:
+        """For jobs started before estimates existed: the pro sets it once; targets count from the start."""
+        job, provider_id = self._job_for(db, user, job_id)
+        if user.id != provider_id:
+            raise JobNotFoundError
+        if job.status != JobStatus.IN_PROGRESS:
+            raise JobNotInProgressError
+        if job.estimated_mins is not None:
+            raise EstimateAlreadySetError
+        job.estimated_mins = minutes
+        schedule_stages(job)
+        db.commit()
         return self._response(db, job, user)
 
     def submit(
@@ -246,10 +329,12 @@ class MilestoneService:
         return MilestonesResponse(
             job_id=job.id, job_title=job.title, job_status=job.status, progress_pct=job.progress_pct,
             amount_paise=total, earned_paise=earned(job), current_stage=current.stage if current else None,
+            estimated_mins=job.estimated_mins, started_at=job.started_at,
+            extra_mins_total=sum(fixing_minutes(m) for m in job.milestones),
             milestones=[
                 MilestoneResponse(
                     stage=m.stage, percent=m.percent, status=m.status, amount_paise=stage_amount(total, m.stage),
-                    approved_at=m.approved_at,
+                    approved_at=m.approved_at, due_at=m.due_at, extra_mins=fixing_minutes(m),
                     submissions=[
                         MilestoneSubmissionResponse(
                             id=s.id, note=s.note, submitted_at=s.submitted_at, review_status=s.review_status,

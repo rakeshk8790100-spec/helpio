@@ -52,6 +52,7 @@ class JobEventType(StrEnum):
     MILESTONE_SUBMITTED = "milestone_submitted"
     MILESTONE_APPROVED = "milestone_approved"
     CHANGES_REQUESTED = "changes_requested"
+    STAGE_OVERDUE = "stage_overdue"
     COMPLETED = "completed"
 
 
@@ -100,6 +101,8 @@ class Job(Base):
     start_pin: Mapped[str | None] = mapped_column(String(4), nullable=True)
     start_pin_attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     started_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # The pro's estimate when starting; each 25% stage gets a quarter of it
+    estimated_mins: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now, onupdate=utc_now)
 
@@ -208,6 +211,10 @@ class JobMilestone(Base):
         str_enum(MilestoneStatus), nullable=False, default=MilestoneStatus.PENDING
     )
     approved_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Target time, fixed on start: started_at + stage × estimate / 4. Fixing work never moves it.
+    due_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Set when both sides were told the stage is late, so it's said once
+    overdue_notified_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
 
     # Every attempt is kept, oldest first, so both sides see the full history
