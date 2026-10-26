@@ -1,15 +1,27 @@
 import { toJob, toJobQuote, toMapCircle, toNearbyJob } from '../../common/CommonApi';
 import type { JobApiDto, QuoteApiDto } from '../../common/CommonApi';
-import type { Job, JobAttachment, JobChat, JobDetail, JobQuote, NearbyJobDetail, NearbyJobs } from '../../common/CommonDto';
+import type {
+  Job,
+  JobAttachment,
+  JobChat,
+  JobDetail,
+  JobProgress,
+  JobQuote,
+  NearbyJobDetail,
+  NearbyJobs,
+  ProviderJob,
+} from '../../common/CommonDto';
 import { baseApi } from '../../config/base_service/base.api';
 import type {
   AttachmentApiDto,
   ChatApiDto,
   JobDetailApiDto,
   JobInput,
+  MilestonesApiDto,
   NearbyFilters,
   NearbyJobDetailApiDto,
   NearbyJobsApiDto,
+  ProviderJobApiDto,
 } from './types/jobs.dto';
 
 const toJobDetail = (dto: JobDetailApiDto): JobDetail => ({
@@ -59,6 +71,51 @@ const toNearbyJobDetail = (dto: NearbyJobDetailApiDto): NearbyJobDetail => ({
 
 const toAttachment = (dto: AttachmentApiDto): JobAttachment => ({ id: dto.id, contentType: dto.content_type, url: dto.url });
 
+const toJobProgress = (dto: MilestonesApiDto): JobProgress => ({
+  jobId: dto.job_id,
+  jobTitle: dto.job_title,
+  jobStatus: dto.job_status,
+  progressPct: dto.progress_pct,
+  amount: dto.amount_paise / 100,
+  earned: dto.earned_paise / 100,
+  currentStage: dto.current_stage,
+  milestones: dto.milestones.map((m) => ({
+    stage: m.stage,
+    percent: m.percent,
+    status: m.status,
+    amount: m.amount_paise / 100,
+    approvedAt: m.approved_at,
+    submissions: m.submissions.map((s) => ({
+      id: s.id,
+      note: s.note,
+      photos: s.photos.map(toAttachment),
+      submittedAt: s.submitted_at,
+      reviewStatus: s.review_status,
+      reviewNote: s.review_note,
+      reviewedAt: s.reviewed_at,
+    })),
+  })),
+  events: dto.events.map((e) => ({
+    id: e.id,
+    type: e.type,
+    actorLabel: e.actor_label,
+    stage: e.data.stage ?? null,
+    reason: e.data.reason ?? null,
+    createdAt: e.created_at,
+  })),
+});
+
+const toProviderJob = (dto: ProviderJobApiDto): ProviderJob => ({
+  ...toNearbyJob(dto),
+  customerName: dto.customer_name,
+  startedAt: dto.started_at,
+  amount: dto.amount_paise / 100,
+  earned: dto.earned_paise / 100,
+  milestoneStage: dto.milestone_stage,
+  milestoneStatus: dto.milestone_status,
+  unreadMessages: dto.unread_messages,
+});
+
 /** Only fields the caller set are sent, so a draft save never clears what the customer left untouched. */
 const toJobBody = (input: JobInput) => {
   const body: Record<string, unknown> = { submit: input.submit };
@@ -96,7 +153,7 @@ export const jobsApi = baseApi.injectEndpoints({
     acceptQuote: builder.mutation<JobDetail, { jobId: string; quoteId: string }>({
       query: ({ jobId, quoteId }) => ({ url: `/jobs/${jobId}/quotes/${quoteId}/accept`, method: 'POST' }),
       transformResponse: toJobDetail,
-      invalidatesTags: ['Jobs'],
+      invalidatesTags: ['Jobs', 'Milestones'],
     }),
     declineQuote: builder.mutation<JobDetail, { jobId: string; quoteId: string }>({
       query: ({ jobId, quoteId }) => ({ url: `/jobs/${jobId}/quotes/${quoteId}/decline`, method: 'POST' }),
@@ -170,12 +227,51 @@ export const jobsApi = baseApi.injectEndpoints({
       invalidatesTags: ['Messages'],
     }),
 
+    // ----- Progress: four 25% stages (customer and hired pro) -----
+    getJobProgress: builder.query<JobProgress, string>({
+      query: (jobId) => `/jobs/${jobId}/milestones`,
+      transformResponse: toJobProgress,
+      providesTags: ['Milestones'],
+    }),
+    /** Hired pro: photos and a note for the open stage, sent to the customer for approval */
+    submitMilestone: builder.mutation<JobProgress, { jobId: string; stage: number; note: string; files: File[] }>({
+      query: ({ jobId, stage, note, files }) => {
+        const body = new FormData();
+        body.append('note', note);
+        files.forEach((file) => body.append('files', file));
+        // 60s: several photos on a slow connection take longer than the default timeout
+        return { url: `/jobs/${jobId}/milestones/${stage}/submit`, method: 'POST', body, timeout: 60_000 };
+      },
+      transformResponse: toJobProgress,
+      invalidatesTags: ['Milestones', 'Jobs', 'Notifications'],
+    }),
+    approveMilestone: builder.mutation<JobProgress, { jobId: string; stage: number }>({
+      query: ({ jobId, stage }) => ({ url: `/jobs/${jobId}/milestones/${stage}/approve`, method: 'POST' }),
+      transformResponse: toJobProgress,
+      invalidatesTags: ['Milestones', 'Jobs', 'Notifications'],
+    }),
+    requestMilestoneChanges: builder.mutation<JobProgress, { jobId: string; stage: number; reason: string }>({
+      query: ({ jobId, stage, reason }) => ({
+        url: `/jobs/${jobId}/milestones/${stage}/request-changes`,
+        method: 'POST',
+        body: { reason },
+      }),
+      transformResponse: toJobProgress,
+      invalidatesTags: ['Milestones', 'Jobs', 'Notifications'],
+    }),
+
     // ----- Provider -----
+    /** Jobs I was hired for, with progress */
+    getProviderJobs: builder.query<ProviderJob[], 'active' | 'completed'>({
+      query: (bucket) => ({ url: '/jobs/provider/mine', params: { bucket } }),
+      transformResponse: (dto: ProviderJobApiDto[]) => dto.map(toProviderJob),
+      providesTags: ['Jobs', 'Milestones'],
+    }),
     /** Start work with the PIN the customer shares at the door */
     startJob: builder.mutation<NearbyJobDetail, { jobId: string; pin: string }>({
       query: ({ jobId, pin }) => ({ url: `/jobs/${jobId}/start`, method: 'POST', body: { pin } }),
       transformResponse: toNearbyJobDetail,
-      invalidatesTags: ['Jobs'],
+      invalidatesTags: ['Jobs', 'Milestones'],
     }),
     declineInvite: builder.mutation<void, string>({
       query: (jobId) => ({ url: `/jobs/${jobId}/invite/decline`, method: 'POST' }),
@@ -238,6 +334,11 @@ export const {
   useDeclineQuoteMutation,
   useResetStartPinMutation,
   useStartJobMutation,
+  useGetJobProgressQuery,
+  useSubmitMilestoneMutation,
+  useApproveMilestoneMutation,
+  useRequestMilestoneChangesMutation,
+  useGetProviderJobsQuery,
   useGetMessagesQuery,
   useSendMessageMutation,
 } = jobsApi;

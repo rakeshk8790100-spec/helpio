@@ -71,3 +71,23 @@ export const AddressLabel = {
   OTHER: 'other',
 } as const;
 export type AddressLabel = (typeof AddressLabel)[keyof typeof AddressLabel];
+
+/** One of a hired job's four 25% stages: the pro sends photos and a note, the customer approves or asks for changes */
+export const MilestoneStatus = {
+  PENDING: 'pending',
+  SUBMITTED: 'submitted',
+  APPROVED: 'approved',
+  CHANGES_REQUESTED: 'changes_requested',
+} as const;
+export type MilestoneStatus = (typeof MilestoneStatus)[keyof typeof MilestoneStatus];
+
+/** Entries on a hired job's timeline, seen by the customer and the pro */
+export const JobEventType = {
+  HIRED: 'hired',
+  STARTED: 'started',
+  MILESTONE_SUBMITTED: 'milestone_submitted',
+  MILESTONE_APPROVED: 'milestone_approved',
+  CHANGES_REQUESTED: 'changes_requested',
+  COMPLETED: 'completed',
+} as const;
+export type JobEventType = (typeof JobEventType)[keyof typeof JobEventType];

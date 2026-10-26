@@ -2,7 +2,9 @@ import type {
   AddressLabel,
   ChecklistState,
   InviteStatus,
+  JobEventType,
   JobStatus,
+  MilestoneStatus,
   OnboardingStatus,
   Proficiency,
   QuoteStatus,
@@ -155,6 +157,9 @@ export interface Job {
   updatedAt: string;
   /** Last change after posting; null if never edited */
   editedAt: string | null;
+  /** After hire: the first stage (1–4) not yet approved and its state; null before hire or once all are approved */
+  milestoneStage: number | null;
+  milestoneStatus: MilestoneStatus | null;
 }
 
 export interface JobQuote {
@@ -252,6 +257,84 @@ export interface NearbyJobDetail extends NearbyJob {
   customerName: string | null;
   startedAt: string | null;
   unreadMessages: number;
+}
+
+/* ── Progress: four 25% stages ─────────── */
+
+/** One attempt at a stage: the pro's photos and note, and the customer's answer */
+export interface MilestoneSubmission {
+  id: string;
+  note: string;
+  photos: JobAttachment[];
+  submittedAt: string;
+  /** `submitted` while waiting for the customer */
+  reviewStatus: MilestoneStatus;
+  /** The customer's reason when asking for changes */
+  reviewNote: string | null;
+  reviewedAt: string | null;
+}
+
+export interface Milestone {
+  stage: number;
+  /** 25, 50, 75 or 100 */
+  percent: number;
+  status: MilestoneStatus;
+  /** This stage's share of the hired quote, ₹ */
+  amount: number;
+  approvedAt: string | null;
+  /** Oldest first; the last one is the current attempt */
+  submissions: MilestoneSubmission[];
+}
+
+export interface JobEvent {
+  id: string;
+  type: JobEventType;
+  /** "You", "Ravi S." or "Asha K."; null for system entries */
+  actorLabel: string | null;
+  stage: number | null;
+  reason: string | null;
+  createdAt: string;
+}
+
+export interface JobProgress {
+  jobId: string;
+  jobTitle: string;
+  jobStatus: JobStatus;
+  progressPct: number;
+  /** The hired quote and the approved stages' share of it, ₹ */
+  amount: number;
+  earned: number;
+  /** The first stage not yet approved; null when all are */
+  currentStage: number | null;
+  milestones: Milestone[];
+  /** Newest first */
+  events: JobEvent[];
+}
+
+/** A job the provider was hired for, with its progress */
+export interface ProviderJob extends NearbyJob {
+  customerName: string | null;
+  startedAt: string | null;
+  amount: number;
+  earned: number;
+  milestoneStage: number | null;
+  milestoneStatus: MilestoneStatus | null;
+  unreadMessages: number;
+}
+
+/* ── Notifications ──────────────────────── */
+
+export interface AppNotification {
+  id: string;
+  /** e.g. "milestone_submitted" */
+  type: string;
+  title: string;
+  body: string;
+  jobId: string | null;
+  /** App path to open, e.g. "/jobs/<id>" */
+  link: string | null;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface NearbyJobs {

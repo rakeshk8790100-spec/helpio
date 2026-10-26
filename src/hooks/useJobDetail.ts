@@ -8,6 +8,7 @@ import { apiErrorMessage } from '../lib/apiError';
 import { useAcceptQuoteMutation, useDeclineQuoteMutation, useGetJobQuery, useResetStartPinMutation } from '../pages/jobs/jobs.api';
 import { formatClock } from '../lib/utils';
 import { jobBadge, jobFacts } from './jobItems';
+import { useJobProgress } from './useJobProgress';
 
 /** /jobs/:id: the customer's job hub: details, photos, quotes to accept or decline, then the hired pro. */
 export const useJobDetail = (id: string): JobDetailLayoutProps => {
@@ -18,6 +19,7 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
   const [declineQuote] = useDeclineQuoteMutation();
   const [resetPin, { isLoading: resetting }] = useResetStartPinMutation();
   const [acting, setActing] = useState<{ quoteId: string; action: 'accept' | 'reject' } | null>(null);
+  const progress = useJobProgress(id, 'customer', { skip: !job?.hired, otherName: job?.hired?.providerLabel ?? 'Your pro' });
 
   if (isLoading) return { status: 'loading' };
   if (!job) return { status: 'error', message: apiErrorMessage(error), onRetry: refetch };
@@ -79,8 +81,10 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
     hired: job.hired
       ? {
           pro: job.hired,
-          nextStep: job.startedAt
-            ? `${job.hired.providerLabel} is working on your job. Chat with them here.`
+          nextStep: job.status === JobStatus.COMPLETED
+            ? `${job.hired.providerLabel} finished your job. Every stage is approved below.`
+            : job.startedAt
+            ? `${job.hired.providerLabel} is working on your job. You'll approve each 25% with photos below.`
             : `${job.hired.providerLabel} has your job details and address. Share the PIN only when they're at your door: work starts with it.`,
           onOpen: () => navigate(toPath(RouterKeys.PRO_PROFILE, { id: job.hired!.providerId })),
           pin: job.startPin
@@ -101,6 +105,7 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
           chat: { unread: job.unreadMessages, onOpen: () => navigate(toPath(RouterKeys.JOB_CHAT, { id: job.id })) },
         }
       : null,
+    progress,
     invites: job.invites.map((invite) => ({
       invite,
       onOpen: () => navigate(toPath(RouterKeys.PRO_PROFILE, { id: invite.providerId })),

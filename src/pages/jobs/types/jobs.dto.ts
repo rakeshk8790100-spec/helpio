@@ -1,6 +1,6 @@
 import type { JobApiDto, MapCircleApiDto, NearbyJobApiDto, QuoteApiDto } from '../../../common/CommonApi';
 import type { Coordinates } from '../../../common/CommonDto';
-import type { InviteStatus, Proficiency } from '../../../common/CommonEnum';
+import type { InviteStatus, JobEventType, JobStatus, MilestoneStatus, Proficiency } from '../../../common/CommonEnum';
 
 /* Wire format (snake_case, money in paise) of /jobs/*. App-side inputs are in ₹ and camelCase. */
 
@@ -41,6 +41,51 @@ export interface NearbyJobDetailApiDto extends NearbyJobApiDto {
   exact_location: { latitude: number | null; longitude: number | null; pincode: string | null; area_name: string | null } | null;
   customer_name: string | null;
   started_at: string | null;
+  unread_messages: number;
+}
+
+export interface MilestoneSubmissionApiDto {
+  id: string;
+  note: string;
+  photos: AttachmentApiDto[];
+  submitted_at: string;
+  review_status: MilestoneStatus;
+  review_note: string | null;
+  reviewed_at: string | null;
+}
+
+export interface MilestonesApiDto {
+  job_id: string;
+  job_title: string;
+  job_status: JobStatus;
+  progress_pct: number;
+  amount_paise: number;
+  earned_paise: number;
+  current_stage: number | null;
+  milestones: {
+    stage: number;
+    percent: number;
+    status: MilestoneStatus;
+    amount_paise: number;
+    approved_at: string | null;
+    submissions: MilestoneSubmissionApiDto[];
+  }[];
+  events: {
+    id: string;
+    type: JobEventType;
+    actor_label: string | null;
+    data: { stage?: number; reason?: string };
+    created_at: string;
+  }[];
+}
+
+export interface ProviderJobApiDto extends NearbyJobApiDto {
+  customer_name: string | null;
+  started_at: string | null;
+  amount_paise: number;
+  earned_paise: number;
+  milestone_stage: number | null;
+  milestone_status: MilestoneStatus | null;
   unread_messages: number;
 }
 

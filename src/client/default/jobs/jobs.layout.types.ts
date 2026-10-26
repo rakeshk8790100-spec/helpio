@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import type { FormInstance } from 'antd';
 import type { Coordinates, CustomerQuote, HiredPro, JobAttachment, JobInvite, MapCircle, NearbyJob, JobQuote } from '../../../common/CommonDto';
 import type { BadgeTone, ChipOption } from '../../../component/ui';
-import type { ChatBubble, CurrentLocationButton, JobMapItem, PhotoPicker } from '../../../component/marketplace';
+import type { ChatBubble, CurrentLocationButton, HiredJobCard, JobMapItem, PhotoPicker, TrackerStage } from '../../../component/marketplace';
 import type { JobItem } from '../home/home.layout.types';
 import type { WithLoading, WithStatus } from '../layout.types';
 
@@ -66,6 +66,81 @@ export interface MyJobsLayoutProps {
   onPostJob: () => void;
 }
 
+// ----- Progress: four 25% stages (customer and hired pro) -----
+
+export interface StageAttempt {
+  id: string;
+  note: string;
+  photos: JobAttachment[];
+  /** e.g. "Sent 4:05 PM" */
+  submittedLabel: string;
+  review: { label: string; tone: BadgeTone; note: string | null };
+}
+
+export interface StageItem {
+  stage: number;
+  percent: number;
+  /** e.g. "Half way (50%)" */
+  title: string;
+  /** This stage's share of the quote, ₹ */
+  amount: number;
+  badge: { label: string; tone: BadgeTone };
+  /** Oldest first */
+  attempts: StageAttempt[];
+  /** The first stage not yet approved */
+  current: boolean;
+}
+
+export interface StageSubmitProps {
+  stage: number;
+  percent: number;
+  /** The customer's reason, when they sent the last update back */
+  changesNote: string | null;
+  photos: ComponentProps<typeof PhotoPicker>;
+  note: string;
+  onNoteChange: (value: string) => void;
+  submitting: boolean;
+  error?: string;
+  onSubmit: () => void;
+}
+
+export interface StageReviewProps {
+  stage: number;
+  percent: number;
+  /** ₹ this approval releases */
+  amount: number;
+  proName: string;
+  attempt: StageAttempt;
+  approving: boolean;
+  onApprove: () => void;
+  changes: {
+    open: boolean;
+    onOpen: () => void;
+    onCancel: () => void;
+    reason: string;
+    onReasonChange: (value: string) => void;
+    sending: boolean;
+    error?: string;
+    onSend: () => void;
+  };
+}
+
+export type JobProgressProps = WithStatus<{
+  progressPct: number;
+  tracker: TrackerStage[];
+  /** e.g. "₹250 of ₹1,000 approved" */
+  earnedLabel: string;
+  /** What happens next, in plain words */
+  headline: string;
+  /** Hired pro: the open stage's update form */
+  submit: StageSubmitProps | null;
+  /** Customer: an update waiting for approval */
+  review: StageReviewProps | null;
+  stages: StageItem[];
+  /** Newest first */
+  timeline: { id: string; text: string; detail: string | null; time: string }[];
+}>;
+
 // ----- Customer: one job -----
 
 export interface JobSummary {
@@ -97,6 +172,8 @@ export type JobDetailLayoutProps = WithStatus<{
     startedLabel: string | null;
     chat: { unread: number; onOpen: () => void };
   } | null;
+  /** After hire: the four stages, the update to review and the timeline */
+  progress: JobProgressProps | null;
   quotes: {
     items: {
       quote: CustomerQuote;
@@ -134,7 +211,17 @@ export interface NearbyFiltersProps {
   onUrgentOnlyChange: (on: boolean) => void;
 }
 
+export const ProJobsTab = { NEW: 'new', ACTIVE: 'active', COMPLETED: 'completed' } as const;
+export type ProJobsTab = (typeof ProJobsTab)[keyof typeof ProJobsTab];
+
+export type HiredJobItem = ComponentProps<typeof HiredJobCard> & { id: string };
+
 export interface NearbyJobsLayoutProps {
+  tab: ProJobsTab;
+  tabs: { value: ProJobsTab; label: string }[];
+  onTabChange: (tab: ProJobsTab) => void;
+  /** Active and Completed tabs: jobs I was hired for */
+  hired: WithStatus<{ items: HiredJobItem[]; emptyText: string }>;
   filters: NearbyFiltersProps;
   view: JobsView;
   onViewChange: (view: JobsView) => void;
@@ -186,6 +273,8 @@ export type ProviderJobLayoutProps = WithStatus<{
     startedLabel: string | null;
     chat: { unread: number; onOpen: () => void };
   } | null;
+  /** After hire: the four stages, the update form and the timeline */
+  progress: JobProgressProps | null;
   circle: MapCircle | null;
   quote: ProviderQuoteProps;
   onBack: () => void;

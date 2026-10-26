@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { CustomerHomeLayoutProps } from '../client/default/home/home.layout.types';
 import type { AuthUser, Job } from '../common/CommonDto';
-import { JobStatus } from '../common/CommonEnum';
+import { JobStatus, MilestoneStatus } from '../common/CommonEnum';
 import { MOCK_CATEGORIES } from '../common/CommonMock';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
@@ -27,11 +27,18 @@ const ACTIVE_COPY: Partial<Record<JobStatus, (job: Job) => { statusLabel: string
     nextStep: 'Share your start PIN when the pro arrives. Work begins only with it.',
     actionLabel: 'View start PIN',
   }),
-  [JobStatus.IN_PROGRESS]: () => ({
-    statusLabel: 'Work in progress',
-    nextStep: 'Your pro has started. Chat with them from the job page.',
-    actionLabel: 'Open job',
-  }),
+  [JobStatus.IN_PROGRESS]: (job) =>
+    job.milestoneStatus === MilestoneStatus.SUBMITTED
+      ? {
+          statusLabel: 'Approval needed',
+          nextStep: `Your pro finished ${(job.milestoneStage ?? 1) * 25}% and sent photos. Check them and approve.`,
+          actionLabel: 'Review update',
+        }
+      : {
+          statusLabel: 'Work in progress',
+          nextStep: "Your pro has started. You'll approve the work in 25% steps, with photos at each.",
+          actionLabel: 'Open job',
+        },
 };
 
 /** Signed-in customer home: live job, quotes to review, posted jobs and drafts, plus search and discovery. */

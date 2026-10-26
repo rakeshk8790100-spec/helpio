@@ -9,7 +9,8 @@ import { RouterKeys } from "../../config/router/RouterKeys";
 import { useAppSelector } from "../../redux";
 import { selectCurrentUser, selectToken } from "../../redux/authSlice";
 import LoginModal from "../../pages/auth/LoginModal";
-import { HelpioLogo, UserMenu } from "../marketplace";
+import { useNotifications } from "../../hooks/useNotifications";
+import { HelpioLogo, NotificationBell, UserMenu } from "../marketplace";
 
 const { Header, Content, Footer } = Layout;
 
@@ -32,6 +33,9 @@ const AUTH_SCREENS: string[] = [
   RouterKeys.LOGIN, RouterKeys.SIGNUP, RouterKeys.FORGOT_PASSWORD,
   RouterKeys.PRO_LOGIN, RouterKeys.PRO_SIGNUP, RouterKeys.PRO_FORGOT_PASSWORD,
 ];
+
+/** Mounted only when signed in, so the unread count is polled only then */
+const HeaderBell = () => <NotificationBell {...useNotifications()} />;
 
 const AppLayout = () => {
   const user = useAppSelector(selectCurrentUser);
@@ -62,7 +66,10 @@ const AppLayout = () => {
           </NavLink>
 
           {user ? (
-            <UserMenu user={user} onLogout={onLogout} />
+            <div className="flex items-center gap-1">
+              <HeaderBell />
+              <UserMenu user={user} onLogout={onLogout} />
+            </div>
           ) : (
             !onAuthScreen && (
               <button

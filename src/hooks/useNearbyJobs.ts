@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { JobsView } from '../client/default/jobs/jobs.layout.types';
-import type { NearbyJobsLayoutProps } from '../client/default/jobs/jobs.layout.types';
-import type { NearbyJob } from '../common/CommonDto';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { JobsView, ProJobsTab } from '../client/default/jobs/jobs.layout.types';
+import type { HiredJobItem, NearbyJobsLayoutProps } from '../client/default/jobs/jobs.layout.types';
+import type { NearbyJob, ProviderJob } from '../common/CommonDto';
+import { JobStatus, MilestoneStatus } from '../common/CommonEnum';
+import type { BadgeTone } from '../component/ui';
 import { RouterKeys, toPath } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
 import { formatINR } from '../lib/utils';
-import { useGetNearbyJobsQuery } from '../pages/jobs/jobs.api';
+import { useGetNearbyJobsQuery, useGetProviderJobsQuery } from '../pages/jobs/jobs.api';
 
 /** Distance filter steps in km; 0 means any distance within the provider's radius */
 const DISTANCES = [0, 2, 5, 10, 25];
@@ -16,9 +18,48 @@ const mapMeta = (job: NearbyJob) =>
     .filter(Boolean)
     .join(' · ');
 
-/** /pro/jobs: open jobs near the provider, filtered, as a list or on an approximate map. */
+const HIRED_EMPTY: Record<ProJobsTab, string> = {
+  [ProJobsTab.NEW]: '',
+  [ProJobsTab.ACTIVE]: "No active jobs. When a customer accepts your quote, the job shows here with its progress.",
+  [ProJobsTab.COMPLETED]: 'Jobs you finish, with every approved stage, show here.',
+};
+
+/** What the pro should do next on a hired job */
+const hiredBadge = (job: ProviderJob): { label: string; tone: BadgeTone } => {
+  if (job.status === JobStatus.COMPLETED) return { label: 'Completed', tone: 'success' };
+  if (job.status === JobStatus.ACCEPTED) return { label: 'Start with PIN', tone: 'brand' };
+  const pct = `${(job.milestoneStage ?? 1) * 25}%`;
+  switch (job.milestoneStatus) {
+    case MilestoneStatus.SUBMITTED:
+      return { label: `${pct} waiting for approval`, tone: 'warning' };
+    case MilestoneStatus.CHANGES_REQUESTED:
+      return { label: `Changes requested on ${pct}`, tone: 'error' };
+    default:
+      return { label: `Send ${pct} update`, tone: 'brand' };
+  }
+};
+
+/** Four stages for the card: approved up to the current one, which carries its own state */
+const hiredStages = (job: ProviderJob) =>
+  [1, 2, 3, 4].map((stage) => ({
+    stage,
+    percent: stage * 25,
+    status:
+      job.status === JobStatus.COMPLETED || (job.milestoneStage !== null && stage < job.milestoneStage)
+        ? MilestoneStatus.APPROVED
+        : stage === job.milestoneStage
+          ? (job.milestoneStatus ?? MilestoneStatus.PENDING)
+          : MilestoneStatus.PENDING,
+  }));
+
+/** /pro/jobs: new jobs near the provider (filtered, list or map), and jobs they were hired for, with progress. */
 export const useNearbyJobs = (): NearbyJobsLayoutProps => {
   const navigate = useNavigate();
+  const [params, setParams] = useSearchParams();
+  const tab = Object.values(ProJobsTab).find((value) => value === params.get('tab')) ?? ProJobsTab.NEW;
+  const active = useGetProviderJobsQuery('active');
+  const completed = useGetProviderJobsQuery('completed', { skip: tab !== ProJobsTab.COMPLETED });
+  const hired = tab === ProJobsTab.COMPLETED ? completed : active;
   const [categoryId, setCategoryId] = useState('');
   const [maxKm, setMaxKm] = useState(0);
   const [hasBudget, setHasBudget] = useState(false);
@@ -30,12 +71,39 @@ export const useNearbyJobs = (): NearbyJobsLayoutProps => {
     maxKm: maxKm || undefined,
     hasBudget,
     urgentOnly,
-  });
+  }, { skip: tab !== ProJobsTab.NEW });
 
   const radiusKm = data?.area ? data.area.radiusM / 1000 : Infinity;
   const open = (job: NearbyJob) => navigate(toPath(RouterKeys.PRO_JOB_DETAIL, { id: job.id }));
 
+  const toHiredItem = (job: ProviderJob): HiredJobItem => ({
+    id: job.id,
+    title: job.title,
+    categoryName: job.categoryName,
+    customerName: job.customerName ?? job.customerLabel,
+    areaName: job.areaName,
+    badge: hiredBadge(job),
+    stages: hiredStages(job),
+    earned: job.earned,
+    amount: job.amount,
+    unreadMessages: job.unreadMessages,
+    onOpen: () => open(job),
+  });
+  const activeCount = active.data?.length ?? 0;
+
   return {
+    tab,
+    tabs: [
+      { value: ProJobsTab.NEW, label: 'New jobs' },
+      { value: ProJobsTab.ACTIVE, label: activeCount ? `Active (${activeCount})` : 'Active' },
+      { value: ProJobsTab.COMPLETED, label: 'Completed' },
+    ],
+    onTabChange: (value) => setParams(value === ProJobsTab.NEW ? {} : { tab: value }, { replace: true }),
+    hired: hired.isLoading
+      ? { status: 'loading' }
+      : !hired.data
+        ? { status: 'error', message: apiErrorMessage(hired.error), onRetry: hired.refetch }
+        : { status: 'ready', items: hired.data.map(toHiredItem), emptyText: HIRED_EMPTY[tab] },
     filters: {
       categories: [{ value: '', label: 'All skills' }, ...(data?.categories ?? []).map((c) => ({ value: c.id, label: c.name }))],
       categoryId,

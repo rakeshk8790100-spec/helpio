@@ -4,6 +4,7 @@ import { QuoteStatus } from '../../../common/CommonEnum';
 import { JobMap } from '../../../component/marketplace';
 import { AlertBanner, Chip, PageSkeleton, StatusBadge } from '../../../component/ui';
 import { formatINR } from '../../../lib/utils';
+import JobProgressBlock from './jobProgress';
 import JobSummaryBlock from './jobSummary';
 import type { ProviderQuoteProps } from './jobs.layout.types';
 import type { ProviderJobLayoutProps } from './jobs.layout.types';
@@ -105,7 +106,7 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
 
   return (
     <div className="flex flex-col gap-5">
-      <JobSummaryBlock summary={p.summary} onBack={p.onBack} backLabel="Jobs near you" />
+      <JobSummaryBlock summary={p.summary} onBack={p.onBack} backLabel={p.hired ? 'My jobs' : 'Jobs near you'} />
 
       {p.hired && (
         <section className="rounded-2xl bg-emerald-50 p-4">
@@ -160,6 +161,8 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
           )}
         </section>
       )}
+
+      {p.progress && <JobProgressBlock progress={p.progress} />}
 
       {p.invite && (
         <section className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">

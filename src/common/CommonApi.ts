@@ -1,7 +1,7 @@
 import { baseApi, dispatchOnSuccess } from '../config/base_service/base.api';
 import { sessionStarted, signedOut, userUpdated } from '../redux/authSlice';
 import type { AuthSession, AuthUser, Job, JobQuote, MapCircle, NearbyJob, Service, SkillCategory } from './CommonDto';
-import type { InviteStatus, JobStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
+import type { InviteStatus, JobStatus, MilestoneStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
 import { MOCK_SERVICES } from './CommonMock';
 
 /* ── Wire format (snake_case) of the session endpoints, mapped once here ── */
@@ -59,6 +59,8 @@ export interface JobApiDto {
   lowest_quote_paise: number | null;
   updated_at: string;
   edited_at: string | null;
+  milestone_stage: number | null;
+  milestone_status: MilestoneStatus | null;
 }
 
 export interface QuoteApiDto {
@@ -118,6 +120,8 @@ export const toJob = (dto: JobApiDto): Job => ({
   lowestQuote: toRupees(dto.lowest_quote_paise),
   updatedAt: dto.updated_at,
   editedAt: dto.edited_at,
+  milestoneStage: dto.milestone_stage,
+  milestoneStatus: dto.milestone_status,
 });
 
 export const toJobQuote = (dto: QuoteApiDto): JobQuote => ({

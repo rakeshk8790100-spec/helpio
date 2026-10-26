@@ -4,7 +4,7 @@ import { App, Form } from 'antd';
 import type { ProviderJobLayoutProps, ProviderQuoteProps, QuoteFormValues } from '../client/default/jobs/jobs.layout.types';
 import type { AuthUser } from '../common/CommonDto';
 import { JobStatus, QuoteStatus } from '../common/CommonEnum';
-import { RouterKeys, toPath } from '../config/router/RouterKeys';
+import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { formatClock } from '../lib/utils';
 import { apiErrorMessage } from '../lib/apiError';
 import { pendingOnboardingPath } from '../pages/auth/authRedirect';
@@ -16,6 +16,7 @@ import {
   useWithdrawQuoteMutation,
 } from '../pages/jobs/jobs.api';
 import { jobBadge, jobFacts } from './jobItems';
+import { useJobProgress } from './useJobProgress';
 
 /** Built-in quote notes; saved personal templates can replace these later */
 const QUICK_MESSAGES = [
@@ -37,6 +38,10 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
   const [startError, setStartError] = useState<string>();
   const [form] = Form.useForm<QuoteFormValues>();
   const [quoteError, setQuoteError] = useState<string>();
+  const progress = useJobProgress(id, 'provider', {
+    skip: !job?.hired,
+    otherName: job?.customerName ?? job?.customerLabel ?? 'the customer',
+  });
 
   if (isLoading) return { status: 'loading' };
   if (!job) return { status: 'error', message: apiErrorMessage(error), onRetry: refetch };
@@ -147,8 +152,14 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
             },
           }
         : null,
+    progress,
     circle: job.areaCircle,
     quote,
-    onBack: () => navigate(RouterKeys.PRO_JOBS),
+    onBack: () =>
+      navigate(
+        job.hired
+          ? withQuery(RouterKeys.PRO_JOBS, { tab: job.status === JobStatus.COMPLETED ? 'completed' : 'active' })
+          : RouterKeys.PRO_JOBS,
+      ),
   };
 };

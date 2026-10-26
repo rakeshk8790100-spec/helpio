@@ -1,6 +1,6 @@
 import type { JobItem } from '../client/default/home/home.layout.types';
 import type { Job, NearbyJob } from '../common/CommonDto';
-import { JobStatus } from '../common/CommonEnum';
+import { JobStatus, MilestoneStatus } from '../common/CommonEnum';
 import type { BadgeTone } from '../component/ui';
 import { formatDuration, formatINR, formatShortDate } from '../lib/utils';
 
@@ -19,11 +19,18 @@ const STATUS_BADGE: Record<JobStatus, { label: string; tone: BadgeTone }> = {
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
-/** Open jobs with quotes show the count instead of "Waiting for quotes" */
-export const jobBadge = (job: Pick<Job, 'status' | 'quoteCount'>) =>
-  job.status === JobStatus.OPEN && job.quoteCount > 0
-    ? { label: plural(job.quoteCount, 'quote'), tone: 'brand' as BadgeTone }
-    : STATUS_BADGE[job.status];
+/**
+ * Open jobs with quotes show the count instead of "Waiting for quotes";
+ * jobs in progress show what's approved, or that an update is waiting for the customer.
+ */
+export const jobBadge = (job: Pick<Job, 'status' | 'quoteCount'> & Partial<Pick<Job, 'milestoneStatus' | 'progressPct'>>) => {
+  if (job.status === JobStatus.OPEN && job.quoteCount > 0) return { label: plural(job.quoteCount, 'quote'), tone: 'brand' as BadgeTone };
+  if (job.status === JobStatus.IN_PROGRESS && job.milestoneStatus === MilestoneStatus.SUBMITTED) {
+    return { label: 'Approval needed', tone: 'warning' as BadgeTone };
+  }
+  if (job.status === JobStatus.IN_PROGRESS && job.progressPct) return { label: `${job.progressPct}% done`, tone: 'brand' as BadgeTone };
+  return STATUS_BADGE[job.status];
+};
 
 export const jobWhere = (job: Pick<Job, 'categoryName' | 'areaName'>) =>
   [job.categoryName, job.areaName].filter(Boolean).join(' · ') || 'Details to add';
