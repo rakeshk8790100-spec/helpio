@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import StrEnum
 from uuid import uuid4
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, UtcDateTime, str_enum, utc_now
@@ -35,6 +35,28 @@ class InviteStatus(StrEnum):
     PENDING = "pending"
     QUOTED = "quoted"
     DECLINED = "declined"
+
+
+class MilestoneStatus(StrEnum):
+    """One of a hired job's four 25% stages: the pro submits photos and a note, the customer approves or asks for changes."""
+
+    PENDING = "pending"
+    SUBMITTED = "submitted"
+    APPROVED = "approved"
+    CHANGES_REQUESTED = "changes_requested"
+
+
+class JobEventType(StrEnum):
+    HIRED = "hired"
+    STARTED = "started"
+    MILESTONE_SUBMITTED = "milestone_submitted"
+    MILESTONE_APPROVED = "milestone_approved"
+    CHANGES_REQUESTED = "changes_requested"
+    COMPLETED = "completed"
+
+
+MILESTONE_STAGES = (1, 2, 3, 4)
+STAGE_PERCENT = 25
 
 
 class QuoteStatus(StrEnum):
@@ -92,6 +114,10 @@ class Job(Base):
     )
     attachments: Mapped[list[JobAttachment]] = relationship(
         cascade="all, delete-orphan", passive_deletes=True, order_by="JobAttachment.created_at"
+    )
+    # Created on hire: four 25% stages
+    milestones: Mapped[list[JobMilestone]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True, order_by="JobMilestone.stage"
     )
 
 
@@ -167,3 +193,82 @@ class JobMessage(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     read_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class JobMilestone(Base):
+    __tablename__ = "job_milestones"
+    __table_args__ = (UniqueConstraint("job_id", "stage", name="ux_job_milestones_job_stage"),)
+
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    job_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    # 1 to 4; stage N is N × 25% of the work
+    stage: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    percent: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    status: Mapped[MilestoneStatus] = mapped_column(
+        str_enum(MilestoneStatus), nullable=False, default=MilestoneStatus.PENDING
+    )
+    approved_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+    # Every attempt is kept, oldest first, so both sides see the full history
+    submissions: Mapped[list[JobMilestoneSubmission]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True, lazy="selectin",
+        order_by="JobMilestoneSubmission.submitted_at",
+    )
+
+
+class JobMilestoneSubmission(Base):
+    __tablename__ = "job_milestone_submissions"
+
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    milestone_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("job_milestones.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    provider_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("auth_users.id", ondelete="CASCADE"), nullable=False
+    )
+    note: Mapped[str] = mapped_column(Text, nullable=False)
+    # submitted, approved or changes_requested; the customer's answer to this attempt
+    review_status: Mapped[MilestoneStatus] = mapped_column(
+        str_enum(MilestoneStatus), nullable=False, default=MilestoneStatus.SUBMITTED
+    )
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    submitted_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+    photos: Mapped[list[JobMilestonePhoto]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True, lazy="selectin", order_by="JobMilestonePhoto.created_at"
+    )
+
+
+class JobMilestonePhoto(Base):
+    """Proof of work stored on Cloudinary, like JobAttachment."""
+
+    __tablename__ = "job_milestone_photos"
+
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    submission_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("job_milestone_submissions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    public_id: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    resource_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+
+class JobEvent(Base):
+    """The job's timeline, shown to the customer and the hired pro."""
+
+    __tablename__ = "job_events"
+    __table_args__ = (Index("ix_job_events_job_created", "job_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    job_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    actor_id: Mapped[str | None] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("auth_users.id", ondelete="SET NULL"), nullable=True
+    )
+    type: Mapped[JobEventType] = mapped_column(str_enum(JobEventType), nullable=False)
+    # e.g. {"stage": 2} or {"reason": "..."}
+    data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)

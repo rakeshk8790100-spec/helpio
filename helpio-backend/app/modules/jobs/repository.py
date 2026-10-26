@@ -88,3 +88,17 @@ class JobRepository:
             )
             .options(selectinload(Job.quotes))
         ).unique().all()
+
+    def jobs_for_provider(self, provider_id: str, statuses: Collection[JobStatus]) -> Sequence[Job]:
+        """Jobs this provider was hired for (their quote was accepted), most recently changed first."""
+        return self.db.scalars(
+            select(Job)
+            .join(JobQuote, JobQuote.job_id == Job.id)
+            .where(
+                JobQuote.provider_id == provider_id,
+                JobQuote.status == QuoteStatus.ACCEPTED,
+                Job.status.in_(statuses),
+            )
+            .options(selectinload(Job.quotes), selectinload(Job.milestones))
+            .order_by(Job.updated_at.desc())
+        ).unique().all()

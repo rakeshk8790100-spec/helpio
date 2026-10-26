@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from math import cos, pi, radians, sin
 from uuid import uuid4
 
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -43,12 +44,22 @@ from app.modules.jobs.model import (
     InviteStatus,
     Job,
     JobAttachment,
+    JobEventType,
     JobInvite,
     JobQuote,
     JobStatus,
     QuoteStatus,
 )
 from app.modules.jobs.chat import unread_count
+from app.modules.jobs.milestones import (
+    add_event,
+    create_milestones,
+    current_milestone,
+    customer_link,
+    earned,
+    hired_amount,
+    provider_link,
+)
 from app.modules.jobs.repository import JobRepository
 from app.modules.jobs.schema import (
     ATTACHMENT_TYPES,
@@ -74,12 +85,14 @@ from app.modules.jobs.schema import (
     NearbyJobResponse,
     NearbyJobsResponse,
     ProviderHomeResponse,
+    ProviderJobResponse,
     QuoteCounts,
     QuoteResponse,
     UpdateJobRequest,
 )
 from app.modules.providers.exceptions import ProviderProfileNotFoundError
 from app.modules.providers.model import OnboardingStatus, Proficiency, ProviderProfile
+from app.modules.notifications.service import NotificationService
 from app.modules.providers.repository import ProviderRepository
 
 HOME_NEARBY_LIMIT = 3
@@ -134,8 +147,9 @@ def pending_quotes(job: Job) -> list[JobQuote]:
 
 
 class JobService:
-    def __init__(self, *, storage: FileStorage | None = None) -> None:
+    def __init__(self, *, storage: FileStorage | None = None, notifications: NotificationService | None = None) -> None:
         self._storage_client = storage
+        self.notifications = notifications or NotificationService()
 
     @property
     def storage(self) -> FileStorage:
@@ -192,7 +206,9 @@ class JobService:
             ],
         )
 
-    def accept_quote(self, db: Session, user: AuthUser, job_id: str, quote_id: str) -> JobDetailResponse:
+    def accept_quote(
+        self, db: Session, user: AuthUser, job_id: str, quote_id: str, background: BackgroundTasks | None = None
+    ) -> JobDetailResponse:
         """Hire the pro: their quote is accepted, every other pending quote declined. Escrow comes later."""
         job, quote = self._own_pending_quote(db, user, job_id, quote_id)
         quote.status = QuoteStatus.ACCEPTED
@@ -202,6 +218,13 @@ class JobService:
         job.status = JobStatus.ACCEPTED
         job.start_pin = new_pin()
         job.start_pin_attempts = 0
+        create_milestones(db, job, user.id)
+        self.notifications.notify(
+            db, quote.provider, type="hired", title="You're hired!",
+            body=f"{short_name(user.name, 'A customer')} accepted your quote for \"{job.title}\". "
+                 "Ask them for the start PIN when you arrive.",
+            job_id=job.id, link=provider_link(job.id), background=background,
+        )
         db.commit()
         return self.get_job(db, user, job.id)
 
@@ -214,7 +237,9 @@ class JobService:
         db.commit()
         return self.get_job(db, user, job.id)
 
-    def start_job(self, db: Session, user: AuthUser, job_id: str, pin: str) -> NearbyJobDetailResponse:
+    def start_job(
+        self, db: Session, user: AuthUser, job_id: str, pin: str, background: BackgroundTasks | None = None
+    ) -> NearbyJobDetailResponse:
         """The hired pro starts work with the PIN the customer shares in person."""
         job = JobRepository(db).get(job_id)
         if job is None or not self._is_hired(job, user.id):
@@ -233,6 +258,16 @@ class JobService:
         job.status = JobStatus.IN_PROGRESS
         job.started_at = utc_now()
         job.start_pin = None
+        if not job.milestones:
+            # Hired before milestones existed
+            create_milestones(db, job, job.customer_id)
+        add_event(db, job, user.id, JobEventType.STARTED)
+        self.notifications.notify(
+            db, job.customer, type="job_started", title="Work has started",
+            body=f"{short_name(user.name, 'Your pro')} started \"{job.title}\". "
+                 "You'll be asked to approve each 25% of the work.",
+            job_id=job.id, link=customer_link(job.id), background=background,
+        )
         db.commit()
         return self.nearby_job(db, user, job.id)
 
@@ -421,6 +456,22 @@ class JobService:
         db.commit()
         return self._quote_response(quote)
 
+    def provider_jobs(self, db: Session, user: AuthUser, completed: bool = False) -> list[ProviderJobResponse]:
+        """Jobs I was hired for: active ones (hired, in progress) or completed ones."""
+        statuses = (JobStatus.COMPLETED,) if completed else ACTIVE_STATUSES
+        responses = []
+        for job in JobRepository(db).jobs_for_provider(user.id, statuses):
+            current = current_milestone(job)
+            responses.append(ProviderJobResponse(
+                **self._nearby_response(job, user, None).model_dump(),
+                customer_name=job.customer.name, started_at=job.started_at,
+                amount_paise=hired_amount(job), earned_paise=earned(job),
+                milestone_stage=current.stage if current else None,
+                milestone_status=current.status if current else None,
+                unread_messages=unread_count(db, job.id, user.id),
+            ))
+        return responses
+
     def provider_home(self, db: Session, user: AuthUser) -> ProviderHomeResponse:
         profile = self._provider_profile(db, user)
         repo = JobRepository(db)
@@ -603,6 +654,7 @@ class JobService:
 
     def _job_response(self, job: Job) -> JobResponse:
         quotes = pending_quotes(job)
+        current = current_milestone(job)
         return JobResponse(
             id=job.id, title=job.title, description=job.description,
             category_id=job.category_id, category_name=job.category.name if job.category else None,
@@ -611,6 +663,8 @@ class JobService:
             is_emergency=job.is_emergency, status=job.status, progress_pct=job.progress_pct,
             quote_count=len(quotes), lowest_quote_paise=min((quote.amount_paise for quote in quotes), default=None),
             created_at=job.created_at, updated_at=job.updated_at, edited_at=job.edited_at,
+            milestone_stage=current.stage if current else None,
+            milestone_status=current.status if current else None,
         )
 
     def _quote_response(self, quote: JobQuote) -> QuoteResponse:

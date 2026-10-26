@@ -1,15 +1,22 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
+from typing import Literal
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Path, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.modules.auth.model import AuthUser
 from app.modules.auth.dependencies import get_current_user
 from app.modules.jobs.chat import JobChat
-from app.modules.jobs.dependencies import current_customer, get_job_chat, get_job_service
+from app.modules.jobs.dependencies import current_customer, get_job_chat, get_job_service, get_milestone_service
+from app.modules.jobs.milestones import MilestoneService
 from app.modules.jobs.schema import (
     MAX_ATTACHMENT_BYTES,
+    MAX_ATTACHMENTS,
+    MilestonesResponse,
+    ProviderJobResponse,
+    RequestChangesRequest,
     AttachmentResponse,
     ChatResponse,
     MessageResponse,
@@ -70,6 +77,17 @@ def nearby_jobs(
     """Open jobs in the provider's skills and radius, with the customer and address masked."""
     filters = NearbyFilters(category_id=category_id, max_km=max_km, has_budget=has_budget, urgent_only=urgent_only)
     return service.nearby_jobs(db, user, filters)
+
+
+@router.get("/provider/mine", response_model=list[ProviderJobResponse])
+def provider_jobs(
+    bucket: Literal["active", "completed"] = "active",
+    user: AuthUser = Depends(current_provider),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> list[ProviderJobResponse]:
+    """Jobs I was hired for, with progress: `active` (hired or in progress) or `completed`."""
+    return service.provider_jobs(db, user, completed=bucket == "completed")
 
 
 @router.get("/nearby/{job_id}", response_model=NearbyJobDetailResponse)
@@ -135,12 +153,13 @@ def get_job(
 def accept_quote(
     job_id: str,
     quote_id: str,
+    background: BackgroundTasks,
     user: AuthUser = Depends(current_customer),
     db: Session = Depends(get_db),
     service: JobService = Depends(get_job_service),
 ) -> JobDetailResponse:
     """Hire this pro (open jobs, pending quotes): other pending quotes are declined. Payment comes later."""
-    return service.accept_quote(db, user, job_id, quote_id)
+    return service.accept_quote(db, user, job_id, quote_id, background)
 
 
 @router.post("/{job_id}/quotes/{quote_id}/decline", response_model=JobDetailResponse)
@@ -212,12 +231,13 @@ def delete_attachment(
 def start_job(
     job_id: str,
     payload: StartJobRequest,
+    background: BackgroundTasks,
     user: AuthUser = Depends(current_provider),
     db: Session = Depends(get_db),
     service: JobService = Depends(get_job_service),
 ) -> NearbyJobDetailResponse:
     """Hired pro: start work with the 4-digit PIN the customer shares. 5 wrong tries lock it until the customer resets."""
-    return service.start_job(db, user, job_id, payload.pin)
+    return service.start_job(db, user, job_id, payload.pin, background)
 
 
 @router.post("/{job_id}/start-pin/reset", response_model=JobDetailResponse)
@@ -229,6 +249,66 @@ def reset_start_pin(
 ) -> JobDetailResponse:
     """Customer: a new start PIN (the old one stops working; tries reset)."""
     return service.reset_start_pin(db, user, job_id)
+
+
+# ----- Progress: four 25% stages with photos and the customer's approval -----
+
+Stage = Path(ge=1, le=4)
+
+
+@router.get("/{job_id}/milestones", response_model=MilestonesResponse)
+def list_milestones(
+    job_id: str,
+    user: AuthUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    service: MilestoneService = Depends(get_milestone_service),
+) -> MilestonesResponse:
+    """The four stages with every submitted update, and the job's timeline (customer or hired pro)."""
+    return service.view(db, user, job_id)
+
+
+@router.post("/{job_id}/milestones/{stage}/submit", response_model=MilestonesResponse)
+async def submit_milestone(
+    job_id: str,
+    background: BackgroundTasks,
+    stage: int = Stage,
+    note: str = Form(min_length=3, max_length=1000),
+    files: list[UploadFile] = File(description=f"1 to {MAX_ATTACHMENTS} photos (JPG, PNG, WebP) or MP4s, 10 MB each"),
+    user: AuthUser = Depends(current_provider),
+    db: Session = Depends(get_db),
+    service: MilestoneService = Depends(get_milestone_service),
+) -> MilestonesResponse:
+    """Hired pro: send photos and a note for the open stage and ask the customer to approve it."""
+    # One byte past the limit, so oversized files are refused without loading them whole
+    contents = [(await file.read(MAX_ATTACHMENT_BYTES + 1), file.content_type or "") for file in files[:MAX_ATTACHMENTS + 1]]
+    return service.submit(db, user, job_id, stage, note.strip(), contents, background)
+
+
+@router.post("/{job_id}/milestones/{stage}/approve", response_model=MilestonesResponse)
+def approve_milestone(
+    job_id: str,
+    background: BackgroundTasks,
+    stage: int = Stage,
+    user: AuthUser = Depends(current_customer),
+    db: Session = Depends(get_db),
+    service: MilestoneService = Depends(get_milestone_service),
+) -> MilestonesResponse:
+    """Customer: approve the stage; approving stage 4 completes the job."""
+    return service.approve(db, user, job_id, stage, background)
+
+
+@router.post("/{job_id}/milestones/{stage}/request-changes", response_model=MilestonesResponse)
+def request_milestone_changes(
+    job_id: str,
+    payload: RequestChangesRequest,
+    background: BackgroundTasks,
+    stage: int = Stage,
+    user: AuthUser = Depends(current_customer),
+    db: Session = Depends(get_db),
+    service: MilestoneService = Depends(get_milestone_service),
+) -> MilestonesResponse:
+    """Customer: send the stage back with a reason; the pro sends new photos."""
+    return service.request_changes(db, user, job_id, stage, payload.reason, background)
 
 
 # ----- Chat between the customer and the hired pro -----

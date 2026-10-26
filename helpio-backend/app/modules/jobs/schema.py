@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, Field, StringConstraints, model_validator
 
-from app.modules.jobs.model import InviteStatus, JobStatus, QuoteStatus
+from app.modules.jobs.model import InviteStatus, JobEventType, JobStatus, MilestoneStatus, QuoteStatus
 from app.modules.providers.model import OnboardingStatus, Proficiency
 
 # Money is in paise: ₹100 to ₹10 lakh
@@ -70,6 +70,9 @@ class JobResponse(BaseModel):
     updated_at: datetime
     # Last change after posting; null if never edited
     edited_at: datetime | None
+    # After hire: the first stage not yet approved (1-4) and its state; null before hire or when all are approved
+    milestone_stage: int | None = None
+    milestone_status: MilestoneStatus | None = None
 
 
 class CreateQuoteRequest(BaseModel):
@@ -283,3 +286,77 @@ class ChatResponse(BaseModel):
     other_name: str
     other_avatar_url: str | None
     messages: list[MessageResponse]
+
+
+# ----- Milestones: four 25% stages with photos, a note and the customer's approval -----
+
+Note = Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=1000)]
+
+
+class RequestChangesRequest(BaseModel):
+    reason: Note
+
+
+class MilestonePhotoResponse(BaseModel):
+    id: str
+    content_type: str
+    url: str
+
+
+class MilestoneSubmissionResponse(BaseModel):
+    id: str
+    note: str
+    photos: list[MilestonePhotoResponse]
+    submitted_at: datetime
+    # submitted (waiting), approved or changes_requested
+    review_status: MilestoneStatus
+    # The customer's reason when asking for changes
+    review_note: str | None
+    reviewed_at: datetime | None
+
+
+class MilestoneResponse(BaseModel):
+    stage: int
+    percent: int
+    status: MilestoneStatus
+    # This stage's share of the hired quote
+    amount_paise: int
+    approved_at: datetime | None
+    # Oldest first; the last one is the current attempt
+    submissions: list[MilestoneSubmissionResponse]
+
+
+class JobEventResponse(BaseModel):
+    id: str
+    type: JobEventType
+    # "You", "Ravi S." or "Asha K."
+    actor_label: str | None
+    data: dict
+    created_at: datetime
+
+
+class MilestonesResponse(BaseModel):
+    job_id: str
+    job_title: str
+    job_status: JobStatus
+    progress_pct: int
+    # The hired quote, and the approved stages' share of it
+    amount_paise: int
+    earned_paise: int
+    # The first stage not yet approved; null when all are
+    current_stage: int | None
+    milestones: list[MilestoneResponse]
+    # Newest first
+    events: list[JobEventResponse]
+
+
+class ProviderJobResponse(NearbyJobResponse):
+    """A job the provider was hired for, with its progress."""
+
+    customer_name: str | None
+    started_at: datetime | None
+    amount_paise: int
+    earned_paise: int
+    milestone_stage: int | None
+    milestone_status: MilestoneStatus | None
+    unread_messages: int

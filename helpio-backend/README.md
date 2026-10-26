@@ -102,6 +102,10 @@ backend's outgoing IP (see `docs/superpowers/plans/2026-10-01-signup-email-failu
 For local development without email, set `AUTH_DEV_EMAIL_CONSOLE=true` in `.env.dev`: reset codes are
 printed to the uvicorn console instead. Settings refuse this flag when `APP_ENV=prod`.
 
+**Notification emails** (hired, work started, each 25% update, approvals, changes requested, completed) use the
+same Brevo settings and are sent after the response. Set `APP_WEB_URL` (e.g. `https://app.helpio.in`) to add an
+"Open in Helpio" link; without it the email has no link. The in-app bell works either way.
+
 **Google:** set `GOOGLE_CLIENT_ID` to the Web Client ID from Google Cloud. The frontend uses the same ID
 as `VITE_GOOGLE_CLIENT_ID`, and every app origin (e.g. `http://localhost:5173`) must be listed under the
 OAuth client's Authorised JavaScript origins.
@@ -201,6 +205,7 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 11. `migrations/202610290001_profiles_addresses.sql`: customer saved addresses and the provider bio
 12. `migrations/202610290002_job_invites.sql`: direct requests from a customer to a chosen pro
 13. `migrations/202610300001_job_start_pin_and_chat.sql`: start PIN on jobs and the job chat table
+14. `migrations/202610310001_job_milestones_notifications.sql`: four 25% stages per hired job (photo updates the customer approves), the job timeline and in-app notifications
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

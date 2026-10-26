@@ -131,3 +131,35 @@ class PinLockedError(JobError):
 class ChatNotAvailableError(JobError):
     status_code = 409
     detail = "Chat opens once you hire a pro"
+
+
+class JobNotInProgressError(JobError):
+    status_code = 409
+    detail = "Start the job with the customer's PIN before sending progress"
+
+
+class MilestoneNotFoundError(JobError):
+    status_code = 404
+    detail = "Stage not found"
+
+
+class MilestoneLockedError(JobError):
+    status_code = 409
+    detail = "The previous stage needs the customer's approval first"
+
+
+class MilestoneNotOpenError(JobError):
+    status_code = 409
+    detail = "This stage is already waiting for approval or approved"
+
+
+class MilestoneNotSubmittedError(JobError):
+    status_code = 409
+    detail = "There's no update waiting for your review on this stage"
+
+
+class MilestonePhotosRequiredError(JobError):
+    status_code = 422
+
+    def __init__(self, limit: int) -> None:
+        super().__init__(f"Add 1 to {limit} photos of the work")

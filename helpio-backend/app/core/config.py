@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     brevo_smtp_key: SecretStr = SecretStr("")
     brevo_from_email: str = ""
     google_client_id: str = ""
+    # The web app's address, for links in notification emails, e.g. "https://app.helpio.in"
+    app_web_url: str = ""
 
     # Cloudinary stores job photos and videos; only their URLs are saved in the database.
     cloudinary_cloud_name: str = ""
