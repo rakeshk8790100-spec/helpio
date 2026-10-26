@@ -13,18 +13,18 @@ import { callEmergency } from '../lib/safety';
 const ACTIVE_COPY: Partial<Record<JobStatus, (job: NearbyJob) => { statusLabel: string; nextStep: string; actionLabel: string }>> = {
   [JobStatus.ACCEPTED]: () => ({
     statusLabel: 'You are hired',
-    nextStep: "Waiting for the customer to pay into escrow. Don't start the work yet.",
-    actionLabel: 'View job',
+    nextStep: "At the customer's door, enter their start PIN to begin.",
+    actionLabel: 'Start job',
   }),
   [JobStatus.FUNDED]: () => ({
     statusLabel: 'Payment secured',
     nextStep: "When you arrive, enter the customer's start PIN to begin.",
     actionLabel: 'Start job',
   }),
-  [JobStatus.IN_PROGRESS]: (job) => ({
+  [JobStatus.IN_PROGRESS]: () => ({
     statusLabel: 'In progress',
-    nextStep: `Next: upload proof for the ${Math.min(job.progressPct + 25, 100)}% stage and ask for approval.`,
-    actionLabel: 'Upload proof',
+    nextStep: 'Work has started. Chat with the customer from the job page.',
+    actionLabel: 'Open job',
   }),
 };
 
@@ -58,7 +58,7 @@ export const useProviderHome = (user: AuthUser): ProviderHomeLayoutProps => {
       title: active.title,
       progressPct: active.progressPct,
       ...copy,
-      onAction: () => navigate(toPath(RouterKeys.PRO_WORK, { id: active.id })),
+      onAction: () => navigate(toPath(RouterKeys.PRO_JOB_DETAIL, { id: active.id })),
       onSafety: callEmergency,
     } : null,
     invites: data.invites.map((job) => ({ job, onOpen: () => navigate(toPath(RouterKeys.PRO_JOB_DETAIL, { id: job.id })) })),

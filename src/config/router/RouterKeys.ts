@@ -28,6 +28,7 @@ export const RouterKeys = {
   PRO_VERIFICATION: '/pro/verification',
   PRO_JOBS: '/pro/jobs',
   PRO_JOB_DETAIL: '/pro/jobs/:id',
+  PRO_JOB_CHAT: '/pro/jobs/:id/chat',
   PRO_WORK: '/pro/work/:id',
   PRO_EARNINGS: '/pro/earnings',
   SERVICE_DETAIL: '/services/:id',

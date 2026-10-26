@@ -3,14 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { App, Form } from 'antd';
 import type { ProviderJobLayoutProps, ProviderQuoteProps, QuoteFormValues } from '../client/default/jobs/jobs.layout.types';
 import type { AuthUser } from '../common/CommonDto';
-import { QuoteStatus } from '../common/CommonEnum';
-import { RouterKeys } from '../config/router/RouterKeys';
+import { JobStatus, QuoteStatus } from '../common/CommonEnum';
+import { RouterKeys, toPath } from '../config/router/RouterKeys';
+import { formatClock } from '../lib/utils';
 import { apiErrorMessage } from '../lib/apiError';
 import { pendingOnboardingPath } from '../pages/auth/authRedirect';
 import {
   useCreateQuoteMutation,
   useDeclineInviteMutation,
   useGetNearbyJobQuery,
+  useStartJobMutation,
   useWithdrawQuoteMutation,
 } from '../pages/jobs/jobs.api';
 import { jobBadge, jobFacts } from './jobItems';
@@ -30,6 +32,9 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
   const [createQuote, { isLoading: submitting }] = useCreateQuoteMutation();
   const [withdrawQuote, { isLoading: withdrawing }] = useWithdrawQuoteMutation();
   const [declineInvite, { isLoading: declining }] = useDeclineInviteMutation();
+  const [startJob, { isLoading: starting }] = useStartJobMutation();
+  const [pin, setPin] = useState('');
+  const [startError, setStartError] = useState<string>();
   const [form] = Form.useForm<QuoteFormValues>();
   const [quoteError, setQuoteError] = useState<string>();
 
@@ -37,15 +42,9 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
   if (!job) return { status: 'error', message: apiErrorMessage(error), onRetry: refetch };
 
   const mine = job.myQuote;
-  const quote: ProviderQuoteProps = !job.canQuote
+  // A sent (or accepted) quote shows first: the sign-up lock only matters before quoting
+  const quote: ProviderQuoteProps = mine && mine.status !== QuoteStatus.WITHDRAWN
     ? {
-        state: 'locked',
-        reason: 'Quoting unlocks once your skills and service area are saved.',
-        actionLabel: 'Finish sign-up',
-        onAction: () => navigate(pendingOnboardingPath(user) ?? RouterKeys.ONBOARDING_SKILLS),
-      }
-    : mine && mine.status !== QuoteStatus.WITHDRAWN
-      ? {
           state: 'sent',
           quote: mine,
           changedSince: job.editedAfterMyQuote,
@@ -58,6 +57,13 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
               message.error(apiErrorMessage(e));
             }
           },
+        }
+    : !job.canQuote
+      ? {
+          state: 'locked',
+          reason: 'Quoting unlocks once your skills and service area are saved.',
+          actionLabel: 'Finish sign-up',
+          onAction: () => navigate(pendingOnboardingPath(user) ?? RouterKeys.ONBOARDING_SKILLS),
         }
       : {
           state: 'form',
@@ -94,8 +100,39 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
       customerLabel: job.customerLabel,
       quoteCount: job.quoteCount,
     },
+    hired: job.hired
+      ? {
+          customerName: job.customerName ?? job.customerLabel,
+          address: [job.exactLocation?.areaName, job.exactLocation?.pincode].filter(Boolean).join(' ') || 'Address not given',
+          coordinates: job.exactLocation?.coordinates ?? null,
+          start:
+            job.status === JobStatus.ACCEPTED
+              ? {
+                  pin,
+                  onPinChange: (value) => {
+                    setStartError(undefined);
+                    setPin(value);
+                  },
+                  starting,
+                  error: startError,
+                  onStart: async () => {
+                    if (!/^\d{4}$/.test(pin)) return setStartError('Enter the 4-digit PIN from the customer.');
+                    try {
+                      await startJob({ jobId: job.id, pin }).unwrap();
+                      message.success('Job started. Good luck!');
+                    } catch (e) {
+                      setPin('');
+                      setStartError(apiErrorMessage(e));
+                    }
+                  },
+                }
+              : null,
+          startedLabel: job.startedAt ? `In progress since ${formatClock(job.startedAt)}` : null,
+          chat: { unread: job.unreadMessages, onOpen: () => navigate(toPath(RouterKeys.PRO_JOB_CHAT, { id: job.id })) },
+        }
+      : null,
     invite:
-      job.inviteStatus !== null
+      !job.hired && job.inviteStatus !== null
         ? {
             message: job.inviteMessage,
             declining,

@@ -3,7 +3,7 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from './http.config';
 
 /** Cache tags shared by all feature modules, so one feature can invalidate another's data. */
-export const TAG_TYPES = ['Session', 'Catalog', 'Onboarding', 'Service', 'Jobs', 'Addresses', 'Providers'] as const;
+export const TAG_TYPES = ['Session', 'Catalog', 'Onboarding', 'Service', 'Jobs', 'Addresses', 'Providers', 'Messages'] as const;
 
 export type TagType = (typeof TAG_TYPES)[number];
 

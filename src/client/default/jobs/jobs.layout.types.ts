@@ -1,8 +1,8 @@
 import type { ComponentProps } from 'react';
 import type { FormInstance } from 'antd';
-import type { CustomerQuote, JobAttachment, JobInvite, MapCircle, NearbyJob, JobQuote } from '../../../common/CommonDto';
+import type { Coordinates, CustomerQuote, HiredPro, JobAttachment, JobInvite, MapCircle, NearbyJob, JobQuote } from '../../../common/CommonDto';
 import type { BadgeTone, ChipOption } from '../../../component/ui';
-import type { CurrentLocationButton, JobMapItem, PhotoPicker } from '../../../component/marketplace';
+import type { ChatBubble, CurrentLocationButton, JobMapItem, PhotoPicker } from '../../../component/marketplace';
 import type { JobItem } from '../home/home.layout.types';
 import type { WithLoading, WithStatus } from '../layout.types';
 
@@ -86,10 +86,28 @@ export type JobDetailLayoutProps = WithStatus<{
   draft: { onContinue: () => void } | null;
   /** Posted and nobody hired yet; `hasQuotes` adds a note that quoters will see the change */
   edit: { onEdit: () => void; hasQuotes: boolean } | null;
+  /** The pro the customer hired, and what happens next */
+  hired: {
+    pro: HiredPro;
+    nextStep: string;
+    onOpen: () => void;
+    /** Until work starts: the PIN to share at the door */
+    pin: { value: string; resetting: boolean; onReset: () => void } | null;
+    /** e.g. "Work started at 4:05 PM" */
+    startedLabel: string | null;
+    chat: { unread: number; onOpen: () => void };
+  } | null;
   quotes: {
-    items: { quote: CustomerQuote; cheapest: boolean }[];
-    /** Why accepting isn't possible yet */
-    lockedNote: string;
+    items: {
+      quote: CustomerQuote;
+      cheapest: boolean;
+      /** Set while the job is open and the quote pending */
+      onAccept?: () => void;
+      onReject?: () => void;
+      acting: 'accept' | 'reject' | null;
+    }[];
+    /** A quote is being answered: the others wait */
+    busy: boolean;
   } | null;
   /** Pros the customer sent this job to directly */
   invites: { invite: JobInvite; onOpen: () => void }[];
@@ -157,7 +175,33 @@ export type ProviderJobLayoutProps = WithStatus<{
   summary: JobSummary & { customerLabel: string; quoteCount: number };
   /** The customer asked this pro directly */
   invite: { message: string | null; declining: boolean; onDecline: () => void } | null;
+  /** My quote was accepted: the customer's name and the exact place */
+  hired: {
+    customerName: string;
+    address: string;
+    coordinates: Coordinates | null;
+    /** Until work starts: enter the customer's PIN */
+    start: { pin: string; onPinChange: (pin: string) => void; starting: boolean; error?: string; onStart: () => void } | null;
+    /** e.g. "In progress since 4:05 PM" */
+    startedLabel: string | null;
+    chat: { unread: number; onOpen: () => void };
+  } | null;
   circle: MapCircle | null;
   quote: ProviderQuoteProps;
+  onBack: () => void;
+}>;
+
+// ----- Chat between the customer and the hired pro -----
+
+export type JobChatLayoutProps = WithStatus<{
+  title: string;
+  otherName: string;
+  otherAvatarUrl: string | null;
+  messages: ChatBubble[];
+  draft: string;
+  onDraftChange: (value: string) => void;
+  sending: boolean;
+  error?: string;
+  onSend: () => void;
   onBack: () => void;
 }>;

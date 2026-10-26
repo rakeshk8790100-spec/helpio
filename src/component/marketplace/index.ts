@@ -1,6 +1,8 @@
 export { default as ActiveJobCard } from './ActiveJobCard';
 export { default as AudienceCard } from './AudienceCard';
 export { default as CategoryGrid } from './CategoryGrid';
+export { default as ChatThread } from './ChatThread';
+export type { ChatBubble } from './ChatThread';
 export { default as ChecklistCard } from './ChecklistCard';
 export { default as CurrentLocationButton } from './CurrentLocationButton';
 export { default as EarningsCalculator } from './EarningsCalculator';

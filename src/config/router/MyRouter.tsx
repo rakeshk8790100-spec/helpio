@@ -36,7 +36,6 @@ const myRouter = createBrowserRouter([
           ...customerJobRoutes,
           { path: RouterKeys.SEARCH, element: <ProviderSearchPage /> },
           { path: RouterKeys.CATEGORY, element: <CategoryRedirectPage /> },
-          ...comingSoon([RouterKeys.JOB_CHAT]),
         ],
       },
       // Provider work: verification, nearby jobs, active job and earnings

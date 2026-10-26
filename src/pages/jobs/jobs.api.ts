@@ -1,15 +1,61 @@
 import { toJob, toJobQuote, toMapCircle, toNearbyJob } from '../../common/CommonApi';
 import type { JobApiDto, QuoteApiDto } from '../../common/CommonApi';
-import type { Job, JobAttachment, JobDetail, JobQuote, NearbyJobDetail, NearbyJobs } from '../../common/CommonDto';
+import type { Job, JobAttachment, JobChat, JobDetail, JobQuote, NearbyJobDetail, NearbyJobs } from '../../common/CommonDto';
 import { baseApi } from '../../config/base_service/base.api';
 import type {
   AttachmentApiDto,
+  ChatApiDto,
   JobDetailApiDto,
   JobInput,
   NearbyFilters,
   NearbyJobDetailApiDto,
   NearbyJobsApiDto,
 } from './types/jobs.dto';
+
+const toJobDetail = (dto: JobDetailApiDto): JobDetail => ({
+  ...toJob(dto),
+  attachments: dto.attachments.map(toAttachment),
+  quotes: dto.quotes.map((q) => ({
+    ...toJobQuote(q),
+    providerLabel: q.provider_label,
+    proficiency: q.proficiency,
+    yearsExperience: q.years_experience,
+    approxDistanceKm: q.approx_distance_km,
+  })),
+  invites: dto.invites.map((i) => ({
+    providerId: i.provider_id,
+    providerLabel: i.provider_label,
+    avatarUrl: i.avatar_url,
+    status: i.status,
+  })),
+  hired: dto.hired && {
+    providerId: dto.hired.provider_id,
+    providerLabel: dto.hired.provider_label,
+    avatarUrl: dto.hired.avatar_url,
+    amount: dto.hired.amount_paise / 100,
+  },
+  startPin: dto.start_pin,
+  startedAt: dto.started_at,
+  unreadMessages: dto.unread_messages,
+});
+
+const toNearbyJobDetail = (dto: NearbyJobDetailApiDto): NearbyJobDetail => ({
+  ...toNearbyJob(dto),
+  attachments: dto.attachments.map(toAttachment),
+  canQuote: dto.can_quote,
+  hired: dto.hired,
+  exactLocation: dto.exact_location && {
+    coordinates:
+      dto.exact_location.latitude !== null && dto.exact_location.longitude !== null
+        ? { latitude: dto.exact_location.latitude, longitude: dto.exact_location.longitude }
+        : null,
+    pincode: dto.exact_location.pincode,
+    areaName: dto.exact_location.area_name,
+  },
+  customerName: dto.customer_name,
+  startedAt: dto.started_at,
+  unreadMessages: dto.unread_messages,
+});
 
 const toAttachment = (dto: AttachmentApiDto): JobAttachment => ({ id: dto.id, contentType: dto.content_type, url: dto.url });
 
@@ -43,24 +89,19 @@ export const jobsApi = baseApi.injectEndpoints({
     }),
     getJob: builder.query<JobDetail, string>({
       query: (id) => `/jobs/${id}`,
-      transformResponse: (dto: JobDetailApiDto): JobDetail => ({
-        ...toJob(dto),
-        attachments: dto.attachments.map(toAttachment),
-        quotes: dto.quotes.map((q) => ({
-          ...toJobQuote(q),
-          providerLabel: q.provider_label,
-          proficiency: q.proficiency,
-          yearsExperience: q.years_experience,
-          approxDistanceKm: q.approx_distance_km,
-        })),
-        invites: dto.invites.map((i) => ({
-          providerId: i.provider_id,
-          providerLabel: i.provider_label,
-          avatarUrl: i.avatar_url,
-          status: i.status,
-        })),
-      }),
+      transformResponse: toJobDetail,
       providesTags: ['Jobs'],
+    }),
+    /** Hire this pro; other pending quotes are declined. Payment comes later. */
+    acceptQuote: builder.mutation<JobDetail, { jobId: string; quoteId: string }>({
+      query: ({ jobId, quoteId }) => ({ url: `/jobs/${jobId}/quotes/${quoteId}/accept`, method: 'POST' }),
+      transformResponse: toJobDetail,
+      invalidatesTags: ['Jobs'],
+    }),
+    declineQuote: builder.mutation<JobDetail, { jobId: string; quoteId: string }>({
+      query: ({ jobId, quoteId }) => ({ url: `/jobs/${jobId}/quotes/${quoteId}/decline`, method: 'POST' }),
+      transformResponse: toJobDetail,
+      invalidatesTags: ['Jobs'],
     }),
     createJob: builder.mutation<Job, JobInput & { title: string }>({
       query: (input) => ({ url: '/jobs', method: 'POST', body: toJobBody(input) }),
@@ -99,7 +140,43 @@ export const jobsApi = baseApi.injectEndpoints({
       invalidatesTags: ['Jobs'],
     }),
 
+    resetStartPin: builder.mutation<JobDetail, string>({
+      query: (jobId) => ({ url: `/jobs/${jobId}/start-pin/reset`, method: 'POST' }),
+      transformResponse: toJobDetail,
+      invalidatesTags: ['Jobs'],
+    }),
+
+    // ----- Chat (customer and hired pro) -----
+    getMessages: builder.query<JobChat, string>({
+      query: (jobId) => `/jobs/${jobId}/messages`,
+      transformResponse: (dto: ChatApiDto): JobChat => ({
+        jobId: dto.job_id,
+        jobTitle: dto.job_title,
+        otherName: dto.other_name,
+        otherAvatarUrl: dto.other_avatar_url,
+        messages: dto.messages.map((m) => ({
+          id: m.id,
+          body: m.body,
+          mine: m.mine,
+          senderName: m.sender_name,
+          createdAt: m.created_at,
+        })),
+      }),
+      providesTags: ['Messages'],
+    }),
+    sendMessage: builder.mutation<void, { jobId: string; body: string }>({
+      query: ({ jobId, body }) => ({ url: `/jobs/${jobId}/messages`, method: 'POST', body: { body } }),
+      transformResponse: () => undefined,
+      invalidatesTags: ['Messages'],
+    }),
+
     // ----- Provider -----
+    /** Start work with the PIN the customer shares at the door */
+    startJob: builder.mutation<NearbyJobDetail, { jobId: string; pin: string }>({
+      query: ({ jobId, pin }) => ({ url: `/jobs/${jobId}/start`, method: 'POST', body: { pin } }),
+      transformResponse: toNearbyJobDetail,
+      invalidatesTags: ['Jobs'],
+    }),
     declineInvite: builder.mutation<void, string>({
       query: (jobId) => ({ url: `/jobs/${jobId}/invite/decline`, method: 'POST' }),
       invalidatesTags: ['Jobs'],
@@ -123,11 +200,7 @@ export const jobsApi = baseApi.injectEndpoints({
     }),
     getNearbyJob: builder.query<NearbyJobDetail, string>({
       query: (id) => `/jobs/nearby/${id}`,
-      transformResponse: (dto: NearbyJobDetailApiDto): NearbyJobDetail => ({
-        ...toNearbyJob(dto),
-        attachments: dto.attachments.map(toAttachment),
-        canQuote: dto.can_quote,
-      }),
+      transformResponse: toNearbyJobDetail,
       providesTags: ['Jobs'],
     }),
     createQuote: builder.mutation<JobQuote, { jobId: string; amount: number; message: string | null }>({
@@ -161,4 +234,10 @@ export const {
   useWithdrawQuoteMutation,
   useInviteProviderMutation,
   useDeclineInviteMutation,
+  useAcceptQuoteMutation,
+  useDeclineQuoteMutation,
+  useResetStartPinMutation,
+  useStartJobMutation,
+  useGetMessagesQuery,
+  useSendMessageMutation,
 } = jobsApi;

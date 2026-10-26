@@ -28,11 +28,20 @@ export interface JobDetailApiDto extends JobApiDto {
   attachments: AttachmentApiDto[];
   quotes: CustomerQuoteApiDto[];
   invites: InviteApiDto[];
+  hired: { provider_id: string; provider_label: string; avatar_url: string | null; amount_paise: number } | null;
+  start_pin: string | null;
+  started_at: string | null;
+  unread_messages: number;
 }
 
 export interface NearbyJobDetailApiDto extends NearbyJobApiDto {
   attachments: AttachmentApiDto[];
   can_quote: boolean;
+  hired: boolean;
+  exact_location: { latitude: number | null; longitude: number | null; pincode: string | null; area_name: string | null } | null;
+  customer_name: string | null;
+  started_at: string | null;
+  unread_messages: number;
 }
 
 export interface NearbyJobsApiDto {
@@ -64,4 +73,12 @@ export interface NearbyFilters {
   maxKm?: number;
   hasBudget?: boolean;
   urgentOnly?: boolean;
+}
+
+export interface ChatApiDto {
+  job_id: string;
+  job_title: string;
+  other_name: string;
+  other_avatar_url: string | null;
+  messages: { id: string; body: string; mine: boolean; sender_name: string; created_at: string }[];
 }

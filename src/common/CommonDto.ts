@@ -224,15 +224,34 @@ export interface JobInvite {
   status: InviteStatus;
 }
 
+/** The pro whose quote the customer accepted */
+export interface HiredPro {
+  providerId: string;
+  providerLabel: string;
+  avatarUrl: string | null;
+  amount: number;
+}
+
 export interface JobDetail extends Job {
   attachments: JobAttachment[];
   quotes: CustomerQuote[];
   invites: JobInvite[];
+  hired: HiredPro | null;
+  /** Hired, not started yet: shared with the pro at the door */
+  startPin: string | null;
+  startedAt: string | null;
+  unreadMessages: number;
 }
 
 export interface NearbyJobDetail extends NearbyJob {
   attachments: JobAttachment[];
   canQuote: boolean;
+  /** My quote was accepted: the exact place and the customer's name are shared from here on */
+  hired: boolean;
+  exactLocation: { coordinates: Coordinates | null; pincode: string | null; areaName: string | null } | null;
+  customerName: string | null;
+  startedAt: string | null;
+  unreadMessages: number;
 }
 
 export interface NearbyJobs {
@@ -325,4 +344,23 @@ export interface ProviderProfile extends ProviderCard {
   categories: { id: string; name: string; skills: PublicSkill[] }[];
   availability: AvailabilitySlot[];
   radiusKm: number | null;
+}
+
+/* ── Job chat (customer and hired pro) ──── */
+
+export interface ChatMessage {
+  id: string;
+  body: string;
+  mine: boolean;
+  senderName: string;
+  createdAt: string;
+}
+
+export interface JobChat {
+  jobId: string;
+  jobTitle: string;
+  /** The other person, e.g. "Ravi S." */
+  otherName: string;
+  otherAvatarUrl: string | null;
+  messages: ChatMessage[];
 }

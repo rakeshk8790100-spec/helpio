@@ -55,3 +55,10 @@ export const formatShortDate = (iso: string) =>
 
 /** First name for greetings, e.g. "Asha Kumar" → "Asha" */
 export const firstName = (name: string | null) => name?.trim().split(/\s+/)[0] || 'there';
+
+/** ISO date-time → "4:05 PM", or "28 Oct, 4:05 PM" when not today */
+export const formatClock = (iso: string) => {
+  const date = new Date(iso);
+  const time = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+  return date.toDateString() === new Date().toDateString() ? time : `${formatShortDate(iso)}, ${time}`;
+};

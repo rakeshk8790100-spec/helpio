@@ -19,17 +19,17 @@ const HOME_PROS = 6;
 const ACTIVE_COPY: Partial<Record<JobStatus, (job: Job) => { statusLabel: string; nextStep: string; actionLabel: string }>> = {
   [JobStatus.ACCEPTED]: () => ({
     statusLabel: 'Pro hired',
-    nextStep: 'Pay into escrow so your pro can start. Money is released only for approved work.',
-    actionLabel: 'Pay into escrow',
+    nextStep: 'Share your start PIN only when the pro is at your door. Work starts with it.',
+    actionLabel: 'View PIN',
   }),
   [JobStatus.FUNDED]: () => ({
     statusLabel: 'Payment secured',
     nextStep: 'Share your start PIN when the pro arrives. Work begins only with it.',
     actionLabel: 'View start PIN',
   }),
-  [JobStatus.IN_PROGRESS]: (job) => ({
+  [JobStatus.IN_PROGRESS]: () => ({
     statusLabel: 'Work in progress',
-    nextStep: `Next: review proof for the ${Math.min(job.progressPct + 25, 100)}% stage.`,
+    nextStep: 'Your pro has started. Chat with them from the job page.',
     actionLabel: 'Open job',
   }),
 };

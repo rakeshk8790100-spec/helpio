@@ -1,5 +1,5 @@
 import { Alert, Button, Form, Input, InputNumber, Popconfirm } from 'antd';
-import { Lock, MessageCircleQuestion, Send, UserRound } from 'lucide-react';
+import { CircleCheck, CirclePlay, Lock, MapPin, MessageCircle, MessageCircleQuestion, Send, UserRound } from 'lucide-react';
 import { QuoteStatus } from '../../../common/CommonEnum';
 import { JobMap } from '../../../component/marketplace';
 import { AlertBanner, Chip, PageSkeleton, StatusBadge } from '../../../component/ui';
@@ -107,6 +107,60 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
     <div className="flex flex-col gap-5">
       <JobSummaryBlock summary={p.summary} onBack={p.onBack} backLabel="Jobs near you" />
 
+      {p.hired && (
+        <section className="rounded-2xl bg-emerald-50 p-4">
+          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-800">
+            <CircleCheck size={16} />
+            You're hired for this job
+          </div>
+          <div className="mt-2 flex flex-col gap-1 text-sm text-slate-700">
+            <span className="flex items-center gap-2">
+              <UserRound size={14} className="text-slate-500" />
+              {p.hired.customerName}
+            </span>
+            <span className="flex items-center gap-2">
+              <MapPin size={14} className="text-slate-500" />
+              {p.hired.address}
+            </span>
+          </div>
+          {p.hired.startedLabel && (
+            <div className="mt-3 flex items-center gap-2 text-sm font-semibold text-emerald-800">
+              <CirclePlay size={16} />
+              {p.hired.startedLabel}
+            </div>
+          )}
+          {p.hired.start && (
+            <div className="mt-4 rounded-xl bg-white p-3">
+              <div className="text-sm font-semibold text-slate-900">Start the job</div>
+              <div className="mt-0.5 text-xs text-slate-500">At the door, ask {p.hired.customerName} for their 4-digit start PIN.</div>
+              <div className="mt-3 flex justify-center">
+                <Input.OTP length={4} value={p.hired.start.pin} onChange={p.hired.start.onPinChange} size="large" aria-label="Start PIN" />
+              </div>
+              {p.hired.start.error && <Alert type="error" showIcon title={p.hired.start.error} className="!mt-3" />}
+              <Button type="primary" size="large" block loading={p.hired.start.starting} onClick={p.hired.start.onStart} className="!mt-3">
+                Start job
+              </Button>
+            </div>
+          )}
+          <Button size="large" block icon={<MessageCircle size={16} />} onClick={p.hired.chat.onOpen} className="!mt-3">
+            Chat with {p.hired.customerName}
+            {p.hired.chat.unread > 0 && (
+              <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">{p.hired.chat.unread}</span>
+            )}
+          </Button>
+          {p.hired.coordinates && (
+            <div className="mt-3">
+              <JobMap
+                area={null}
+                jobs={[]}
+                center={{ latitude: p.hired.coordinates.latitude, longitude: p.hired.coordinates.longitude, radiusM: 40 }}
+                height={180}
+              />
+            </div>
+          )}
+        </section>
+      )}
+
       {p.invite && (
         <section className="rounded-2xl border border-indigo-100 bg-indigo-50 p-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-indigo-900">
@@ -128,17 +182,19 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
         </section>
       )}
 
-      <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5 text-sm">
-        <span className="flex items-center gap-2 text-slate-700">
-          <UserRound size={16} />
-          {p.summary.customerLabel}
-        </span>
-        <span className="text-xs text-slate-500">
-          {p.summary.quoteCount ? `${p.summary.quoteCount} other quote${p.summary.quoteCount === 1 ? '' : 's'}` : 'Be the first to quote'}
-        </span>
-      </div>
+      {!p.hired && (
+        <div className="flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2.5 text-sm">
+          <span className="flex items-center gap-2 text-slate-700">
+            <UserRound size={16} />
+            {p.summary.customerLabel}
+          </span>
+          <span className="text-xs text-slate-500">
+            {p.summary.quoteCount ? `${p.summary.quoteCount} other quote${p.summary.quoteCount === 1 ? '' : 's'}` : 'Be the first to quote'}
+          </span>
+        </div>
+      )}
 
-      {p.circle && (
+      {p.circle && !p.hired && (
         <div className="flex flex-col gap-1.5">
           <JobMap area={null} jobs={[]} center={p.circle} height={200} />
           <div className="text-[11px] text-slate-500">Approximate area. The exact address is shared after you're hired.</div>
@@ -147,14 +203,16 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
 
       <QuoteSection quote={p.quote} />
 
-      <button
-        type="button"
-        disabled
-        className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-500 disabled:bg-slate-50"
-      >
-        <MessageCircleQuestion size={16} />
-        Ask the customer a question · coming soon
-      </button>
+      {!p.hired && (
+        <button
+          type="button"
+          disabled
+          className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-500 disabled:bg-slate-50"
+        >
+          <MessageCircleQuestion size={16} />
+          Ask the customer a question · coming soon
+        </button>
+      )}
     </div>
   );
 };

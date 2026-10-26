@@ -1,4 +1,5 @@
-import { BadgeCheck, Lock, MapPin } from 'lucide-react';
+import { Button, Popconfirm } from 'antd';
+import { BadgeCheck, MapPin } from 'lucide-react';
 import type { CustomerQuote } from '../../common/CommonDto';
 import { QuoteStatus } from '../../common/CommonEnum';
 import { formatINR } from '../../lib/utils';
@@ -10,15 +11,17 @@ interface Props {
   quote: CustomerQuote;
   /** Lowest pending quote on the job */
   cheapest?: boolean;
-  /** Why Accept/Reject can't be used yet; omit once they work */
-  lockedNote?: string;
+  /** Pending quotes on an open job: hire this pro, or turn the quote down (each asks first) */
   onAccept?: () => void;
   onReject?: () => void;
+  /** Which action is in progress */
+  acting?: 'accept' | 'reject' | null;
+  /** Another quote is being answered; wait */
+  disabled?: boolean;
 }
 
 /** One provider's quote, as the customer sees it before hire: "Ravi S.", experience, ~distance, price and note. */
-const QuoteCard = ({ quote, cheapest = false, lockedNote, onAccept, onReject }: Props) => {
-  const locked = Boolean(lockedNote);
+const QuoteCard = ({ quote, cheapest = false, onAccept, onReject, acting = null, disabled = false }: Props) => {
   const experience = [
     quote.proficiency && PROFICIENCY_LABEL[quote.proficiency],
     quote.yearsExperience !== null && `${quote.yearsExperience} yrs`,
@@ -49,29 +52,25 @@ const QuoteCard = ({ quote, cheapest = false, lockedNote, onAccept, onReject }: 
         </div>
       </div>
       {quote.message && <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">{quote.message}</div>}
-      {quote.status === QuoteStatus.PENDING && (
-        <>
-          <div className="mt-3 grid grid-cols-[1fr_2fr] gap-2">
-            <button
-              type="button"
-              disabled={locked}
-              onClick={onReject}
-              className="h-10 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 active:scale-[.98] disabled:bg-slate-200 disabled:text-slate-500"
-            >
+      {quote.status === QuoteStatus.PENDING && onAccept && onReject && (
+        <div className="mt-3 grid grid-cols-[1fr_2fr] gap-2">
+          <Popconfirm title="Decline this quote?" okText="Decline" okButtonProps={{ danger: true }} onConfirm={onReject} disabled={disabled}>
+            <Button size="large" loading={acting === 'reject'} disabled={disabled && acting !== 'reject'}>
               Decline
-            </button>
-            <button
-              type="button"
-              disabled={locked}
-              onClick={onAccept}
-              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-indigo-600 text-sm font-semibold text-white active:scale-[.98] disabled:bg-slate-200 disabled:text-slate-500"
-            >
-              {locked && <Lock size={14} />}
+            </Button>
+          </Popconfirm>
+          <Popconfirm
+            title={`Hire ${quote.providerLabel} for ${formatINR(quote.amount)}?`}
+            description="Other quotes on this job will be declined."
+            okText="Hire"
+            onConfirm={onAccept}
+            disabled={disabled}
+          >
+            <Button type="primary" size="large" loading={acting === 'accept'} disabled={disabled && acting !== 'accept'}>
               Accept quote
-            </button>
-          </div>
-          {lockedNote && <div className="mt-2 text-[11px] text-slate-500">{lockedNote}</div>}
-        </>
+            </Button>
+          </Popconfirm>
+        </div>
       )}
     </div>
   );
