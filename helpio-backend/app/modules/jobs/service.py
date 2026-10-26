@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import secrets
 from dataclasses import dataclass
 from math import cos, pi, radians, sin
 from uuid import uuid4
@@ -17,6 +18,11 @@ from app.modules.jobs.exceptions import (
     AlreadyQuotedError,
     InviteNotAllowedError,
     InviteNotFoundError,
+    JobNotFoundForQuoteError,
+    JobNotStartableError,
+    PinLockedError,
+    WrongPinError,
+    QuoteNotPendingError,
     ProviderUnavailableError,
     TooManyInvitesError,
     AttachmentNotFoundError,
@@ -42,6 +48,7 @@ from app.modules.jobs.model import (
     JobStatus,
     QuoteStatus,
 )
+from app.modules.jobs.chat import unread_count
 from app.modules.jobs.repository import JobRepository
 from app.modules.jobs.schema import (
     ATTACHMENT_TYPES,
@@ -56,6 +63,8 @@ from app.modules.jobs.schema import (
     InviteResponse,
     CustomerHomeResponse,
     CustomerQuoteResponse,
+    ExactLocation,
+    HiredProResponse,
     EarningsSummary,
     JobDetailResponse,
     JobFields,
@@ -79,6 +88,7 @@ FUZZ_MIN_M, FUZZ_SPREAD_M, FUZZ_RADIUS_M = 200, 200, 600
 # Photos may change until a pro is hired
 EDITABLE_PHOTO_STATUSES = (JobStatus.DRAFT, JobStatus.OPEN)
 PROFICIENCY_RANK = {Proficiency.BEGINNER: 0, Proficiency.INTERMEDIATE: 1, Proficiency.EXPERT: 2}
+MAX_PIN_ATTEMPTS = 5
 MAX_INVITES = 5
 
 
@@ -113,6 +123,10 @@ def fuzzed_circle(job: Job) -> MapCircle | None:
     return MapCircle(
         latitude=round(job.latitude + dlat, 4), longitude=round(job.longitude + dlng, 4), radius_m=FUZZ_RADIUS_M
     )
+
+
+def new_pin() -> str:
+    return f"{secrets.randbelow(10_000):04d}"
 
 
 def pending_quotes(job: Job) -> list[JobQuote]:
@@ -165,6 +179,10 @@ class JobService:
             **self._job_response(job).model_dump(),
             attachments=self._attachments(job),
             quotes=[self._customer_quote(job, quote, profiles.get(quote.provider_id)) for quote in quotes],
+            hired=self._hired(job),
+            start_pin=job.start_pin if job.status == JobStatus.ACCEPTED else None,
+            started_at=job.started_at,
+            unread_messages=unread_count(db, job.id, user.id),
             invites=[
                 InviteResponse(
                     provider_id=invite.provider_id, provider_label=short_name(invite.provider.name, "Helpio pro"),
@@ -173,6 +191,68 @@ class JobService:
                 for invite in job.invites
             ],
         )
+
+    def accept_quote(self, db: Session, user: AuthUser, job_id: str, quote_id: str) -> JobDetailResponse:
+        """Hire the pro: their quote is accepted, every other pending quote declined. Escrow comes later."""
+        job, quote = self._own_pending_quote(db, user, job_id, quote_id)
+        quote.status = QuoteStatus.ACCEPTED
+        for other in job.quotes:
+            if other.id != quote.id and other.status == QuoteStatus.PENDING:
+                other.status = QuoteStatus.REJECTED
+        job.status = JobStatus.ACCEPTED
+        job.start_pin = new_pin()
+        job.start_pin_attempts = 0
+        db.commit()
+        return self.get_job(db, user, job.id)
+
+    def reset_start_pin(self, db: Session, user: AuthUser, job_id: str) -> JobDetailResponse:
+        job = self._own_job(db, user, job_id)
+        if job.status != JobStatus.ACCEPTED:
+            raise JobNotStartableError
+        job.start_pin = new_pin()
+        job.start_pin_attempts = 0
+        db.commit()
+        return self.get_job(db, user, job.id)
+
+    def start_job(self, db: Session, user: AuthUser, job_id: str, pin: str) -> NearbyJobDetailResponse:
+        """The hired pro starts work with the PIN the customer shares in person."""
+        job = JobRepository(db).get(job_id)
+        if job is None or not self._is_hired(job, user.id):
+            raise JobNotFoundError
+        if job.status != JobStatus.ACCEPTED or job.start_pin is None:
+            raise JobNotStartableError
+        if job.start_pin_attempts >= MAX_PIN_ATTEMPTS:
+            raise PinLockedError
+        if not hmac.compare_digest(pin, job.start_pin):
+            job.start_pin_attempts += 1
+            db.commit()
+            left = MAX_PIN_ATTEMPTS - job.start_pin_attempts
+            if left <= 0:
+                raise PinLockedError
+            raise WrongPinError(left)
+        job.status = JobStatus.IN_PROGRESS
+        job.started_at = utc_now()
+        job.start_pin = None
+        db.commit()
+        return self.nearby_job(db, user, job.id)
+
+    def decline_quote(self, db: Session, user: AuthUser, job_id: str, quote_id: str) -> JobDetailResponse:
+        """Turn one quote down; the job stays open for others."""
+        job, quote = self._own_pending_quote(db, user, job_id, quote_id)
+        quote.status = QuoteStatus.REJECTED
+        db.commit()
+        return self.get_job(db, user, job.id)
+
+    def _own_pending_quote(self, db: Session, user: AuthUser, job_id: str, quote_id: str) -> tuple[Job, JobQuote]:
+        job = self._own_job(db, user, job_id)
+        quote = next((q for q in job.quotes if q.id == quote_id), None)
+        if quote is None:
+            raise JobNotFoundForQuoteError
+        if job.status != JobStatus.OPEN:
+            raise JobNotOpenError
+        if quote.status != QuoteStatus.PENDING:
+            raise QuoteNotPendingError
+        return job, quote
 
     def invite_provider(self, db: Session, user: AuthUser, job_id: str, payload: CreateInviteRequest) -> JobDetailResponse:
         """Send an open job straight to a chosen pro; they see it first, wherever they work, and reply with a quote."""
@@ -258,11 +338,28 @@ class JobService:
         profile = self._provider_profile(db, user)
         match = next((m for m in self._matches(db, user, profile) if m.job.id == job_id), None)
         if match is None:
-            raise JobNotFoundError
+            # After hire the job leaves the open list; only the hired pro can still open it
+            job = JobRepository(db).get(job_id)
+            if job is None or not self._is_hired(job, user.id):
+                raise JobNotFoundError
+            metres = None
+            if None not in (profile.latitude, profile.longitude, job.latitude, job.longitude):
+                metres = distance_m(profile.latitude, profile.longitude, job.latitude, job.longitude)
+            match = Match(job, metres)
+        job = match.job
+        hired = self._is_hired(job, user.id)
         return NearbyJobDetailResponse(
-            **self._nearby_response(match.job, user, match.metres).model_dump(),
-            attachments=self._attachments(match.job),
+            **self._nearby_response(job, user, match.metres).model_dump(),
+            attachments=self._attachments(job),
+            # Sign-up only; quoting on a job that isn't open is refused separately
             can_quote=profile.onboarding_status == OnboardingStatus.COMPLETE,
+            hired=hired,
+            exact_location=ExactLocation(
+                latitude=job.latitude, longitude=job.longitude, pincode=job.pincode, area_name=job.area_name,
+            ) if hired else None,
+            customer_name=job.customer.name if hired else None,
+            started_at=job.started_at if hired else None,
+            unread_messages=unread_count(db, job.id, user.id) if hired else 0,
         )
 
     def create_quote(self, db: Session, user: AuthUser, job_id: str, payload: CreateQuoteRequest) -> QuoteResponse:
@@ -442,6 +539,18 @@ class JobService:
             m.job.id not in invited, not m.job.is_emergency, m.metres is None, m.metres or 0, -m.job.created_at.timestamp(),
         ))
         return results
+
+    def _is_hired(self, job: Job, provider_id: str) -> bool:
+        return any(q.provider_id == provider_id and q.status == QuoteStatus.ACCEPTED for q in job.quotes)
+
+    def _hired(self, job: Job) -> HiredProResponse | None:
+        quote = next((q for q in job.quotes if q.status == QuoteStatus.ACCEPTED), None)
+        if quote is None:
+            return None
+        return HiredProResponse(
+            provider_id=quote.provider_id, provider_label=short_name(quote.provider.name, "Helpio pro"),
+            avatar_url=quote.provider.avatar_url, amount_paise=quote.amount_paise,
+        )
 
     def _excluded(self, job: Job, filters: NearbyFilters) -> bool:
         return (filters.has_budget and job.budget_paise is None) or (filters.urgent_only and not job.is_emergency)

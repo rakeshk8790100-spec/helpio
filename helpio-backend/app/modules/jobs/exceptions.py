@@ -99,3 +99,35 @@ class ProviderUnavailableError(JobError):
 class InviteNotFoundError(JobError):
     status_code = 404
     detail = "There's no request for you on this job"
+
+
+class QuoteNotPendingError(JobError):
+    status_code = 409
+    detail = "This quote has already been answered or withdrawn"
+
+
+class JobNotFoundForQuoteError(JobError):
+    status_code = 404
+    detail = "Quote not found"
+
+
+class JobNotStartableError(JobError):
+    status_code = 409
+    detail = "This job can't be started now"
+
+
+class WrongPinError(JobError):
+    status_code = 400
+
+    def __init__(self, tries_left: int) -> None:
+        super().__init__(f"Wrong PIN. {tries_left} {'try' if tries_left == 1 else 'tries'} left.")
+
+
+class PinLockedError(JobError):
+    status_code = 429
+    detail = "Too many wrong PINs. Ask the customer to get a new PIN in the app."
+
+
+class ChatNotAvailableError(JobError):
+    status_code = 409
+    detail = "Chat opens once you hire a pro"

@@ -209,15 +209,42 @@ class CreateInviteRequest(BaseModel):
     message: Description | None = None
 
 
+class HiredProResponse(BaseModel):
+    provider_id: str
+    # "Ravi S."
+    provider_label: str
+    avatar_url: str | None
+    amount_paise: int
+
+
 class JobDetailResponse(JobResponse):
     attachments: list[AttachmentResponse]
     quotes: list[CustomerQuoteResponse]
     invites: list[InviteResponse]
+    # The pro whose quote was accepted
+    hired: HiredProResponse | None
+    # Hired, not started: the customer shares it with the pro at the door
+    start_pin: str | None
+    started_at: datetime | None
+    unread_messages: int
+
+
+class ExactLocation(BaseModel):
+    latitude: float | None
+    longitude: float | None
+    pincode: str | None
+    area_name: str | None
 
 
 class NearbyJobDetailResponse(NearbyJobResponse):
     attachments: list[AttachmentResponse]
     can_quote: bool
+    # My quote was accepted: the job's exact place and the customer's name are shared from here on
+    hired: bool
+    exact_location: ExactLocation | None
+    customer_name: str | None
+    started_at: datetime | None
+    unread_messages: int
 
 
 class CategoryOption(BaseModel):
@@ -231,3 +258,28 @@ class NearbyJobsResponse(BaseModel):
     # Categories of the provider's skills, for the filter
     categories: list[CategoryOption]
     jobs: list[NearbyJobResponse]
+
+
+class StartJobRequest(BaseModel):
+    pin: str = Field(pattern=r"^\d{4}$")
+
+
+class SendMessageRequest(BaseModel):
+    body: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1000)]
+
+
+class MessageResponse(BaseModel):
+    id: str
+    body: str
+    mine: bool
+    sender_name: str
+    created_at: datetime
+
+
+class ChatResponse(BaseModel):
+    job_id: str
+    job_title: str
+    # The other person, e.g. "Ravi S."
+    other_name: str
+    other_avatar_url: str | None
+    messages: list[MessageResponse]

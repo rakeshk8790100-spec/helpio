@@ -1,12 +1,20 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
 from app.modules.auth.model import AuthUser
-from app.modules.jobs.dependencies import current_customer, get_job_service
+from app.modules.auth.dependencies import get_current_user
+from app.modules.jobs.chat import JobChat
+from app.modules.jobs.dependencies import current_customer, get_job_chat, get_job_service
 from app.modules.jobs.schema import (
     MAX_ATTACHMENT_BYTES,
     AttachmentResponse,
+    ChatResponse,
+    MessageResponse,
+    SendMessageRequest,
+    StartJobRequest,
     CreateInviteRequest,
     CreateJobRequest,
     CreateQuoteRequest,
@@ -123,6 +131,30 @@ def get_job(
     return service.get_job(db, user, job_id)
 
 
+@router.post("/{job_id}/quotes/{quote_id}/accept", response_model=JobDetailResponse)
+def accept_quote(
+    job_id: str,
+    quote_id: str,
+    user: AuthUser = Depends(current_customer),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> JobDetailResponse:
+    """Hire this pro (open jobs, pending quotes): other pending quotes are declined. Payment comes later."""
+    return service.accept_quote(db, user, job_id, quote_id)
+
+
+@router.post("/{job_id}/quotes/{quote_id}/decline", response_model=JobDetailResponse)
+def decline_quote(
+    job_id: str,
+    quote_id: str,
+    user: AuthUser = Depends(current_customer),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> JobDetailResponse:
+    """Turn one pending quote down; the job stays open for other quotes."""
+    return service.decline_quote(db, user, job_id, quote_id)
+
+
 @router.post("/{job_id}/invites", response_model=JobDetailResponse, status_code=status.HTTP_201_CREATED)
 def invite_provider(
     job_id: str,
@@ -171,3 +203,56 @@ def delete_attachment(
 ) -> Response:
     service.delete_attachment(db, user, job_id, attachment_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ----- Start with the customer's PIN -----
+
+
+@router.post("/{job_id}/start", response_model=NearbyJobDetailResponse)
+def start_job(
+    job_id: str,
+    payload: StartJobRequest,
+    user: AuthUser = Depends(current_provider),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> NearbyJobDetailResponse:
+    """Hired pro: start work with the 4-digit PIN the customer shares. 5 wrong tries lock it until the customer resets."""
+    return service.start_job(db, user, job_id, payload.pin)
+
+
+@router.post("/{job_id}/start-pin/reset", response_model=JobDetailResponse)
+def reset_start_pin(
+    job_id: str,
+    user: AuthUser = Depends(current_customer),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> JobDetailResponse:
+    """Customer: a new start PIN (the old one stops working; tries reset)."""
+    return service.reset_start_pin(db, user, job_id)
+
+
+# ----- Chat between the customer and the hired pro -----
+
+
+@router.get("/{job_id}/messages", response_model=ChatResponse)
+def list_messages(
+    job_id: str,
+    after: datetime | None = None,
+    user: AuthUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    chat: JobChat = Depends(get_job_chat),
+) -> ChatResponse:
+    """Messages oldest first (only newer than `after` when given); reading marks the other side's as read."""
+    return chat.messages(db, user, job_id, after)
+
+
+@router.post("/{job_id}/messages", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+def send_message(
+    job_id: str,
+    payload: SendMessageRequest,
+    user: AuthUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    chat: JobChat = Depends(get_job_chat),
+) -> MessageResponse:
+    """Phone numbers and emails are replaced with "•••": contact details stay private on Helpio."""
+    return chat.send(db, user, job_id, payload.body)

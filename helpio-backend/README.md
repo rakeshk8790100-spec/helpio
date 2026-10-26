@@ -141,6 +141,18 @@ Customers post custom jobs; nearby providers quote on them. Money is in paise.
 | `GET /api/v1/jobs/nearby` `?category_id&max_km&has_budget&urgent_only` | Provider. `{area, jobs}`: their own centre and radius (null without coordinates) and the open jobs in their skill categories within `radius_m` (or the same pincode when either side has no coordinates); emergencies first, then closest. Masked: no customer contact, coordinates or pincode, distance rounded to 0.5 km, customer as "Asha K.", and `area_circle`, a 600 m circle whose centre is moved 200–400 m from the real spot (keyed by `AUTH_SECRET_KEY`, so the offset can't be worked out). |
 | `GET /api/v1/jobs/nearby/{id}` | Provider. One nearby job as above, plus photo URLs and `can_quote`. |
 | `DELETE /api/v1/jobs/{id}/quotes/mine` | Provider. Withdraws a pending quote; quoting again re-opens it. |
+| `POST /api/v1/jobs/{id}/quotes/{quote_id}/accept` | Customer, open job and pending quote: hires that pro. The quote is `accepted`, every other pending quote `rejected`, the job `accepted`. No payment yet (escrow comes later). Returns the job detail with `hired` (name, photo, price). |
+| `POST /api/v1/jobs/{id}/quotes/{quote_id}/decline` | Customer: turns one pending quote down (`rejected`); the job stays open. 409 for a quote already answered or on a hired job. |
+
+After hire, only the hired pro can still open the job (`GET /api/v1/jobs/nearby/{id}`), now with `hired: true`, `exact_location` (coordinates, pincode, area) and `customer_name`. Other pros get 404, and quoting, withdrawing and editing are refused.
+
+**Starting work and chat (after hire):**
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/jobs/{id}/start` `{pin}` | Hired pro: starts the job (`in_progress`, `started_at`) with the 4-digit PIN the customer shares at the door. Accepting a quote creates the PIN; only the customer sees it (`start_pin` on `GET /jobs/{id}` while the job is `accepted`). A wrong PIN answers 400 with the tries left; after 5 wrong tries 429 until the customer resets it. |
+| `POST /api/v1/jobs/{id}/start-pin/reset` | Customer: a new PIN, tries reset. |
+| `GET /api/v1/jobs/{id}/messages` `?after=<iso>`, `POST /api/v1/jobs/{id}/messages` `{body}` | Chat between the customer and the hired pro only (others 404; before hire 409). Messages oldest first with `mine` and the sender as "Asha K."; reading marks the other side's messages read. Phone numbers (7+ digits) and email addresses are replaced with "•••". `unread_messages` is on the customer's `GET /jobs/{id}` and the pro's `GET /jobs/nearby/{id}`. |
 | `POST /api/v1/jobs/{id}/quotes` `{amount_paise, message?}` | Provider with finished sign-up, on a job they can see nearby. One quote per job (409 on a second). |
 | `GET /api/v1/providers/me/home` | Provider home: sign-up checklist, `can_quote`, active job, quote counts, top 3 nearby jobs and `nearby_count`, earnings (zero until payouts exist). |
 
@@ -188,6 +200,7 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 10. `migrations/202610280001_job_edited_at.sql`: `jobs.edited_at`, set when a customer edits a posted job
 11. `migrations/202610290001_profiles_addresses.sql`: customer saved addresses and the provider bio
 12. `migrations/202610290002_job_invites.sql`: direct requests from a customer to a chosen pro
+13. `migrations/202610300001_job_start_pin_and_chat.sql`: start PIN on jobs and the job chat table
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

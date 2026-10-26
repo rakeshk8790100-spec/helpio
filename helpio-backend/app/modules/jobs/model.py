@@ -74,6 +74,10 @@ class Job(Base):
     progress_pct: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
     # Last change to a posted job; quotes sent before it may be out of date
     edited_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Shown to the customer after hire; the hired pro enters it to start work
+    start_pin: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    start_pin_attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    started_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now, onupdate=utc_now)
 
@@ -147,3 +151,19 @@ class JobInvite(Base):
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
 
     provider: Mapped[AuthUser] = relationship(lazy="joined")
+
+
+class JobMessage(Base):
+    """Chat between a job's customer and its hired pro. Contact details are masked before saving."""
+
+    __tablename__ = "job_messages"
+    __table_args__ = (Index("ix_job_messages_job_created", "job_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    job_id: Mapped[str] = mapped_column(Uuid(as_uuid=False), ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False)
+    sender_id: Mapped[str] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("auth_users.id", ondelete="CASCADE"), nullable=False
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+    read_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
