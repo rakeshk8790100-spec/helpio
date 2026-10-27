@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from app.modules.providers.model import OnboardingStatus, Proficiency
 
-MIN_SKILLS = 3
-MAX_SKILLS = 15
+MIN_SKILLS = 4
+MAX_SKILLS = 20
 # Travel radius, in metres
 MIN_RADIUS_M = 500
 MAX_RADIUS_M = 50_000

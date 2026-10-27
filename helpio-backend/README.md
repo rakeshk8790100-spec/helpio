@@ -130,7 +130,7 @@ After creating their account, providers finish sign-up in two more steps. Endpoi
 |---|---|
 | `GET /api/v1/catalog/skills` | Public skills catalogue grouped by category. |
 | `GET /api/v1/providers/me/onboarding` | Status plus saved skills, availability and service area. |
-| `PUT /api/v1/providers/me/skills` | 3–15 skills, each with `proficiency` (`beginner`/`intermediate`/`expert`) and optional `years_experience`. Moves status to `service_setup`. |
+| `PUT /api/v1/providers/me/skills` | 4–20 skills, each with `proficiency` (`beginner`/`intermediate`/`expert`) and optional `years_experience`. Moves status to `service_setup`. |
 | `PUT /api/v1/providers/me/service-setup` | Weekly availability (`day` 0 = Monday, `start`/`end` "HH:MM"), service area (`pincode`, `area_name`, optional `latitude`/`longitude`) and `radius_m` (travel radius in metres, 500–50000). Completes sign-up. |
 
 Status only moves forward; providers can re-save either step later.
@@ -215,6 +215,7 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 15. `migrations/202611010001_job_time_estimate.sql`: the pro's time estimate on starting, a target time per stage and a one-time overdue alert
 16. `migrations/202611020001_customer_favorite_skills.sql`: customer favourite services and the popup's skip count
 17. `migrations/202611030001_signup_email_verification.sql`: sign-up details waiting for their emailed code
+18. `migrations/202611040001_catalog_expansion.sql`: the home services catalogue, 14 categories and 82 skills
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

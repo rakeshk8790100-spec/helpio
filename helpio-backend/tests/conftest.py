@@ -54,6 +54,7 @@ def engine() -> Iterator[Engine]:
             CatalogSkill(id="plumbing-pipe", category_id="plumbing", name="Pipe fitting", sort_order=2),
             CatalogSkill(id="plumbing-tank", category_id="plumbing", name="Water tank cleaning", sort_order=3),
             CatalogSkill(id="electrical-wiring", category_id="electrical", name="Wiring", sort_order=1),
+            CatalogSkill(id="electrical-fan-light", category_id="electrical", name="Fan & light installation", sort_order=2),
         ])
         db.commit()
     yield engine

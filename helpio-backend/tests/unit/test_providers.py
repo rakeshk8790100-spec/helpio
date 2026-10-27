@@ -6,10 +6,11 @@ ONBOARDING = "/api/v1/providers/me/onboarding"
 SKILLS = "/api/v1/providers/me/skills"
 SETUP = "/api/v1/providers/me/service-setup"
 
-THREE_SKILLS = [
+FOUR_SKILLS = [
     {"skill_id": "plumbing-tap-leak", "proficiency": "expert", "years_experience": 6},
     {"skill_id": "plumbing-pipe", "proficiency": "intermediate"},
     {"skill_id": "electrical-wiring", "proficiency": "beginner"},
+    {"skill_id": "electrical-fan-light", "proficiency": "intermediate", "years_experience": 2},
 ]
 SERVICE_SETUP = {
     "availability": [
@@ -40,7 +41,7 @@ def test_full_onboarding(client, provider_token):
     initial = client.get(ONBOARDING, headers=headers).json()
     assert initial == {"status": "skills", "bio": None, "skills": [], "availability": [], "service_area": None}
 
-    after_skills = client.put(SKILLS, json={"skills": THREE_SKILLS}, headers=headers)
+    after_skills = client.put(SKILLS, json={"skills": FOUR_SKILLS}, headers=headers)
     assert after_skills.status_code == 200
     assert after_skills.json()["status"] == "service_setup"
     assert client.get("/api/v1/auth/me", headers=headers).json()["onboarding_status"] == "service_setup"
@@ -65,7 +66,7 @@ def test_full_onboarding(client, provider_token):
 
 def test_editing_skills_after_completion_keeps_status(client, provider_token):
     headers = bearer(provider_token)
-    client.put(SKILLS, json={"skills": THREE_SKILLS}, headers=headers)
+    client.put(SKILLS, json={"skills": FOUR_SKILLS}, headers=headers)
     client.put(SETUP, json=SERVICE_SETUP, headers=headers)
 
     # Keeps one existing skill (with a new level) and swaps the others.
@@ -73,6 +74,7 @@ def test_editing_skills_after_completion_keeps_status(client, provider_token):
         {"skill_id": "plumbing-tap-leak", "proficiency": "intermediate"},
         {"skill_id": "plumbing-tank", "proficiency": "expert"},
         {"skill_id": "electrical-wiring", "proficiency": "expert"},
+        {"skill_id": "electrical-fan-light", "proficiency": "beginner"},
     ]
     response = client.put(SKILLS, json={"skills": updated}, headers=headers)
     assert response.status_code == 200
@@ -80,6 +82,7 @@ def test_editing_skills_after_completion_keeps_status(client, provider_token):
     assert body["status"] == "complete"
     assert {item["skill_id"]: item["proficiency"] for item in body["skills"]} == {
         "plumbing-tap-leak": "intermediate", "plumbing-tank": "expert", "electrical-wiring": "expert",
+        "electrical-fan-light": "beginner",
     }
 
 
@@ -89,16 +92,16 @@ def test_service_setup_needs_skills_first(client, provider_token):
 
 
 @pytest.mark.parametrize("skills", [
-    THREE_SKILLS[:2],
-    THREE_SKILLS[:2] + [THREE_SKILLS[0]],
-    THREE_SKILLS[:2] + [{"skill_id": "plumbing-tank", "proficiency": "guru"}],
+    FOUR_SKILLS[:3],
+    FOUR_SKILLS[:3] + [FOUR_SKILLS[0]],
+    FOUR_SKILLS[:3] + [{"skill_id": "plumbing-tank", "proficiency": "guru"}],
 ])
 def test_invalid_skill_lists(client, provider_token, skills):
     assert client.put(SKILLS, json={"skills": skills}, headers=bearer(provider_token)).status_code == 422
 
 
 def test_unknown_skill(client, provider_token):
-    skills = THREE_SKILLS[:2] + [{"skill_id": "rocket-science", "proficiency": "expert"}]
+    skills = FOUR_SKILLS[:3] + [{"skill_id": "rocket-science", "proficiency": "expert"}]
     response = client.put(SKILLS, json={"skills": skills}, headers=bearer(provider_token))
     assert response.status_code == 422
     assert response.json()["detail"] == "Unknown skill: rocket-science"
@@ -117,13 +120,13 @@ def test_unknown_skill(client, provider_token):
 ])
 def test_invalid_service_setup(client, provider_token, change):
     headers = bearer(provider_token)
-    client.put(SKILLS, json={"skills": THREE_SKILLS}, headers=headers)
+    client.put(SKILLS, json={"skills": FOUR_SKILLS}, headers=headers)
     assert client.put(SETUP, json=SERVICE_SETUP | change, headers=headers).status_code == 422
 
 
 def test_pincode_without_location_is_allowed(client, provider_token):
     headers = bearer(provider_token)
-    client.put(SKILLS, json={"skills": THREE_SKILLS}, headers=headers)
+    client.put(SKILLS, json={"skills": FOUR_SKILLS}, headers=headers)
     payload = SERVICE_SETUP | {"service_area": {"pincode": "560034", "area_name": "Koramangala"}}
     response = client.put(SETUP, json=payload, headers=headers)
     assert response.status_code == 200
@@ -139,7 +142,7 @@ def test_only_providers_can_onboard(client):
 @pytest.mark.parametrize("radius_m", [500, 50_000])
 def test_radius_runs_from_500_m_to_50_km(client, provider_token, radius_m):
     headers = bearer(provider_token)
-    client.put(SKILLS, json={"skills": THREE_SKILLS}, headers=headers)
+    client.put(SKILLS, json={"skills": FOUR_SKILLS}, headers=headers)
     response = client.put(SETUP, json=SERVICE_SETUP | {"radius_m": radius_m}, headers=headers)
     assert response.status_code == 200
     assert client.get(ONBOARDING, headers=headers).json()["service_area"]["radius_m"] == radius_m

@@ -640,7 +640,9 @@ class JobService:
             metres = distance_m(profile.latitude, profile.longitude, job.latitude, job.longitude)
         return CustomerQuoteResponse(
             **self._quote_response(quote).model_dump(),
+            provider_id=quote.provider_id,
             provider_label=short_name(quote.provider.name, "Helpio pro"),
+            avatar_url=quote.provider.avatar_url,
             proficiency=best.proficiency if best else None,
             years_experience=years,
             approx_distance_km=approx_km(metres) if metres is not None else None,

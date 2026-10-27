@@ -190,8 +190,11 @@ class AttachmentResponse(BaseModel):
 class CustomerQuoteResponse(QuoteResponse):
     """A quote as the job's customer sees it before hire: no provider contact details."""
 
+    # Opens the pro's public profile
+    provider_id: str
     # First name and initial, e.g. "Ravi S."
     provider_label: str
+    avatar_url: str | None
     # Best proficiency among the provider's skills in the job's category
     proficiency: Proficiency | None
     years_experience: int | None
