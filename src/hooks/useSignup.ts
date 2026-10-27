@@ -4,33 +4,32 @@ import { Form } from 'antd';
 import type { SignupFormValues, SignupLayoutProps } from '../client/default/auth/signup.layout.types';
 import { UserRole } from '../common/CommonEnum';
 import { RouterKeys, withQuery } from '../config/router/RouterKeys';
-import { apiErrorMessage } from '../lib/apiError';
-import { useRegisterMutation } from '../pages/auth/auth.api';
 import { safeNext } from '../pages/auth/authRedirect';
 import { useGoogleSignIn } from './useGoogleSignIn';
+import { useSignupCode } from './useSignupCode';
 
-/** /signup behaviour: customer details + password (keeps `?next=`). SignupPage redirects once signed in. */
+/**
+ * /signup behaviour: customer details + password, then the emailed code (keeps `?next=`).
+ * SignupPage redirects once the code signs the user in.
+ */
 export const useSignup = (): SignupLayoutProps => {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
   const [form] = Form.useForm<SignupFormValues>();
-  const [register, { isLoading }] = useRegisterMutation();
-  const [error, setError] = useState<string>();
-  const google = useGoogleSignIn(setError);
+  const signup = useSignupCode(UserRole.CUSTOMER);
+  const [googleError, setGoogleError] = useState<string>();
+  const google = useGoogleSignIn(setGoogleError);
 
   return {
     form,
-    submitting: isLoading,
-    error,
-    onSubmit: async ({ name, email, phone, password }) => {
-      setError(undefined);
-      try {
-        await register({ name: name.trim(), email, phone, password, role: UserRole.CUSTOMER }).unwrap();
-      } catch (e) {
-        setError(apiErrorMessage(e));
-      }
+    submitting: signup.sending,
+    error: signup.error ?? googleError,
+    onSubmit: ({ name, email, phone, password }) => {
+      setGoogleError(undefined);
+      void signup.send({ name: name.trim(), email, phone, password });
     },
+    code: signup.step,
     google,
     onLogin: () => navigate(next ? withQuery(RouterKeys.LOGIN, { next }) : RouterKeys.LOGIN),
     onSwitchAudience: () => navigate(RouterKeys.PRO_SIGNUP),

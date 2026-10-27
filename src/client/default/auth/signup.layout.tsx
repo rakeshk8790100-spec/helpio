@@ -1,28 +1,35 @@
 import { Alert, Button, Form } from 'antd';
 import AuthHeader from './authHeader';
 import { EmailField, NameField, PasswordField, PhoneField } from './authFields';
+import EmailCodeStep from './emailCodeStep';
 import GoogleSignIn from './googleSignIn';
 import type { SignupLayoutProps } from './signup.layout.types';
 
-/** /signup: customer name, email, mobile and password; Google sits below the form. */
+/** /signup: customer name, email, mobile and password (Google below the form), then the emailed code. */
 const SignupLayout = (p: SignupLayoutProps) => (
   <div className="flex flex-col gap-6">
-    <AuthHeader title="Create your account" subtitle="Book trusted help near you in minutes." />
+    {p.code ? (
+      <EmailCodeStep {...p.code} error={p.error} />
+    ) : (
+      <>
+        <AuthHeader title="Create your account" subtitle="Book trusted help near you in minutes." />
 
-    {p.error && <Alert type="error" showIcon title={p.error} />}
+        {p.error && <Alert type="error" showIcon title={p.error} />}
 
-    <section className="rounded-2xl border border-slate-100 p-5 shadow-sm">
-      <Form form={p.form} layout="vertical" requiredMark={false} validateTrigger="onBlur" onFinish={p.onSubmit}>
-        <NameField />
-        <EmailField />
-        <PhoneField />
-        <PasswordField />
-        <Button type="primary" htmlType="submit" size="large" block loading={p.submitting}>
-          Create account
-        </Button>
-      </Form>
-      {p.google && <GoogleSignIn google={p.google} />}
-    </section>
+        <section className="rounded-2xl border border-slate-100 p-5 shadow-sm">
+          <Form form={p.form} layout="vertical" requiredMark={false} validateTrigger="onBlur" onFinish={p.onSubmit}>
+            <NameField />
+            <EmailField />
+            <PhoneField />
+            <PasswordField />
+            <Button type="primary" htmlType="submit" size="large" block loading={p.submitting}>
+              Create account
+            </Button>
+          </Form>
+          {p.google && <GoogleSignIn google={p.google} />}
+        </section>
+      </>
+    )}
 
     <div className="flex flex-col items-center text-sm text-slate-600">
       <div>

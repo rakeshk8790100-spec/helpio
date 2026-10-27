@@ -12,6 +12,20 @@ export interface RegisterDto {
   role: SelfServiceRole;
 }
 
+/** Sign-up step 2: the code emailed by /auth/register */
+export interface VerifySignupDto {
+  email: string;
+  otp: string;
+}
+
+/** /auth/register's answer: a code went to `email` (nothing is created until it is entered) */
+export interface SignupCodeSent {
+  email: string;
+  /** Seconds before another code can be requested */
+  resendIn: number;
+  expiresInMinutes: number;
+}
+
 export interface LoginDto {
   email: string;
   password: string;

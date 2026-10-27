@@ -1,4 +1,5 @@
 import { Form, Input } from 'antd';
+import { OTP_LENGTH } from '../../../common/CommonEnum';
 
 /* Form fields shared by the log-in, sign-up and password layouts. Use inside an antd `Form`. */
 
@@ -52,6 +53,21 @@ export const PasswordField = ({
       autoComplete={autoComplete}
       placeholder={autoComplete === 'new-password' ? 'At least 8 characters' : 'Your password'}
       maxLength={128}
+    />
+  </Form.Item>
+);
+
+/** The emailed 6-digit code (sign-up and password reset) */
+export const OtpField = () => (
+  <Form.Item name="otp" label="Code" rules={[{ required: true, len: OTP_LENGTH, message: `Enter the ${OTP_LENGTH}-digit code` }]}>
+    <Input.OTP
+      length={OTP_LENGTH}
+      size="large"
+      formatter={(text) => text.replace(/\D/g, '')}
+      autoComplete="one-time-code"
+      inputMode="numeric"
+      aria-label={`${OTP_LENGTH}-digit code`}
+      className="!w-full !justify-between"
     />
   </Form.Item>
 );

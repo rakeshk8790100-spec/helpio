@@ -71,4 +71,4 @@ All components are pure: data comes in through props and actions go out through 
 ## Removed (restore from git history if a future screen needs them)
 The earlier customer/provider dashboard used `ProgressBar`, `Stepper`, `AlertBanner`, `EmptyState`, and job/quote/provider cards (active-job cards, milestone progress, approx map, earnings, onboarding). They were deleted with the dashboard. Rebuild them pure, following these rules, when a screen needs them.
 
-`OtpVerify` (enter an emailed 6-digit code, with resend) was removed when log-in moved to email + password; the password-reset layout uses antd `Input.OTP` directly.
+`OtpVerify` was removed when log-in moved to email + password. Emailed codes now use `OtpField` (in `client/default/auth/authFields.tsx`, inside an antd `Form`), shared by the password-reset layout and `EmailCodeStep` (`client/default/auth/emailCodeStep.tsx`, sign-up's "Verify your email" step for both audiences).

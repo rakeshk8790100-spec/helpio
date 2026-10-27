@@ -1,4 +1,5 @@
 import type { FormInstance } from 'antd';
+import type { EmailCodeStepProps } from './emailCodeStep.types';
 import type { DetailsFormValues, GoogleOption } from './login.layout.types';
 
 /* Contract between pages/auth/screens/signup (behaviour) and client/default/auth/signup.layout (markup). */
@@ -14,6 +15,8 @@ export interface SignupLayoutProps {
   onSubmit: (values: SignupFormValues) => void;
   submitting: boolean;
   error?: string;
+  /** Set once the code is emailed: shown in place of the form */
+  code: EmailCodeStepProps | null;
   /** null hides it */
   google: GoogleOption | null;
   onLogin: () => void;

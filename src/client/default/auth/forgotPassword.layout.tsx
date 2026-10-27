@@ -1,8 +1,8 @@
-import { Alert, Button, Form, Input } from 'antd';
+import { Alert, Button, Form } from 'antd';
 import { MailCheck } from 'lucide-react';
 import { OTP_LENGTH, UserRole } from '../../../common/CommonEnum';
 import AuthHeader from './authHeader';
-import { EmailField, PasswordField } from './authFields';
+import { EmailField, OtpField, PasswordField } from './authFields';
 import { ResetStep } from './forgotPassword.layout.types';
 import type { ForgotPasswordLayoutProps } from './forgotPassword.layout.types';
 
@@ -59,21 +59,7 @@ const ForgotPasswordLayout = (p: ForgotPasswordLayoutProps) => (
           preserve={false}
           onFinish={p.resetForm.onSubmit}
         >
-          <Form.Item
-            name="otp"
-            label="Code"
-            rules={[{ required: true, len: OTP_LENGTH, message: `Enter the ${OTP_LENGTH}-digit code` }]}
-          >
-            <Input.OTP
-              length={OTP_LENGTH}
-              size="large"
-              formatter={(text) => text.replace(/\D/g, '')}
-              autoComplete="one-time-code"
-              inputMode="numeric"
-              aria-label={`${OTP_LENGTH}-digit code`}
-              className="!w-full !justify-between"
-            />
-          </Form.Item>
+          <OtpField />
           <PasswordField label="New password" />
           <Button type="primary" htmlType="submit" size="large" block loading={p.resetForm.submitting}>
             Reset password
