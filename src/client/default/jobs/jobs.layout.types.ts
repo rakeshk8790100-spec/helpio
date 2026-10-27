@@ -197,6 +197,8 @@ export type JobDetailLayoutProps = WithStatus<{
     items: {
       quote: CustomerQuote;
       cheapest: boolean;
+      /** The pro's public profile; unset when the quote has no pro id */
+      onOpenPro?: () => void;
       /** Set while the job is open and the quote pending */
       onAccept?: () => void;
       onReject?: () => void;

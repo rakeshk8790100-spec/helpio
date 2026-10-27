@@ -1,5 +1,5 @@
 import { Button, Popconfirm } from 'antd';
-import { BadgeCheck, MapPin } from 'lucide-react';
+import { BadgeCheck, ChevronRight, MapPin } from 'lucide-react';
 import type { CustomerQuote } from '../../common/CommonDto';
 import { QuoteStatus } from '../../common/CommonEnum';
 import { formatINR } from '../../lib/utils';
@@ -11,6 +11,8 @@ interface Props {
   quote: CustomerQuote;
   /** Lowest pending quote on the job */
   cheapest?: boolean;
+  /** Opens the pro's profile from their name and avatar */
+  onOpenPro?: () => void;
   /** Pending quotes on an open job: hire this pro, or turn the quote down (each asks first) */
   onAccept?: () => void;
   onReject?: () => void;
@@ -21,30 +23,51 @@ interface Props {
 }
 
 /** One provider's quote, as the customer sees it before hire: "Ravi S.", experience, ~distance, price and note. */
-const QuoteCard = ({ quote, cheapest = false, onAccept, onReject, acting = null, disabled = false }: Props) => {
+const QuoteCard = ({ quote, cheapest = false, onOpenPro, onAccept, onReject, acting = null, disabled = false }: Props) => {
   const experience = [
     quote.proficiency && PROFICIENCY_LABEL[quote.proficiency],
     quote.yearsExperience !== null && `${quote.yearsExperience} yrs`,
   ].filter(Boolean).join(' · ');
+  const pro = (
+    <>
+      <Avatar name={quote.providerLabel} src={quote.avatarUrl} size="sm" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-sm font-semibold text-slate-900">{quote.providerLabel}</span>
+          <BadgeCheck size={14} className="shrink-0 text-indigo-500" aria-label="Helpio pro" />
+        </div>
+        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
+          {experience && <span>{experience}</span>}
+          {quote.approxDistanceKm !== null && (
+            <span className="flex items-center gap-0.5">
+              <MapPin size={11} />~{quote.approxDistanceKm} km away
+            </span>
+          )}
+        </div>
+        {onOpenPro && (
+          <span className="mt-1 flex items-center text-xs font-semibold text-indigo-600">
+            View profile <ChevronRight size={14} />
+          </span>
+        )}
+      </div>
+    </>
+  );
 
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
-        <Avatar name={quote.providerLabel} size="sm" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-slate-900">{quote.providerLabel}</span>
-            <BadgeCheck size={14} className="shrink-0 text-indigo-500" aria-label="Helpio pro" />
-          </div>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-slate-500">
-            {experience && <span>{experience}</span>}
-            {quote.approxDistanceKm !== null && (
-              <span className="flex items-center gap-0.5">
-                <MapPin size={11} />~{quote.approxDistanceKm} km away
-              </span>
-            )}
-          </div>
-        </div>
+        {onOpenPro ? (
+          <button
+            type="button"
+            onClick={onOpenPro}
+            aria-label={`View ${quote.providerLabel}'s profile`}
+            className="flex min-w-0 flex-1 items-start gap-3 text-left active:opacity-70"
+          >
+            {pro}
+          </button>
+        ) : (
+          <div className="flex min-w-0 flex-1 items-start gap-3">{pro}</div>
+        )}
         <div className="shrink-0 text-right">
           <div className="text-base font-bold text-slate-900">{formatINR(quote.amount)}</div>
           {cheapest && <StatusBadge label="Lowest" tone="success" />}

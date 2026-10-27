@@ -1,17 +1,7 @@
-import { Hammer, LayoutGrid, PaintRoller, Snowflake, Sparkles, Truck, Wrench, Zap } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { LayoutGrid } from 'lucide-react';
 import type { Category } from '../../common/CommonDto';
 import IconTile from '../ui/IconTile';
-
-const ICONS: Record<string, LucideIcon> = {
-  wrench: Wrench,
-  zap: Zap,
-  sparkles: Sparkles,
-  paint: PaintRoller,
-  snowflake: Snowflake,
-  hammer: Hammer,
-  truck: Truck,
-};
+import { categoryIcon } from './categoryIcons';
 
 interface Props {
   categories: Category[];
@@ -25,7 +15,7 @@ interface Props {
 const CategoryGrid = ({ categories, onSelect, onMore, max = onMore ? 7 : 8 }: Props) => (
   <div className="grid grid-cols-4 gap-y-4">
     {categories.slice(0, max).map((c) => (
-      <IconTile key={c.id} Icon={ICONS[c.icon] ?? LayoutGrid} label={c.name} onClick={() => onSelect(c)} />
+      <IconTile key={c.id} Icon={categoryIcon(c.icon)} label={c.name} onClick={() => onSelect(c)} />
     ))}
     {onMore && <IconTile Icon={LayoutGrid} label="More" onClick={onMore} />}
   </div>

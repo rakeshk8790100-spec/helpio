@@ -11,7 +11,9 @@ export interface AttachmentApiDto {
 }
 
 export interface CustomerQuoteApiDto extends QuoteApiDto {
+  provider_id: string;
   provider_label: string;
+  avatar_url: string | null;
   proficiency: Proficiency | null;
   years_experience: number | null;
   approx_distance_km: number | null;

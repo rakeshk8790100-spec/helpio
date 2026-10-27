@@ -126,11 +126,12 @@ const JobDetailLayout = (p: JobDetailLayoutProps) => {
           <SectionHeader title={p.quotes.items.length ? `Quotes (${p.quotes.items.length})` : 'Quotes'} />
           {p.quotes.items.length ? (
             <div className="flex flex-col gap-3">
-              {p.quotes.items.map(({ quote, cheapest, onAccept, onReject, acting }) => (
+              {p.quotes.items.map(({ quote, cheapest, onOpenPro, onAccept, onReject, acting }) => (
                 <QuoteCard
                   key={quote.id}
                   quote={quote}
                   cheapest={cheapest}
+                  onOpenPro={onOpenPro}
                   onAccept={onAccept}
                   onReject={onReject}
                   acting={acting}

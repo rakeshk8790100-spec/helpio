@@ -8,8 +8,15 @@ export const MOCK_CATEGORIES: Category[] = [
   { id: 'cleaning', name: 'Cleaning', icon: 'sparkles' },
   { id: 'painting', name: 'Painting', icon: 'paint' },
   { id: 'ac', name: 'AC Repair', icon: 'snowflake' },
+  { id: 'appliance', name: 'Appliance repair', icon: 'washing' },
+  { id: 'water', name: 'Water purifier & geyser', icon: 'droplet' },
   { id: 'carpentry', name: 'Carpentry', icon: 'hammer' },
   { id: 'moving', name: 'Moving', icon: 'truck' },
+  { id: 'pest', name: 'Pest control', icon: 'bug' },
+  { id: 'handyman', name: 'Handyman', icon: 'drill' },
+  { id: 'masonry', name: 'Masonry & tiling', icon: 'brick' },
+  { id: 'gardening', name: 'Gardening', icon: 'sprout' },
+  { id: 'security', name: 'Home security & smart home', icon: 'cctv' },
 ];
 
 export const MOCK_SERVICES: Service[] = [

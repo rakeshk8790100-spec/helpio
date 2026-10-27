@@ -11,7 +11,7 @@ import { useGetSkillCatalogQuery } from '../common/CommonApi';
 import { useGetOnboardingQuery, useSaveSkillsMutation } from '../pages/onboarding/onboarding.api';
 
 /**
- * /onboarding/skills?category= behaviour: pick 3–15 skills with a level, then continue to step 3.
+ * /onboarding/skills?category= behaviour: search or browse, pick 4–20 skills with a level, then continue to step 3.
  * With `editing` (/profile/skills) the same screen saves and returns to Profile.
  */
 export const useOnboardingSkills = ({ editing = false }: { editing?: boolean } = {}): SkillsLayoutProps => {
@@ -24,6 +24,7 @@ export const useOnboardingSkills = ({ editing = false }: { editing?: boolean } =
   // null until the provider changes something, so saved skills show when they come back
   const [draft, setDraft] = useState<ProviderSkill[] | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const [error, setError] = useState<string>();
 
   if (catalog.isLoading || onboarding.isLoading) return { loading: true };
@@ -32,6 +33,7 @@ export const useOnboardingSkills = ({ editing = false }: { editing?: boolean } =
   const selected = draft ?? onboarding.data?.skills ?? [];
   const update = (skillId: string, change: Partial<ProviderSkill>) =>
     setDraft(selected.map((s) => (s.skillId === skillId ? { ...s, ...change } : s)));
+  const added = (skillId: string): ProviderSkill => ({ skillId, proficiency: Proficiency.INTERMEDIATE, yearsExperience: null });
 
   return {
     loading: false,
@@ -45,13 +47,24 @@ export const useOnboardingSkills = ({ editing = false }: { editing?: boolean } =
       categories,
       activeCategoryId: categoryId ?? params.get('category') ?? categories[0]?.id ?? '',
       onCategoryChange: setCategoryId,
+      query,
+      onQueryChange: setQuery,
       selected,
       onToggle: (skillId) =>
         setDraft(
           selected.some((s) => s.skillId === skillId)
             ? selected.filter((s) => s.skillId !== skillId)
-            : [...selected, { skillId, proficiency: Proficiency.INTERMEDIATE, yearsExperience: null }].slice(0, MAX_SKILLS),
+            : [...selected, added(skillId)].slice(0, MAX_SKILLS),
         ),
+      onToggleCategory: (id) => {
+        const ids = categories.find((c) => c.id === id)?.skills.map((s) => s.id) ?? [];
+        const picked = new Set(selected.map((s) => s.skillId));
+        setDraft(
+          ids.every((skillId) => picked.has(skillId))
+            ? selected.filter((s) => !ids.includes(s.skillId))
+            : [...selected, ...ids.filter((skillId) => !picked.has(skillId)).map(added)].slice(0, MAX_SKILLS),
+        );
+      },
       onProficiencyChange: (skillId, proficiency) => update(skillId, { proficiency }),
       onYearsChange: (skillId, yearsExperience) => update(skillId, { yearsExperience }),
     },

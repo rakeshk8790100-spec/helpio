@@ -29,7 +29,9 @@ const toJobDetail = (dto: JobDetailApiDto): JobDetail => ({
   attachments: dto.attachments.map(toAttachment),
   quotes: dto.quotes.map((q) => ({
     ...toJobQuote(q),
+    providerId: q.provider_id,
     providerLabel: q.provider_label,
+    avatarUrl: q.avatar_url,
     proficiency: q.proficiency,
     yearsExperience: q.years_experience,
     approxDistanceKm: q.approx_distance_km,

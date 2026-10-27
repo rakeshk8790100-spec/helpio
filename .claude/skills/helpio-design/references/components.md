@@ -44,7 +44,8 @@ All components are pure: data comes in through props and actions go out through 
 | `EarningsCalculator` | Provider earnings estimate: skill chips + hours slider + live total (for dark sections) | `rates`, `skillId`, `onSkillChange`, `hours`, `onHoursChange`, `monthlyEstimate`, `benefits` |
 | `TestimonialCard` | Rated quote with a Customer/Provider badge (carousel) | `testimonial` |
 | `HelpioLogo` | Brand mark + "helpio" wordmark (header) | `size?: 'sm' \| 'md'` |
-| `SkillPicker` | Provider skills: category tabs, skill chips, proficiency per selected skill | see the component's props |
+| `SkillPicker` | Provider skills: search across the catalogue, category chips (icon + picked count), "Select all" per category, level (with a plain-language hint) and years per picked skill | see the component's props |
+| `categoryIcon(key)` | Catalogue category `icon` key → lucide icon (fallback `LayoutGrid`); used by `CategoryGrid` and `SkillPicker`. Add new keys in `categoryIcons.ts` | `key` |
 | `UserMenu` | Signed-in header avatar with account details and Log out | `user`, `onLogout` |
 | `ActiveJobCard` | Gradient card for the hired job in progress: status, progress, next step, action, red Safety | `eyebrow`, `title`, `statusLabel`, `progressPct`, `nextStep`, `actionLabel`, `onAction`, `onSafety` |
 | `JobCard` | A customer's job in a list: status badge, meta line, amount on the right | `title`, `meta`, `badge`, `amount?`, `amountLabel?`, `urgent?`, `onClick` |

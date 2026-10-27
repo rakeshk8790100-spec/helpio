@@ -224,8 +224,11 @@ export interface JobAttachment {
 
 /** A quote as the job's customer sees it before hire */
 export interface CustomerQuote extends JobQuote {
+  /** Opens the pro's public profile */
+  providerId: string;
   /** e.g. "Ravi S." */
   providerLabel: string;
+  avatarUrl: string | null;
   proficiency: Proficiency | null;
   yearsExperience: number | null;
   approxDistanceKm: number | null;

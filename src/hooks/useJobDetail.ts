@@ -70,6 +70,8 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
             .map((quote) => ({
               quote,
               cheapest: pending.length > 1 && quote.status === QuoteStatus.PENDING && quote.amount === lowest,
+              // Without an id (stale data) there's no profile to open, rather than a broken /pros/id link
+              onOpenPro: quote.providerId ? () => navigate(toPath(RouterKeys.PRO_PROFILE, { id: quote.providerId })) : undefined,
               ...(isOpen && quote.status === QuoteStatus.PENDING && {
                 onAccept: answer(quote.id, 'accept', quote.providerLabel),
                 onReject: answer(quote.id, 'reject', quote.providerLabel),

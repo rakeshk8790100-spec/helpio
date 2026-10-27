@@ -28,3 +28,4 @@ export { default as TestimonialCard } from './TestimonialCard';
 export { default as TrustStrip } from './TrustStrip';
 export { default as UserMenu } from './UserMenu';
 export { PROFICIENCY_LABEL } from './proficiency';
+export { categoryIcon } from './categoryIcons';

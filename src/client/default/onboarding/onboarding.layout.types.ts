@@ -8,8 +8,8 @@ import type { WithLoading } from '../layout.types';
 /** Provider sign-up steps, shown by StepProgress on every step (step 1 is /pro/signup) */
 export const PROVIDER_SIGNUP_STEPS = ['Your details', 'Skills', 'Service area'];
 
-export const MIN_SKILLS = 3;
-export const MAX_SKILLS = 15;
+export const MIN_SKILLS = 4;
+export const MAX_SKILLS = 20;
 
 export type SkillsLayoutProps = WithLoading<{
   /** Changing skills from Profile: no sign-up steps, "Save" returns to Profile */
