@@ -1,7 +1,8 @@
 import pytest
 from sqlalchemy.orm import Session
 
-from app.modules.auth.model import AuthUser
+from app.core.security import hash_secret
+from app.modules.auth.model import AuthUser, UserRole
 from app.modules.auth.service import AuthService
 from tests.conftest import PASSWORD, bearer, sign_up
 
@@ -32,10 +33,14 @@ def _reset(client, email_client, *, email="asha@example.com", new_password=NEW_P
     return client.post(RESET, json={"email": email, "otp": email_client.last_code(email), "new_password": new_password})
 
 
+def _resets(email_client) -> list[dict[str, str]]:
+    return [item for item in email_client.sent if item["purpose"] == "password_reset"]
+
+
 # ── Sign-up ──────────────────────────────────────────────────────────────────
 
 
-def test_customer_sign_up_signs_in_without_an_email_code(client, email_client):
+def test_customer_sign_up_signs_in_after_the_email_code(client, email_client):
     session = sign_up(client, email="Asha@Example.com")
 
     assert session["token_type"] == "bearer"
@@ -47,7 +52,7 @@ def test_customer_sign_up_signs_in_without_an_email_code(client, email_client):
     me = client.get(ME, headers=bearer(session["access_token"]))
     assert me.status_code == 200
     assert me.json()["email"] == "asha@example.com"
-    assert email_client.sent == []
+    assert [item["purpose"] for item in email_client.sent] == ["signup"]
 
 
 def test_provider_sign_up_starts_onboarding(client):
@@ -181,8 +186,12 @@ def test_google_rejects_bad_tokens_and_provider_emails(client, google):
     assert client.post(GOOGLE, json={"id_token": "ravi"}).status_code == 409
 
 
-def test_google_takes_back_an_email_someone_else_registered(client, google):
-    squatter = sign_up(client, email="meera@gmail.com")
+def test_google_takes_back_an_email_someone_else_registered(client, engine, google):
+    # An account from before sign-up proved the email
+    with Session(engine) as db:
+        db.add(AuthUser(email="meera@gmail.com", password_hash=hash_secret(PASSWORD), role=UserRole.CUSTOMER))
+        db.commit()
+    squatter = _login(client, email="meera@gmail.com").json()
     google.tokens["meera"] = {"sub": "g-3", "email": "meera@gmail.com", "email_verified": True, "name": "Meera Iyer"}
 
     owner = client.post(GOOGLE, json={"id_token": "meera"})
@@ -231,11 +240,11 @@ def test_forgot_password_never_reveals_accounts(client, email_client, rewind_otp
     assert client.post(FORGOT, json={"email": "asha@example.com"}).status_code == 202
     # A repeat inside the 60-second cooldown answers the same way but sends nothing
     assert client.post(FORGOT, json={"email": "asha@example.com"}).status_code == 202
-    assert len(email_client.sent) == 1
+    assert len(_resets(email_client)) == 1
 
     rewind_otps(61)
     assert client.post(FORGOT, json={"email": "asha@example.com"}).status_code == 202
-    assert len(email_client.sent) == 2
+    assert len(_resets(email_client)) == 2
 
 
 def test_at_most_five_reset_codes_an_hour(client, email_client, rewind_otps):
@@ -243,7 +252,7 @@ def test_at_most_five_reset_codes_an_hour(client, email_client, rewind_otps):
     for _ in range(6):
         assert client.post(FORGOT, json={"email": "asha@example.com"}).status_code == 202
         rewind_otps(61)
-    assert len(email_client.sent) == 5
+    assert len(_resets(email_client)) == 5
 
 
 def test_new_reset_code_retires_the_previous_one(client, email_client, rewind_otps):
@@ -301,7 +310,7 @@ def test_failed_reset_email_reports_503_and_saves_nothing(client, email_client):
     # The failed code wasn't stored, so no cooldown blocks an immediate retry
     email_client.send_otp = working_send
     assert client.post(FORGOT, json={"email": "asha@example.com"}).status_code == 202
-    assert len(email_client.sent) == 1
+    assert len(_resets(email_client)) == 1
 
 
 # ── Session ──────────────────────────────────────────────────────────────────

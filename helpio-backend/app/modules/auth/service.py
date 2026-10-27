@@ -29,7 +29,7 @@ from app.modules.auth.exceptions import (
     UnsupportedAvatarError,
     WrongCurrentPasswordError,
 )
-from app.modules.auth.model import AuthOtp, AuthUser, OtpPurpose, RevokedAccessToken, UserRole
+from app.modules.auth.model import AuthOtp, AuthUser, OtpPurpose, PendingSignup, RevokedAccessToken, UserRole
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.schema import (
     ChangePasswordRequest,
@@ -39,8 +39,10 @@ from app.modules.auth.schema import (
     RegisterRequest,
     ResetPasswordRequest,
     SessionResponse,
+    SignupCodeResponse,
     UpdateMeRequest,
     UserResponse,
+    VerifySignupRequest,
 )
 from app.modules.customers.service import favorite_skill_ids, favorites_prompt_open
 from app.modules.providers.model import ProviderProfile
@@ -85,18 +87,53 @@ class AuthService:
 
     # ── Sign-up and log-in ───────────────────────────────────────────────────────
 
-    def register(self, db: Session, payload: RegisterRequest) -> SessionResponse:
-        """Create a customer or provider account and sign it in. Google or a password reset proves the email later."""
+    def register(self, db: Session, payload: RegisterRequest) -> SignupCodeResponse:
+        """
+        Customer or provider sign-up, step 1: email a code to prove the address. Nothing is created yet;
+        `verify_signup` creates the account. Sending the same details again resends the code.
+        """
         repo = AuthRepository(db)
+        # Checked before any email goes out, so the form can show the problem straight away
         if repo.get_user_by_email(payload.email) is not None:
+            raise EmailInUseError
+        if repo.get_user_by_phone(payload.phone) is not None:
+            raise PhoneInUseError
+        now = utc_now()
+        self._check_rate(*repo.signup_window(email=payload.email, since=now - timedelta(hours=1)), now=now)
+
+        repo.close_open_signups(email=payload.email, now=now)
+        otp = self.otp_factory()
+        repo.add_pending_signup(
+            PendingSignup(
+                email=payload.email, name=payload.name, phone=payload.phone, role=UserRole(payload.role),
+                password_hash=hash_secret(payload.password), otp_hash=hash_secret(otp),
+                expires_at=now + OTP_TTL, created_at=now,
+            )
+        )
+        self._send_code(to_email=payload.email, otp=otp, purpose=OtpPurpose.SIGNUP)
+        db.commit()
+        return SignupCodeResponse(
+            email=payload.email,
+            resend_in=int(OTP_RESEND_COOLDOWN.total_seconds()),
+            expires_in_minutes=int(OTP_TTL.total_seconds() // 60),
+        )
+
+    def verify_signup(self, db: Session, payload: VerifySignupRequest) -> SessionResponse:
+        """Sign-up, step 2: the emailed code creates the account, with the email verified, and signs it in."""
+        repo = AuthRepository(db)
+        now = utc_now()
+        signup = repo.latest_open_signup_for_update(email=payload.email, now=now)
+        self._check_code(db, signup, payload.otp, now)
+        # Someone may have taken the email or number while the code was on its way
+        if repo.get_user_by_email(signup.email) is not None:
             raise EmailInUseError
         user = repo.add_user(
             AuthUser(
-                email=payload.email, name=payload.name, password_hash=hash_secret(payload.password),
-                role=UserRole(payload.role),
+                email=signup.email, name=signup.name, password_hash=signup.password_hash, role=signup.role,
+                email_verified=True,
             )
         )
-        self._claim_phone(repo, user=user, phone=payload.phone)
+        self._claim_phone(repo, user=user, phone=signup.phone)
         if user.role == UserRole.PROVIDER:
             ProviderRepository(db).add_profile(ProviderProfile(user_id=user.id))
         self._commit(db)
@@ -319,12 +356,7 @@ class AuthService:
 
     def _issue_otp(self, repo: AuthRepository, *, user: AuthUser, purpose: OtpPurpose) -> None:
         now = utc_now()
-        window_start = now - timedelta(hours=1)
-        issued, oldest, newest = repo.otp_window(user_id=user.id, purpose=purpose, since=window_start)
-        if newest is not None and newest + OTP_RESEND_COOLDOWN > now:
-            raise OtpRateLimitedError(_seconds_until(newest + OTP_RESEND_COOLDOWN, now))
-        if issued >= OTP_HOURLY_LIMIT and oldest is not None:
-            raise OtpRateLimitedError(_seconds_until(oldest + timedelta(hours=1), now))
+        self._check_rate(*repo.otp_window(user_id=user.id, purpose=purpose, since=now - timedelta(hours=1)), now=now)
 
         repo.close_open_otps(user_id=user.id, purpose=purpose, now=now)
         otp = self.otp_factory()
@@ -334,9 +366,20 @@ class AuthService:
                 expires_at=now + OTP_TTL, created_at=now,
             )
         )
+        self._send_code(to_email=user.email, otp=otp, purpose=purpose)
+
+    @staticmethod
+    def _check_rate(issued: int, oldest: datetime | None, newest: datetime | None, *, now: datetime) -> None:
+        """One code a minute and OTP_HOURLY_LIMIT an hour, from the codes sent in the last hour."""
+        if newest is not None and newest + OTP_RESEND_COOLDOWN > now:
+            raise OtpRateLimitedError(_seconds_until(newest + OTP_RESEND_COOLDOWN, now))
+        if issued >= OTP_HOURLY_LIMIT and oldest is not None:
+            raise OtpRateLimitedError(_seconds_until(oldest + timedelta(hours=1), now))
+
+    def _send_code(self, *, to_email: str, otp: str, purpose: OtpPurpose) -> None:
         try:
             self.email_client.send_otp(
-                to_email=user.email, otp=otp, purpose=purpose.value,
+                to_email=to_email, otp=otp, purpose=purpose.value,
                 expires_minutes=int(OTP_TTL.total_seconds() // 60),
             )
         except RuntimeError as error:
@@ -347,6 +390,12 @@ class AuthService:
     ) -> AuthOtp:
         now = utc_now()
         record = repo.latest_open_otp_for_update(user_id=user.id, purpose=purpose, now=now)
+        self._check_code(db, record, otp, now)
+        return record
+
+    @staticmethod
+    def _check_code(db: Session, record: AuthOtp | PendingSignup | None, otp: str, now: datetime) -> None:
+        """Use up a matching code; count a wrong one, closing the code after OTP_MAX_ATTEMPTS."""
         if record is None:
             raise InvalidOtpError
         if not verify_secret(otp, record.otp_hash):
@@ -358,4 +407,3 @@ class AuthService:
             db.commit()
             raise TooManyOtpAttemptsError if exhausted else InvalidOtpError
         record.consumed_at = now
-        return record

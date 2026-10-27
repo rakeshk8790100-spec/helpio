@@ -13,8 +13,10 @@ from app.modules.auth.schema import (
     RegisterRequest,
     ResetPasswordRequest,
     SessionResponse,
+    SignupCodeResponse,
     UpdateMeRequest,
     UserResponse,
+    VerifySignupRequest,
 )
 from app.modules.auth.service import MAX_AVATAR_BYTES, AuthService
 
@@ -24,14 +26,27 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # ── Sign-up and log-in ───────────────────────────────────────────────────────
 
 
-@router.post("/register", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=SignupCodeResponse, status_code=status.HTTP_202_ACCEPTED)
 def register(
     payload: RegisterRequest,
     db: Session = Depends(get_db),
     service: AuthService = Depends(get_auth_service),
-) -> SessionResponse:
-    """Customers and providers: create the account and sign in."""
+) -> SignupCodeResponse:
+    """
+    Customers and providers, step 1: email a 6-digit code to prove the address. Nothing is created yet.
+    Send the same details again to resend (one code a minute, 5 an hour; each lasts 10 minutes).
+    """
     return service.register(db, payload)
+
+
+@router.post("/register/verify", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
+def verify_signup(
+    payload: VerifySignupRequest,
+    db: Session = Depends(get_db),
+    service: AuthService = Depends(get_auth_service),
+) -> SessionResponse:
+    """Step 2: the emailed code creates the account with a verified email and signs in (5 wrong tries end it)."""
+    return service.verify_signup(db, payload)
 
 
 @router.post("/login", response_model=SessionResponse)

@@ -40,6 +40,7 @@ Settings load `.env.dev` by default. Set `APP_ENV=prod` to load `.env.prod`;
 production uses its own credentials. Process environment variables override files.
 Environment files are ignored by Git. SSL is required; for certificate verification,
 set `DB_SSLMODE=verify-full` and `DB_SSLROOTCERT` to the Supabase CA certificate path.
+The driver is pg8000, which is pure Python: Windows Smart App Control blocks the DLLs bundled with psycopg-binary.
 See the [Supabase connection guide](https://supabase.com/docs/guides/database/connecting-to-postgres).
 
 Check the connection with a read-only `SELECT 1`:
@@ -68,7 +69,8 @@ All endpoints are under `/api/v1/auth`:
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /register` `{name, email, phone, password, role}` | Creates the account and signs in: 201 with the session `{access_token, token_type, user}`. `role` is `customer` or `provider`; `phone` is 10 digits, stored as `+91…`; `password` is 8–128 characters, stored hashed. 409 if the email or mobile number is already registered. |
+| `POST /register` `{name, email, phone, password, role}` | Sign-up step 1: emails a 6-digit code and returns 202 `{email, resend_in, expires_in_minutes}`. Nothing is created yet. `role` is `customer` or `provider`; `phone` is 10 digits, stored as `+91…`; `password` is 8–128 characters, stored hashed. 409 if the email or mobile number is already registered; 429 when resending too soon. Send the same details again to resend. |
+| `POST /register/verify` `{email, otp}` | Sign-up step 2: the code creates the account with `email_verified` true and signs in: 201 with the session `{access_token, token_type, user}`. |
 | `POST /login` `{email, password, role?}` | Returns the session. 401 for a wrong email or password. 409 when the password is right but the account belongs to the other role (the message names the right login). 403 when the account is disabled. |
 | `POST /google` `{id_token}` | Customers only. Verifies the Google ID token and returns the session. |
 | `POST /forgot-password` `{email}` | Emails a 6-digit reset code to any active account. Always 202, so it can't be used to discover accounts. |
@@ -80,14 +82,16 @@ All endpoints are under `/api/v1/auth`:
 
 `user.onboarding_status` is `skills`, `service_setup` or `complete` for providers and `null` for others.
 
-**Email ownership:** sign-up doesn't wait for an email code, so `email_verified` starts as false.
-Google sign-in or a password reset proves the email. When Google signs in to an account whose email
-was never proven, the existing password is dropped and its sessions end, so registering someone else's
-email doesn't keep you in their account.
+**Email ownership:** sign-up creates the account only after the emailed code is entered, so new
+accounts start with `email_verified` true. Until then the details wait in `auth_pending_signups`
+(password hashed); expired rows can be removed with `DELETE FROM auth_pending_signups WHERE expires_at <= now();`.
+Accounts made before this may still be unverified: Google sign-in or a password reset proves their email.
+When Google signs in to an account whose email was never proven, the existing password is dropped and its
+sessions end, so registering someone else's email doesn't keep you in their account.
 
-**Reset codes** expire after 10 minutes, are stored hashed, and die after 5 wrong attempts. A new code
-is sent at most once every 60 seconds and 5 times per hour; extra requests get the same 202 but send
-nothing. Requesting a new code retires the previous one.
+**Sign-up and reset codes** expire after 10 minutes, are stored hashed, and die after 5 wrong attempts. A new code
+is sent at most once every 60 seconds and 5 times per hour; extra reset requests get the same 202 but send
+nothing, and extra sign-up requests get 429 with the wait. Requesting a new code retires the previous one.
 
 **Sessions** last `AUTH_TOKEN_MINUTES` (default 30 days). Protected endpoints use
 `Depends(get_current_user)`, or `Depends(require_role(UserRole.PROVIDER))` for one role, from
@@ -210,6 +214,7 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 14. `migrations/202610310001_job_milestones_notifications.sql`: four 25% stages per hired job (photo updates the customer approves), the job timeline and in-app notifications
 15. `migrations/202611010001_job_time_estimate.sql`: the pro's time estimate on starting, a target time per stage and a one-time overdue alert
 16. `migrations/202611020001_customer_favorite_skills.sql`: customer favourite services and the popup's skip count
+17. `migrations/202611030001_signup_email_verification.sql`: sign-up details waiting for their emailed code
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

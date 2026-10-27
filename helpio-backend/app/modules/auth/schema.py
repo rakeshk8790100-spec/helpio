@@ -19,6 +19,19 @@ class RegisterRequest(BaseModel):
     password: NewPassword
 
 
+class SignupCodeResponse(BaseModel):
+    # Where the code went
+    email: str
+    # Seconds before another code can be requested
+    resend_in: int
+    expires_in_minutes: int
+
+
+class VerifySignupRequest(BaseModel):
+    email: Email
+    otp: Otp
+
+
 class GoogleLoginRequest(BaseModel):
     id_token: str = Field(min_length=1, max_length=4096)
 

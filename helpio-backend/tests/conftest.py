@@ -114,10 +114,14 @@ def sign_up(
     client: TestClient, *, role: str = "customer", email: str = "asha@example.com",
     phone: str = "9876543210", name: str = "Asha Kumar", password: str = PASSWORD,
 ) -> dict:
-    """Register an account; sign-up signs the user straight in and returns the session."""
-    response = client.post(
+    """Register an account: send the details, enter the emailed code, and return the session."""
+    sent = client.post(
         "/api/v1/auth/register",
         json={"name": name, "email": email, "phone": phone, "role": role, "password": password},
     )
+    assert sent.status_code == 202, sent.text
+    to = sent.json()["email"]
+    code = app.dependency_overrides[get_auth_service]().email_client.last_code(to)
+    response = client.post("/api/v1/auth/register/verify", json={"email": to, "otp": code})
     assert response.status_code == 201, response.text
     return response.json()

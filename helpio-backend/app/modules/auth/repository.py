@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app.modules.auth.model import AuthOtp, AuthUser, OtpPurpose
+from app.modules.auth.model import AuthOtp, AuthUser, OtpPurpose, PendingSignup
 
 
 class AuthRepository:
@@ -59,6 +59,39 @@ class AuthRepository:
                 AuthOtp.expires_at > now,
             )
             .order_by(AuthOtp.created_at.desc())
+            .limit(1)
+            .with_for_update()
+        )
+
+    # ── Sign-ups waiting for their email code ───────────────────────────────────
+
+    def add_pending_signup(self, signup: PendingSignup) -> PendingSignup:
+        self.db.add(signup)
+        self.db.flush()
+        return signup
+
+    def signup_window(self, *, email: str, since: datetime) -> tuple[int, datetime | None, datetime | None]:
+        """Sign-up codes sent to `email` since `since`: (count, oldest created_at, newest created_at)."""
+        count, oldest, newest = self.db.execute(
+            select(
+                func.count(PendingSignup.id), func.min(PendingSignup.created_at), func.max(PendingSignup.created_at)
+            ).where(PendingSignup.email == email, PendingSignup.created_at > since)
+        ).one()
+        return count, oldest, newest
+
+    def close_open_signups(self, *, email: str, now: datetime) -> None:
+        self.db.execute(
+            update(PendingSignup)
+            .where(PendingSignup.email == email, PendingSignup.consumed_at.is_(None))
+            .values(consumed_at=now)
+            .execution_options(synchronize_session=False)
+        )
+
+    def latest_open_signup_for_update(self, *, email: str, now: datetime) -> PendingSignup | None:
+        return self.db.scalar(
+            select(PendingSignup)
+            .where(PendingSignup.email == email, PendingSignup.consumed_at.is_(None), PendingSignup.expires_at > now)
+            .order_by(PendingSignup.created_at.desc())
             .limit(1)
             .with_for_update()
         )

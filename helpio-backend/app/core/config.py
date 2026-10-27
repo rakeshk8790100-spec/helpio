@@ -74,7 +74,7 @@ class Settings(BaseSettings):
             raise ValueError("Configure " + ", ".join(missing) + " using Supabase > Connect")
         # URL.create accepts the raw password, including reserved URI characters.
         return URL.create(
-            "postgresql+psycopg", username=self.db_user,
+            "postgresql+pg8000", username=self.db_user,
             password=self.db_password.get_secret_value(), host=self.db_host,
             port=self.db_port, database=self.db_name,
         )

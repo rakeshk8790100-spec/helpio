@@ -69,6 +69,25 @@ class AuthOtp(Base):
     user: Mapped[AuthUser] = relationship(back_populates="otps")
 
 
+class PendingSignup(Base):
+    """Sign-up details waiting for the emailed code; the account is created only once the code matches."""
+
+    __tablename__ = "auth_pending_signups"
+    __table_args__ = (Index("ix_auth_pending_signups_email_created", "email", "created_at"),)
+
+    id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    phone: Mapped[str] = mapped_column(String(13), nullable=False)
+    role: Mapped[UserRole] = mapped_column(str_enum(UserRole), nullable=False)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    otp_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=0)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
+
+
 class RevokedAccessToken(Base):
     __tablename__ = "auth_revoked_tokens"
 
