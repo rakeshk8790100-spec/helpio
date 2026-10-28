@@ -20,8 +20,12 @@ from app.modules.providers.schema import (
     PublicCategory,
     PublicSkill,
 )
+from app.modules.reviews.repository import NO_RATING, ReviewRepository
+from app.modules.reviews.schema import PublicReviewResponse, RatingSummary
 
 PAGE_SIZE = 20
+# Latest reviews on a pro's public profile
+PROFILE_REVIEWS = 10
 CARD_SKILLS = 3
 BIO_SNIPPET = 140
 # Widest travel radius a provider can set; bounds the SQL pre-filter
@@ -86,7 +90,9 @@ class ProviderDirectory:
         terms = [term for term in (query.q or "").lower().split() if term]
 
         ranked: list[tuple[tuple, ProviderCardResponse]] = []
-        for profile, user in self._serving(db, place):
+        serving = self._serving(db, place)
+        ratings = ReviewRepository(db).summaries([user.id for _, user in serving])
+        for profile, user in serving:
             matched = self._matching_skills(profile.skills, terms, query.category_id, query.skill_ids)
             if (terms or query.category_id or query.skill_ids) and not matched:
                 continue
@@ -94,7 +100,7 @@ class ProviderDirectory:
             best = max((PROFICIENCY_RANK[item.proficiency] for item in matched or profile.skills), default=0)
             # Best matching skill level first, then the closest pro
             key = (-best, metres is None, metres or 0, user.created_at)
-            ranked.append((key, self._card(profile, user, metres, matched)))
+            ranked.append((key, self._card(profile, user, metres, matched, ratings.get(user.id, NO_RATING))))
         ranked.sort(key=lambda item: item[0])
 
         start = (query.page - 1) * PAGE_SIZE
@@ -119,7 +125,8 @@ class ProviderDirectory:
             raise ProviderNotFoundError
         profile, user = row
         metres = self._distance(profile, place) if place else None
-        card = self._card(profile, user, metres, [])
+        reviews = ReviewRepository(db)
+        card = self._card(profile, user, metres, [], reviews.summary(user.id))
         categories: dict[str, PublicCategory] = {}
         for item in sorted(profile.skills, key=lambda s: (s.skill.category.sort_order, s.skill.sort_order)):
             skill = self._public_skill(item)
@@ -135,6 +142,13 @@ class ProviderDirectory:
                 for slot in profile.availability
             ],
             radius_km=profile.radius_m / 1000 if profile.radius_m else None,
+            reviews=[
+                PublicReviewResponse(
+                    id=review.id, rating=review.stars, comment=review.comment,
+                    reviewer_label=short_name(review.author.name, "Customer"), created_at=review.created_at,
+                )
+                for review in reviews.latest_about(user.id, PROFILE_REVIEWS)
+            ],
         )
 
     # ----- Helpers -----
@@ -200,7 +214,8 @@ class ProviderDirectory:
         )
 
     def _card(
-        self, profile: ProviderProfile, user: AuthUser, metres: float | None, matched: list[ProviderSkill]
+        self, profile: ProviderProfile, user: AuthUser, metres: float | None, matched: list[ProviderSkill],
+        rating: RatingSummary,
     ) -> ProviderCardResponse:
         by_level = sorted(profile.skills, key=lambda item: -PROFICIENCY_RANK[item.proficiency])
         shown = (matched + [item for item in by_level if item not in matched])[:CARD_SKILLS]
@@ -219,4 +234,5 @@ class ProviderDirectory:
             max_years_experience=max(years, default=None),
             work_days=sorted(slot.day_of_week for slot in profile.availability),
             member_since=user.created_at,
+            rating=rating,
         )

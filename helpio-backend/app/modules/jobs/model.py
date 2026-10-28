@@ -13,20 +13,22 @@ from app.modules.catalog.model import CatalogCategory
 
 
 class JobStatus(StrEnum):
-    """A custom job request, from draft to paid-out. Escrow, PIN and milestones move it past ACCEPTED."""
+    """A custom job request, from draft to paid-out. PIN and milestones move it past ACCEPTED; paying completes it."""
 
     DRAFT = "draft"
     OPEN = "open"
     ACCEPTED = "accepted"
     FUNDED = "funded"
     IN_PROGRESS = "in_progress"
+    # All four stages approved; the customer pays the hired quote on Razorpay
+    PAYMENT_DUE = "payment_due"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
     DISPUTED = "disputed"
 
 
-# Hired: a provider's quote was accepted and the job isn't finished
-ACTIVE_STATUSES = (JobStatus.ACCEPTED, JobStatus.FUNDED, JobStatus.IN_PROGRESS)
+# Hired: a provider's quote was accepted and the job isn't finished (or isn't paid yet)
+ACTIVE_STATUSES = (JobStatus.ACCEPTED, JobStatus.FUNDED, JobStatus.IN_PROGRESS, JobStatus.PAYMENT_DUE)
 
 
 class InviteStatus(StrEnum):
@@ -53,6 +55,9 @@ class JobEventType(StrEnum):
     MILESTONE_APPROVED = "milestone_approved"
     CHANGES_REQUESTED = "changes_requested"
     STAGE_OVERDUE = "stage_overdue"
+    PAYMENT_FAILED = "payment_failed"
+    PAID = "paid"
+    REVIEWED = "reviewed"
     COMPLETED = "completed"
 
 

@@ -5,6 +5,7 @@ from pydantic import AwareDatetime, BaseModel, Field, StringConstraints, model_v
 
 from app.modules.jobs.model import InviteStatus, JobEventType, JobStatus, MilestoneStatus, QuoteStatus
 from app.modules.providers.model import OnboardingStatus, Proficiency
+from app.modules.reviews.schema import RatingSummary
 
 # Money is in paise: ₹100 to ₹10 lakh
 MIN_AMOUNT_PAISE = 10_000
@@ -251,6 +252,8 @@ class NearbyJobDetailResponse(NearbyJobResponse):
     customer_name: str | None
     started_at: datetime | None
     unread_messages: int
+    # How other pros rated this customer
+    customer_rating: RatingSummary
 
 
 class CategoryOption(BaseModel):

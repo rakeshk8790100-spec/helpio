@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import secrets
 from dataclasses import dataclass
+from datetime import timedelta
 from math import cos, pi, radians, sin
 from uuid import uuid4
 
@@ -94,7 +95,10 @@ from app.modules.jobs.schema import (
 from app.modules.providers.exceptions import ProviderProfileNotFoundError
 from app.modules.providers.model import OnboardingStatus, Proficiency, ProviderProfile
 from app.modules.notifications.service import NotificationService
+from app.modules.payments.model import PayoutStatus
+from app.modules.payments.repository import PaymentRepository
 from app.modules.providers.repository import ProviderRepository
+from app.modules.reviews.repository import ReviewRepository
 
 HOME_NEARBY_LIMIT = 3
 # Approximate job area on the map: the real spot sits 200–400 m from the centre, inside a 600 m circle
@@ -405,6 +409,7 @@ class JobService:
             customer_name=job.customer.name if hired else None,
             started_at=job.started_at if hired else None,
             unread_messages=unread_count(db, job.id, user.id) if hired else 0,
+            customer_rating=ReviewRepository(db).summary(job.customer_id),
         )
 
     def create_quote(self, db: Session, user: AuthUser, job_id: str, payload: CreateQuoteRequest) -> QuoteResponse:
@@ -490,6 +495,7 @@ class JobService:
         nearby = self._matches(db, user, profile)
         counts = repo.quote_counts(user.id)
         active = repo.active_job_for_provider(user.id)
+        payments = PaymentRepository(db)
         return ProviderHomeResponse(
             onboarding_status=status,
             checklist=[
@@ -517,8 +523,11 @@ class JobService:
             ],
             nearby=[self._nearby_response(m.job, user, m.metres) for m in nearby[:HOME_NEARBY_LIMIT]],
             nearby_count=len(nearby),
-            # Wallet and payouts arrive with escrow
-            earnings=EarningsSummary(week_paise=0, wallet_paise=0),
+            earnings=EarningsSummary(
+                week_paise=payments.paid_total(user.id, since=utc_now() - timedelta(days=7)),
+                # Paid by customers, not yet sent on by Helpio
+                wallet_paise=payments.paid_total(user.id, payout=PayoutStatus.PENDING),
+            ),
         )
 
     # ----- Helpers -----

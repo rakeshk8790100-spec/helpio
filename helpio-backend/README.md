@@ -164,7 +164,7 @@ After hire, only the hired pro can still open the job (`GET /api/v1/jobs/nearby/
 | `POST /api/v1/jobs/{id}/start-pin/reset` | Customer: a new PIN, tries reset. |
 | `GET /api/v1/jobs/{id}/messages` `?after=<iso>`, `POST /api/v1/jobs/{id}/messages` `{body}` | Chat between the customer and the hired pro only (others 404; before hire 409). Messages oldest first with `mine` and the sender as "Asha K."; reading marks the other side's messages read. Phone numbers (7+ digits) and email addresses are replaced with "•••". `unread_messages` is on the customer's `GET /jobs/{id}` and the pro's `GET /jobs/nearby/{id}`. |
 | `POST /api/v1/jobs/{id}/quotes` `{amount_paise, message?}` | Provider with finished sign-up, on a job they can see nearby. One quote per job (409 on a second). |
-| `GET /api/v1/providers/me/home` | Provider home: sign-up checklist, `can_quote`, active job, quote counts, top 3 nearby jobs and `nearby_count`, earnings (zero until payouts exist). |
+| `GET /api/v1/providers/me/home` | Provider home: sign-up checklist, `can_quote`, active job, quote counts, top 3 nearby jobs and `nearby_count`, earnings (`week_paise` paid by customers in the last 7 days, `wallet_paise` paid and waiting for Helpio's payout). |
 
 ## Profiles, addresses and finding pros
 
@@ -173,7 +173,7 @@ After hire, only the hired pro can still open the job (`GET /api/v1/jobs/nearby/
 | `GET/POST /api/v1/customers/me/addresses`, `PATCH/DELETE /api/v1/customers/me/addresses/{id}` | Customer saved addresses (up to 5): `label` home/work/other, private `address_line`, `area_name`, `pincode`, optional coordinates. One is the default (the first, or one saved with `is_default: true`; deleting it promotes the next). Every call returns the whole list. |
 | `PATCH /api/v1/providers/me/profile` `{bio}` | Provider's public bio (up to 500 characters). Skills and service area are edited with the onboarding endpoints. |
 | `GET /api/v1/providers/search` `?q&category_id&address_id` or `?latitude&longitude` or `?pincode`, `&page` | Pros with finished sign-up who serve that place (within their radius, or the same pincode when either side has no coordinates). Defaults to the customer's default address; 422 without any location. `q` matches skill and category names; best matching skill level first, then closest. Cards show "Ravi S.", photo, bio snippet, area, distance rounded to 0.5 km and up to 3 skills, never coordinates, pincode or phone. 20 per page. |
-| `GET /api/v1/providers/{id}` `?address_id` | A pro's public profile: the card plus full bio, skills by category, working hours and travel radius. |
+| `GET /api/v1/providers/{id}` `?address_id` | A pro's public profile: the card plus full bio, skills by category, working hours, travel radius and the 10 latest customer reviews. Cards carry `rating` `{average, count}`. |
 | `POST /api/v1/jobs/{id}/invites` `{provider_id, message?}` | Customer, open jobs only: send the job straight to a chosen pro (up to 5 per job, 409 on a repeat). The pro sees it first in their jobs whatever the distance or category, and replies with a quote or declines. `GET /jobs/{id}` lists `invites` with each status (`pending`, `quoted`, `declined`). |
 | `POST /api/v1/jobs/{id}/invite/decline` | Provider: turn down a direct request (a pending quote on it is withdrawn). Provider home lists `invites` still waiting for a quote; nearby jobs carry `invite_status` and `invite_message`. |
 
@@ -193,6 +193,24 @@ Library until it is deleted there.
 
 Without a preset the API falls back to signed uploads with the key and secret. Without either, uploads answer 503
 and everything else keeps working.
+
+## Paying and reviews (Razorpay)
+
+Approving the fourth stage makes the job `payment_due`. The customer pays the hired quote on a Razorpay Payment Link
+(UPI, including the Google Pay QR, or netbanking) and Razorpay sends them back to `APP_WEB_URL/jobs/<id>`. Paying
+completes the job. The money stays in Helpio's Razorpay account; an admin sends it to the pro and records the transfer.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /api/v1/jobs/{id}/payment` | Customer or hired pro: amount, `status` (`pending`, `paid`, `expired`, `cancelled`), `last_error`, every try in `attempts` and, for the pro, `payout`. An open payment is checked with Razorpay at most once a minute, so a missed webhook catches up. |
+| `POST /api/v1/jobs/{id}/payment` | Customer, `payment_due` job: `{payment_id, short_url}` to send them to. The open link is reused until it expires (`PAYMENT_LINK_EXPIRY_MINUTES`); then a new one is made. |
+| `POST /api/v1/jobs/{id}/payment/confirm` | Customer, back from Razorpay: the `razorpay_*` query parameters. The signature is checked, then the state is read from Razorpay's API. |
+| `POST /api/v1/payments/razorpay/webhook` | Razorpay. Add it in Dashboard > Webhooks for `payment_link.paid`, `payment_link.expired`, `payment_link.cancelled` and `payment.failed`, with the secret in `RAZORPAY_WEBHOOK_SECRET` (refused while that's empty). Needs a public URL; in development use a tunnel, or rely on the return and page checks above. |
+| `GET /api/v1/admin/payouts` `?status=pending`, `POST /api/v1/admin/payouts/{payment_id}/paid` `{reference}` | Admin: paid jobs with the pro's contact, and marking Helpio's transfer sent (UTR or UPI reference). The pro is notified. |
+| `GET/POST /api/v1/jobs/{id}/reviews` `{rating 1-5, comment?}` | Customer or hired pro, from 100% approval: one review each way, final. Pros see the customer's `customer_rating` on `GET /jobs/nearby/{id}`. |
+
+A failed try keeps the payment `pending` with Razorpay's reason in `last_error`; the customer can pay again on the same
+link. Every try is a `payment_attempts` row, keyed by Razorpay's payment id, so repeated webhooks never duplicate it.
 
 ## Migrations
 
@@ -216,6 +234,7 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 16. `migrations/202611020001_customer_favorite_skills.sql`: customer favourite services and the popup's skip count
 17. `migrations/202611030001_signup_email_verification.sql`: sign-up details waiting for their emailed code
 18. `migrations/202611040001_catalog_expansion.sql`: the home services catalogue, 14 categories and 82 skills
+19. `migrations/202611050001_payments_and_reviews.sql`: the `payment_due` job status, Razorpay payment links with every attempt and the pro's payout, and one review each way per job
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

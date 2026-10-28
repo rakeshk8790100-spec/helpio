@@ -1,6 +1,6 @@
 from collections.abc import Collection, Sequence
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.modules.jobs.model import ACTIVE_STATUSES, InviteStatus, Job, JobInvite, JobQuote, JobStatus, QuoteStatus
@@ -72,7 +72,8 @@ class JobRepository:
                 Job.status.in_(ACTIVE_STATUSES),
             )
             .options(selectinload(Job.quotes))
-            .order_by(Job.updated_at.desc())
+            # Work in hand before a finished job that's waiting for the customer's payment
+            .order_by(case((Job.status == JobStatus.PAYMENT_DUE, 1), else_=0), Job.updated_at.desc())
             .limit(1)
         )
 

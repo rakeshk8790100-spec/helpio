@@ -4,6 +4,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from app.modules.providers.model import OnboardingStatus, Proficiency
+from app.modules.reviews.schema import PublicReviewResponse, RatingSummary
 
 MIN_SKILLS = 4
 MAX_SKILLS = 20
@@ -120,6 +121,8 @@ class ProviderCardResponse(BaseModel):
     # Working days, 0 = Monday
     work_days: list[int]
     member_since: datetime
+    # Customers' ratings after finished jobs
+    rating: RatingSummary
 
 
 class ProviderSearchResponse(BaseModel):
@@ -142,3 +145,5 @@ class ProviderProfileResponse(ProviderCardResponse):
     categories: list[PublicCategory]
     availability: list[AvailabilitySlot]
     radius_km: float | None
+    # Newest first, up to 10
+    reviews: list[PublicReviewResponse]

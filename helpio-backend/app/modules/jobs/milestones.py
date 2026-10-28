@@ -85,6 +85,15 @@ def add_event(db: Session, job: Job, actor_id: str | None, type: JobEventType, *
     db.add(JobEvent(job_id=job.id, actor_id=actor_id, type=type, data=data))
 
 
+def job_for_party(db: Session, user: AuthUser, job_id: str) -> tuple[Job, str]:
+    """The job and its hired pro; only the customer and that pro may see what happens after hire."""
+    job = JobRepository(db).get(job_id)
+    provider_id = hired_provider_id(job) if job else None
+    if job is None or provider_id is None or user.id not in (job.customer_id, provider_id):
+        raise JobNotFoundError
+    return job, provider_id
+
+
 def schedule_stages(job: Job) -> None:
     """Each stage's target: a quarter of the estimate after another, counted from the start. Set once, never moved."""
     if job.started_at is None or job.estimated_mins is None:
@@ -247,19 +256,21 @@ class MilestoneService:
         add_event(db, job, user.id, JobEventType.MILESTONE_APPROVED, stage=stage)
         provider = db.get(AuthUser, provider_id)
         amount = stage_amount(hired_amount(job), stage)
+        last = stage == MILESTONE_STAGES[-1]
         self.notifications.notify(
             db, provider, type="milestone_approved",
             title=f"{stage_label(milestone)} approved",
             body=f"The customer approved {milestone.percent}% of \"{job.title}\" (₹{amount / 100:,.0f} of your quote)."
-                 + ("" if stage == MILESTONE_STAGES[-1] else " You can start the next stage."),
+                 + (" The customer pays next, then Helpio sends the money to you." if last else " You can start the next stage."),
             job_id=job.id, link=provider_link(job.id), background=background,
         )
-        if stage == MILESTONE_STAGES[-1]:
-            job.status = JobStatus.COMPLETED
-            add_event(db, job, None, JobEventType.COMPLETED)
+        if last:
+            # Paying completes the job (see PaymentService)
+            job.status = JobStatus.PAYMENT_DUE
             self.notifications.notify(
-                db, job.customer, type="job_completed", title="Job completed",
-                body=f"\"{job.title}\" is 100% done. Thanks for using Helpio!",
+                db, job.customer, type="payment_due", title="Work done: time to pay",
+                body=f"All four stages of \"{job.title}\" are approved. Pay ₹{hired_amount(job) / 100:,.0f} "
+                     "with UPI or netbanking to complete the job, and rate your pro.",
                 job_id=job.id, link=customer_link(job.id), background=background,
             )
         db.commit()
@@ -288,12 +299,7 @@ class MilestoneService:
     # ----- Helpers -----
 
     def _job_for(self, db: Session, user: AuthUser, job_id: str) -> tuple[Job, str]:
-        """The job and its hired pro; only the customer and that pro may see the stages."""
-        job = JobRepository(db).get(job_id)
-        provider_id = hired_provider_id(job) if job else None
-        if job is None or provider_id is None or user.id not in (job.customer_id, provider_id):
-            raise JobNotFoundError
-        return job, provider_id
+        return job_for_party(db, user, job_id)
 
     def _own_job(self, db: Session, user: AuthUser, job_id: str) -> tuple[Job, str]:
         job, provider_id = self._job_for(db, user, job_id)

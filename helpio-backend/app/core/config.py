@@ -48,6 +48,14 @@ class Settings(BaseSettings):
     # Server-only: never send this to the browser.
     cloudinary_api_secret: SecretStr = SecretStr("")
 
+    # Razorpay takes the customer's payment once all four stages are approved. The secrets are server-only.
+    razorpay_key_id: str = ""
+    razorpay_key_secret: SecretStr = SecretStr("")
+    # Typed when adding the webhook in the Razorpay dashboard; webhooks are refused while it's empty
+    razorpay_webhook_secret: SecretStr = SecretStr("")
+    # How long a payment link stays open; Razorpay needs at least 15 minutes
+    payment_link_expiry_minutes: int = Field(default=1440, ge=16, le=30 * 24 * 60)
+
     # Comma-separated browser origins allowed to call the API, e.g. "https://app.helpio.in".
     cors_origins: str = ""
 

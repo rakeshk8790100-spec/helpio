@@ -40,3 +40,7 @@ def require_role(*roles: UserRole) -> Callable[[AuthUser], AuthUser]:
         return user
 
     return dependency
+
+
+# Helpio staff: payouts to pros
+current_admin = require_role(UserRole.ADMIN)

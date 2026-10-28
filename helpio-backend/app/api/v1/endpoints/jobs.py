@@ -35,6 +35,9 @@ from app.modules.jobs.schema import (
 )
 from app.modules.jobs.service import JobService, NearbyFilters
 from app.modules.providers.dependencies import current_provider
+from app.modules.reviews.dependencies import get_review_service
+from app.modules.reviews.schema import JobReviewsResponse, SubmitReviewRequest
+from app.modules.reviews.service import ReviewService
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -309,7 +312,7 @@ def approve_milestone(
     db: Session = Depends(get_db),
     service: MilestoneService = Depends(get_milestone_service),
 ) -> MilestonesResponse:
-    """Customer: approve the stage; approving stage 4 completes the job."""
+    """Customer: approve the stage; approving stage 4 makes the job due for payment."""
     return service.approve(db, user, job_id, stage, background)
 
 
@@ -325,6 +328,33 @@ def request_milestone_changes(
 ) -> MilestonesResponse:
     """Customer: send the stage back with a reason; the pro sends new photos."""
     return service.request_changes(db, user, job_id, stage, payload.reason, background)
+
+
+# ----- Reviews: once all four stages are approved, each side rates the other once -----
+
+
+@router.get("/{job_id}/reviews", response_model=JobReviewsResponse)
+def job_reviews(
+    job_id: str,
+    user: AuthUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    service: ReviewService = Depends(get_review_service),
+) -> JobReviewsResponse:
+    """The customer or the hired pro: my review, the other side's review of me, and whether I can still review."""
+    return service.for_job(db, user, job_id)
+
+
+@router.post("/{job_id}/reviews", response_model=JobReviewsResponse, status_code=status.HTTP_201_CREATED)
+def submit_review(
+    job_id: str,
+    payload: SubmitReviewRequest,
+    background: BackgroundTasks,
+    user: AuthUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    service: ReviewService = Depends(get_review_service),
+) -> JobReviewsResponse:
+    """The customer rates the pro, or the pro rates the customer: 1 to 5 stars and an optional comment. Final."""
+    return service.submit(db, user, job_id, payload, background)
 
 
 # ----- Chat between the customer and the hired pro -----
