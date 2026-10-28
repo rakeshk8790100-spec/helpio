@@ -1,3 +1,4 @@
+import type { RatingSummary } from '../../../common/CommonDto';
 import type { Proficiency } from '../../../common/CommonEnum';
 
 /* Wire format (snake_case) of /providers/search and /providers/{id}. */
@@ -24,6 +25,7 @@ export interface ProviderCardApiDto {
   max_years_experience: number | null;
   work_days: number[];
   member_since: string;
+  rating: RatingSummary;
 }
 
 export interface ProviderSearchApiDto {
@@ -39,6 +41,7 @@ export interface ProviderProfileApiDto extends ProviderCardApiDto {
   categories: { id: string; name: string; skills: PublicSkillApiDto[] }[];
   availability: { day: number; start: string; end: string }[];
   radius_km: number | null;
+  reviews: { id: string; rating: number; comment: string | null; reviewer_label: string; created_at: string }[];
 }
 
 /** Where to search from: a saved address (default when omitted), a point or a pincode */

@@ -42,6 +42,11 @@ const ACTIVE_COPY: Partial<Record<JobStatus, (job: Job) => { statusLabel: string
           nextStep: "Your pro has started. You'll approve the work in 25% steps, with photos at each.",
           actionLabel: 'Open job',
         },
+  [JobStatus.PAYMENT_DUE]: () => ({
+    statusLabel: 'Payment due',
+    nextStep: 'All four stages are approved. Pay with UPI or netbanking to complete the job, then rate your pro.',
+    actionLabel: 'Pay now',
+  }),
 };
 
 /** Signed-in customer home: live job, quotes to review, posted jobs and drafts, plus search and discovery. */

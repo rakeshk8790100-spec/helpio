@@ -160,6 +160,65 @@ export type JobProgressProps = WithStatus<{
   timeline: { id: string; text: string; detail: string | null; time: string }[];
 }>;
 
+// ----- After 100%: paying on Razorpay, and one review each way -----
+
+export interface PaymentTry {
+  id: string;
+  /** e.g. "Failed", "Paid" */
+  badge: { label: string; tone: BadgeTone };
+  /** e.g. "UPI · 4:05 PM" */
+  meta: string;
+  /** Razorpay's reason when it failed */
+  reason: string | null;
+}
+
+export type JobPaymentProps = WithStatus<{
+  /** due: the customer's turn; waiting: the pro waits for the customer; done: paid */
+  tone: 'due' | 'waiting' | 'done';
+  /** e.g. "Pay ₹1,500 to finish" */
+  title: string;
+  badge: { label: string; tone: BadgeTone };
+  /** What happens next, in plain words */
+  text: string;
+  /** Customer: Razorpay's reason the last try failed, while the payment is still open */
+  lastError: string | null;
+  /** Customer, while the job waits for payment: off to Razorpay's page */
+  pay: { label: string; starting: boolean; onPay: () => void } | null;
+  /** Back from Razorpay: the payment is being checked */
+  confirming: boolean;
+  /** Customer, after a failed try: every try, oldest first */
+  tries: PaymentTry[];
+}>;
+
+export interface ReviewView {
+  rating: number;
+  comment: string | null;
+  /** e.g. "Your review · 28 Oct" or "Ravi S. rated you · 28 Oct" */
+  caption: string;
+}
+
+export type JobReviewProps = WithStatus<{
+  /** e.g. "How did Ravi S. do?" */
+  title: string;
+  /** Until I've reviewed: pick stars, add a comment, send once */
+  form: {
+    hint: string;
+    rating: number;
+    onRatingChange: (value: number) => void;
+    comment: string;
+    onCommentChange: (value: string) => void;
+    maxLength: number;
+    sending: boolean;
+    error?: string;
+    onSend: () => void;
+  } | null;
+  mine: ReviewView | null;
+  /** The other side's review of me */
+  theirs: ReviewView | null;
+  /** e.g. "Ravi S. hasn't reviewed you yet." */
+  waitingText: string | null;
+}>;
+
 // ----- Customer: one job -----
 
 export interface JobSummary {
@@ -193,6 +252,10 @@ export type JobDetailLayoutProps = WithStatus<{
   } | null;
   /** After hire: the four stages, the update to review and the timeline */
   progress: JobProgressProps | null;
+  /** All four stages approved: pay on Razorpay, then the receipt */
+  payment: JobPaymentProps | null;
+  /** All four stages approved: rate the pro, and see their rating of me */
+  review: JobReviewProps | null;
   quotes: {
     items: {
       quote: CustomerQuote;
@@ -280,7 +343,12 @@ export type ProviderQuoteProps =
     };
 
 export type ProviderJobLayoutProps = WithStatus<{
-  summary: JobSummary & { customerLabel: string; quoteCount: number };
+  summary: JobSummary & {
+    customerLabel: string;
+    quoteCount: number;
+    /** How other pros rated this customer; null before any review */
+    customerRating: { average: number; count: number } | null;
+  };
   /** The customer asked this pro directly */
   invite: { message: string | null; declining: boolean; onDecline: () => void } | null;
   /** My quote was accepted: the customer's name and the exact place */
@@ -303,6 +371,10 @@ export type ProviderJobLayoutProps = WithStatus<{
   } | null;
   /** After hire: the four stages, the update form and the timeline */
   progress: JobProgressProps | null;
+  /** All four stages approved: the customer's payment, then Helpio's transfer to me */
+  payment: JobPaymentProps | null;
+  /** All four stages approved: rate the customer, and see their rating of me */
+  review: JobReviewProps | null;
   circle: MapCircle | null;
   quote: ProviderQuoteProps;
   onBack: () => void;

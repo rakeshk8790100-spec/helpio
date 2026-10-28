@@ -11,7 +11,9 @@ const INVITE_BADGE: Record<InviteStatus, { label: string; tone: BadgeTone }> = {
   [InviteStatus.QUOTED]: { label: 'Quoted', tone: 'success' },
   [InviteStatus.DECLINED]: { label: 'Declined', tone: 'neutral' },
 };
+import JobPaymentBlock from './jobPayment';
 import JobProgressBlock from './jobProgress';
+import JobReviewBlock from './jobReview';
 import JobSummaryBlock from './jobSummary';
 import type { JobDetailLayoutProps } from './jobs.layout.types';
 
@@ -71,6 +73,9 @@ const JobDetailLayout = (p: JobDetailLayoutProps) => {
           </button>
         </section>
       )}
+
+      {p.payment && <JobPaymentBlock payment={p.payment} />}
+      {p.review && <JobReviewBlock review={p.review} />}
 
       {p.progress && <JobProgressBlock progress={p.progress} />}
 

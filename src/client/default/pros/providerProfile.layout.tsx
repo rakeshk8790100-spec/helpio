@@ -1,7 +1,8 @@
 import { Alert, Button, Drawer, Input, Skeleton } from 'antd';
 import { ArrowLeft, BadgeCheck, CalendarDays, CircleCheck, Circle, FilePlus, MapPin, Send, Star } from 'lucide-react';
 import { PROFICIENCY_LABEL } from '../../../component/marketplace';
-import { AlertBanner, Avatar, PageSkeleton, SectionHeader } from '../../../component/ui';
+import { AlertBanner, Avatar, PageSkeleton, RatingStars, SectionHeader } from '../../../component/ui';
+import { formatShortDate } from '../../../lib/utils';
 import type { ProviderProfileLayoutProps, RequestSheetProps } from './pros.layout.types';
 
 const RequestSheet = (r: RequestSheetProps) => (
@@ -84,6 +85,11 @@ const ProviderProfileLayout = (p: ProviderProfileLayoutProps) => {
         <div className="mt-0.5 text-sm font-medium text-indigo-700">
           {[PROFICIENCY_LABEL[pro.topProficiency], pro.maxYearsExperience && `${pro.maxYearsExperience} yrs experience`].filter(Boolean).join(' · ')}
         </div>
+        {pro.rating.count > 0 && pro.rating.average !== null && (
+          <div className="mt-1.5">
+            <RatingStars value={pro.rating.average} count={pro.rating.count} size={16} />
+          </div>
+        )}
         {place && (
           <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
             <MapPin size={12} />
@@ -141,11 +147,27 @@ const ProviderProfileLayout = (p: ProviderProfileLayoutProps) => {
         </section>
       )}
       <section>
-        <SectionHeader title="Reviews" />
-        <div className="flex items-center gap-2 rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
-          <Star size={16} />
-          Reviews appear here after {pro.displayName}'s first jobs on Helpio.
-        </div>
+        <SectionHeader title={pro.rating.count ? `Reviews (${pro.rating.count})` : 'Reviews'} />
+        {pro.reviews.length ? (
+          <div className="flex flex-col divide-y divide-slate-100 rounded-2xl border border-slate-100 shadow-sm">
+            {pro.reviews.map((review) => (
+              <div key={review.id} className="flex flex-col gap-1.5 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <RatingStars value={review.rating} />
+                  <span className="text-[11px] text-slate-500">
+                    {review.reviewerLabel} · {formatShortDate(review.createdAt)}
+                  </span>
+                </div>
+                {review.comment && <div className="whitespace-pre-line text-sm text-slate-700">{review.comment}</div>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+            <Star size={16} />
+            Reviews appear here after {pro.displayName}'s first jobs on Helpio.
+          </div>
+        )}
       </section>
 
       {/* Sticky action */}

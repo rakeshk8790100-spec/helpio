@@ -30,6 +30,7 @@ All components are pure: data comes in through props and actions go out through 
 | `ProgressBar` | Thin progress bar with `role="progressbar"` (milestones 0/25/50/75/100) | `value`, `label`, `variant?: 'plain' \| 'glass'` | ad-hoc width bars |
 | `EmptyState` | Empty section: icon, one line, optional action | `Icon`, `text`, `actionLabel?`, `onAction?` | blank sections |
 | `AlertBanner` | Inline error notice with Retry (`role="alert"`) | `message`, `onRetry?` | antd `Alert` for failed requests |
+| `RatingStars` | Read-only rating: five stars, or `compact` "★ 4.6 (12)" for cards and rows (`role="img"` with a spoken label) | `value`, `count?`, `variant?: 'stars' \| 'compact'`, `size?` | hand-drawn star rows; antd `Rate` is only for picking a rating |
 
 ## `src/component/marketplace` (Helpio domain)
 

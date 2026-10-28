@@ -13,7 +13,7 @@ const TABS: { value: JobsTab; label: string; statuses: JobStatus[]; empty: strin
   {
     value: JobsTab.ACTIVE,
     label: 'Active',
-    statuses: [JobStatus.ACCEPTED, JobStatus.FUNDED, JobStatus.IN_PROGRESS],
+    statuses: [JobStatus.ACCEPTED, JobStatus.FUNDED, JobStatus.IN_PROGRESS, JobStatus.PAYMENT_DUE],
     empty: 'Nothing in progress. Jobs move here once you hire a pro.',
   },
   { value: JobsTab.DRAFTS, label: 'Drafts', statuses: [JobStatus.DRAFT], empty: 'No drafts. Save a job any time to finish it later.' },

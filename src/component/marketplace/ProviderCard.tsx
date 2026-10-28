@@ -2,6 +2,7 @@ import { BadgeCheck, CalendarDays, MapPin } from 'lucide-react';
 import type { ProviderCard as ProviderCardData } from '../../common/CommonDto';
 import { formatDays } from '../../lib/utils';
 import Avatar from '../ui/Avatar';
+import RatingStars from '../ui/RatingStars';
 import { PROFICIENCY_LABEL } from './proficiency';
 
 interface Props {
@@ -18,6 +19,9 @@ const ProviderCard = ({ provider: p, onOpen, compact = false }: Props) => {
     .filter(Boolean)
     .join(' · ');
   const more = p.skillCount - p.skills.length;
+  const rating = p.rating.count > 0 && p.rating.average !== null
+    ? <RatingStars variant="compact" value={p.rating.average} count={p.rating.count} />
+    : null;
 
   if (compact) {
     return (
@@ -32,6 +36,7 @@ const ProviderCard = ({ provider: p, onOpen, compact = false }: Props) => {
           <BadgeCheck size={13} className="text-indigo-500" aria-label="Helpio pro" />
         </span>
         <span className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">{p.skills[0]?.name ?? 'Helpio pro'}</span>
+        {rating && <span className="mt-1">{rating}</span>}
         {place && <span className="mt-0.5 line-clamp-1 text-[11px] text-slate-400">{place}</span>}
       </button>
     );
@@ -49,6 +54,7 @@ const ProviderCard = ({ provider: p, onOpen, compact = false }: Props) => {
           <div className="flex items-center gap-1">
             <span className="truncate text-base font-semibold text-slate-900">{p.displayName}</span>
             <BadgeCheck size={15} className="shrink-0 text-indigo-500" aria-label="Helpio pro" />
+            {rating && <span className="ml-auto pl-2">{rating}</span>}
           </div>
           {level && <div className="text-xs font-medium text-indigo-700">{level}</div>}
           {place && (

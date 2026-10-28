@@ -5,8 +5,11 @@ import type {
   JobAttachment,
   JobChat,
   JobDetail,
+  JobPayment,
   JobProgress,
   JobQuote,
+  JobReview,
+  JobReviews,
   NearbyJobDetail,
   NearbyJobs,
   ProviderJob,
@@ -17,10 +20,14 @@ import type {
   ChatApiDto,
   JobDetailApiDto,
   JobInput,
+  JobPaymentApiDto,
+  JobReviewApiDto,
+  JobReviewsApiDto,
   MilestonesApiDto,
   NearbyFilters,
   NearbyJobDetailApiDto,
   NearbyJobsApiDto,
+  PaymentReturn,
   ProviderJobApiDto,
 } from './types/jobs.dto';
 
@@ -69,6 +76,7 @@ const toNearbyJobDetail = (dto: NearbyJobDetailApiDto): NearbyJobDetail => ({
   customerName: dto.customer_name,
   startedAt: dto.started_at,
   unreadMessages: dto.unread_messages,
+  customerRating: dto.customer_rating,
 });
 
 const toAttachment = (dto: AttachmentApiDto): JobAttachment => ({ id: dto.id, contentType: dto.content_type, url: dto.url });
@@ -108,8 +116,47 @@ const toJobProgress = (dto: MilestonesApiDto): JobProgress => ({
     actorLabel: e.actor_label,
     stage: e.data.stage ?? null,
     reason: e.data.reason ?? null,
+    amount: e.data.amount_paise !== undefined ? e.data.amount_paise / 100 : null,
+    rating: e.data.rating ?? null,
     createdAt: e.created_at,
   })),
+});
+
+const toJobPayment = (dto: JobPaymentApiDto): JobPayment => ({
+  jobId: dto.job_id,
+  jobStatus: dto.job_status,
+  amount: dto.amount_paise / 100,
+  paymentId: dto.payment_id,
+  status: dto.status,
+  lastError: dto.last_error,
+  expiresAt: dto.expires_at,
+  paidAt: dto.paid_at,
+  method: dto.method,
+  attempts: dto.attempts.map((a) => ({
+    id: a.id,
+    status: a.status,
+    method: a.method,
+    amount: a.amount_paise / 100,
+    errorDescription: a.error_description,
+    attemptedAt: a.attempted_at,
+  })),
+  payout: dto.payout && { status: dto.payout.status, reference: dto.payout.reference, sentAt: dto.payout.sent_at },
+  canPay: dto.can_pay,
+});
+
+const toReview = (dto: JobReviewApiDto): JobReview => ({
+  id: dto.id,
+  rating: dto.rating,
+  comment: dto.comment,
+  reviewerLabel: dto.reviewer_label,
+  reviewerRole: dto.reviewer_role,
+  createdAt: dto.created_at,
+});
+
+const toJobReviews = (dto: JobReviewsApiDto): JobReviews => ({
+  canReview: dto.can_review,
+  mine: dto.mine && toReview(dto.mine),
+  theirs: dto.theirs && toReview(dto.theirs),
 });
 
 const toProviderJob = (dto: ProviderJobApiDto): ProviderJob => ({
@@ -274,6 +321,37 @@ export const jobsApi = baseApi.injectEndpoints({
       invalidatesTags: ['Milestones', 'Jobs', 'Notifications'],
     }),
 
+    // ----- Paying after 100% (customer; the hired pro sees the state) -----
+    getJobPayment: builder.query<JobPayment, string>({
+      query: (jobId) => `/jobs/${jobId}/payment`,
+      transformResponse: toJobPayment,
+      providesTags: ['Payment'],
+    }),
+    /** Customer: the Razorpay page to pay on; the open link is reused until it expires */
+    startJobPayment: builder.mutation<{ paymentId: string; shortUrl: string }, string>({
+      query: (jobId) => ({ url: `/jobs/${jobId}/payment`, method: 'POST' }),
+      transformResponse: (dto: { payment_id: string; short_url: string }) => ({ paymentId: dto.payment_id, shortUrl: dto.short_url }),
+      invalidatesTags: ['Payment'],
+    }),
+    /** Customer, back from Razorpay: the API checks the payment with Razorpay */
+    confirmJobPayment: builder.mutation<JobPayment, { jobId: string; params: PaymentReturn }>({
+      query: ({ jobId, params }) => ({ url: `/jobs/${jobId}/payment/confirm`, method: 'POST', body: params }),
+      transformResponse: toJobPayment,
+      invalidatesTags: ['Payment', 'Jobs', 'Milestones', 'Notifications'],
+    }),
+
+    // ----- Reviews: one each way once all four stages are approved -----
+    getJobReviews: builder.query<JobReviews, string>({
+      query: (jobId) => `/jobs/${jobId}/reviews`,
+      transformResponse: toJobReviews,
+      providesTags: ['Reviews'],
+    }),
+    submitJobReview: builder.mutation<JobReviews, { jobId: string; rating: number; comment: string | null }>({
+      query: ({ jobId, rating, comment }) => ({ url: `/jobs/${jobId}/reviews`, method: 'POST', body: { rating, comment } }),
+      transformResponse: toJobReviews,
+      invalidatesTags: ['Reviews', 'Milestones', 'Providers', 'Notifications'],
+    }),
+
     // ----- Provider -----
     /** Jobs I was hired for, with progress */
     getProviderJobs: builder.query<ProviderJob[], 'active' | 'completed'>({
@@ -358,6 +436,11 @@ export const {
   useApproveMilestoneMutation,
   useSetJobEstimateMutation,
   useRequestMilestoneChangesMutation,
+  useGetJobPaymentQuery,
+  useStartJobPaymentMutation,
+  useConfirmJobPaymentMutation,
+  useGetJobReviewsQuery,
+  useSubmitJobReviewMutation,
   useGetProviderJobsQuery,
   useGetMessagesQuery,
   useSendMessageMutation,

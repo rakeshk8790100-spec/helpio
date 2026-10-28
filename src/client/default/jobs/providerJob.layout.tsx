@@ -2,9 +2,11 @@ import { Alert, Button, Form, Input, InputNumber, Popconfirm } from 'antd';
 import { CircleCheck, CirclePlay, Lock, MapPin, MessageCircle, MessageCircleQuestion, Send, UserRound } from 'lucide-react';
 import { QuoteStatus } from '../../../common/CommonEnum';
 import { JobMap } from '../../../component/marketplace';
-import { AlertBanner, Chip, ChipSelect, PageSkeleton, StatusBadge } from '../../../component/ui';
+import { AlertBanner, Chip, ChipSelect, PageSkeleton, RatingStars, StatusBadge } from '../../../component/ui';
 import { formatINR } from '../../../lib/utils';
+import JobPaymentBlock from './jobPayment';
 import JobProgressBlock from './jobProgress';
+import JobReviewBlock from './jobReview';
 import JobSummaryBlock from './jobSummary';
 import type { ProviderQuoteProps } from './jobs.layout.types';
 import type { ProviderJobLayoutProps } from './jobs.layout.types';
@@ -118,6 +120,9 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
             <span className="flex items-center gap-2">
               <UserRound size={14} className="text-slate-500" />
               {p.hired.customerName}
+              {p.summary.customerRating && (
+                <RatingStars variant="compact" value={p.summary.customerRating.average} count={p.summary.customerRating.count} />
+              )}
             </span>
             <span className="flex items-center gap-2">
               <MapPin size={14} className="text-slate-500" />
@@ -174,6 +179,9 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
         </section>
       )}
 
+      {p.payment && <JobPaymentBlock payment={p.payment} />}
+      {p.review && <JobReviewBlock review={p.review} />}
+
       {p.progress && <JobProgressBlock progress={p.progress} />}
 
       {p.invite && (
@@ -202,6 +210,9 @@ const ProviderJobLayout = (p: ProviderJobLayoutProps) => {
           <span className="flex items-center gap-2 text-slate-700">
             <UserRound size={16} />
             {p.summary.customerLabel}
+            {p.summary.customerRating && (
+              <RatingStars variant="compact" value={p.summary.customerRating.average} count={p.summary.customerRating.count} />
+            )}
           </span>
           <span className="text-xs text-slate-500">
             {p.summary.quoteCount ? `${p.summary.quoteCount} other quote${p.summary.quoteCount === 1 ? '' : 's'}` : 'Be the first to quote'}

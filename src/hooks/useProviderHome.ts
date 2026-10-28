@@ -26,6 +26,11 @@ const ACTIVE_COPY: Partial<Record<JobStatus, (job: NearbyJob) => { statusLabel: 
     nextStep: 'Work has started. Chat with the customer from the job page.',
     actionLabel: 'Open job',
   }),
+  [JobStatus.PAYMENT_DUE]: () => ({
+    statusLabel: 'Waiting for payment',
+    nextStep: 'All four stages are approved. Once the customer pays, Helpio sends the money to you.',
+    actionLabel: 'Open job',
+  }),
 };
 
 /** Signed-in provider home: earnings, sign-up checklist, live job and nearby jobs to quote on. */

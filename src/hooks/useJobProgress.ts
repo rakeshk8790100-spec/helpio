@@ -111,6 +111,12 @@ const eventText = (e: JobEvent) => {
       return `${who} asked for changes on ${pct}`;
     case JobEventType.STAGE_OVERDUE:
       return `The ${pct} update is overdue`;
+    case JobEventType.PAYMENT_FAILED:
+      return "A payment didn't go through";
+    case JobEventType.PAID:
+      return `${who} paid ${e.amount !== null ? formatINR(e.amount) : 'for the job'}`;
+    case JobEventType.REVIEWED:
+      return `${who} left a ${e.rating ?? ''}/5 review`;
     default:
       return 'Job completed';
   }
@@ -158,6 +164,11 @@ export const useJobProgress = (jobId: string, role: Role, { skip, otherName }: O
 
   const headline = (() => {
     if (completed) return 'All four stages approved. This job is complete.';
+    if (data.jobStatus === JobStatus.PAYMENT_DUE) {
+      return role === 'customer'
+        ? `All four stages approved. Pay ${formatINR(data.amount)} below to complete the job.`
+        : `All four stages approved. Waiting for ${otherName} to pay ${formatINR(data.amount)}.`;
+    }
     if (!current) return '';
     const pct = `${current.percent}%`;
     if (!started) {

@@ -30,6 +30,7 @@ const toCard = (dto: ProviderCardApiDto): ProviderCard => ({
   maxYearsExperience: dto.max_years_experience,
   workDays: dto.work_days,
   memberSince: dto.member_since,
+  rating: dto.rating,
 });
 
 /** Find pros who serve a place, and open their public profiles. */
@@ -71,6 +72,13 @@ export const prosApi = baseApi.injectEndpoints({
         // "09:00:00" → "09:00"
         availability: dto.availability.map((s) => ({ day: s.day, start: s.start.slice(0, 5), end: s.end.slice(0, 5) })),
         radiusKm: dto.radius_km,
+        reviews: dto.reviews.map((r) => ({
+          id: r.id,
+          rating: r.rating,
+          comment: r.comment,
+          reviewerLabel: r.reviewer_label,
+          createdAt: r.created_at,
+        })),
       }),
       providesTags: ['Providers'],
     }),

@@ -35,6 +35,7 @@ const isOverdue = (job: ProviderJob, now: number) =>
 /** What the pro should do next on a hired job */
 const hiredBadge = (job: ProviderJob, now: number): { label: string; tone: BadgeTone } => {
   if (job.status === JobStatus.COMPLETED) return { label: 'Completed', tone: 'success' };
+  if (job.status === JobStatus.PAYMENT_DUE) return { label: 'Waiting for payment', tone: 'warning' };
   if (job.status === JobStatus.ACCEPTED) return { label: 'Start with PIN', tone: 'brand' };
   const pct = `${(job.milestoneStage ?? 1) * 25}%`;
   if (isOverdue(job, now)) return { label: `${pct} overdue`, tone: 'error' };
@@ -55,7 +56,9 @@ const hiredStages = (job: ProviderJob, now: number) =>
     percent: stage * 25,
     overdue: stage === job.milestoneStage && isOverdue(job, now),
     status:
-      job.status === JobStatus.COMPLETED || (job.milestoneStage !== null && stage < job.milestoneStage)
+      job.status === JobStatus.COMPLETED ||
+      job.status === JobStatus.PAYMENT_DUE ||
+      (job.milestoneStage !== null && stage < job.milestoneStage)
         ? MilestoneStatus.APPROVED
         : stage === job.milestoneStage
           ? (job.milestoneStatus ?? MilestoneStatus.PENDING)

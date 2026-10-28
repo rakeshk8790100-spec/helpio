@@ -6,6 +6,9 @@ import type {
   JobStatus,
   MilestoneStatus,
   OnboardingStatus,
+  PaymentAttemptStatus,
+  PaymentStatus,
+  PayoutStatus,
   Proficiency,
   QuoteStatus,
   UserRole,
@@ -271,6 +274,8 @@ export interface NearbyJobDetail extends NearbyJob {
   customerName: string | null;
   startedAt: string | null;
   unreadMessages: number;
+  /** How pros rated this customer */
+  customerRating: RatingSummary;
 }
 
 /* ── Progress: four 25% stages ─────────── */
@@ -311,6 +316,10 @@ export interface JobEvent {
   actorLabel: string | null;
   stage: number | null;
   reason: string | null;
+  /** Payments: ₹ paid */
+  amount: number | null;
+  /** Reviews: 1 to 5 */
+  rating: number | null;
   createdAt: string;
 }
 
@@ -345,6 +354,75 @@ export interface ProviderJob extends NearbyJob {
   /** The current stage's target time */
   nextDueAt: string | null;
   unreadMessages: number;
+}
+
+/* ── Paying after 100% (Razorpay) and reviews ── */
+
+/** One try on Razorpay's page */
+export interface PaymentAttempt {
+  id: string;
+  status: PaymentAttemptStatus;
+  /** "upi" or "netbanking" */
+  method: string | null;
+  /** ₹ */
+  amount: number;
+  /** Razorpay's reason when it failed */
+  errorDescription: string | null;
+  attemptedAt: string;
+}
+
+export interface JobPayment {
+  jobId: string;
+  jobStatus: JobStatus;
+  /** The hired quote, ₹ */
+  amount: number;
+  /** The latest payment link; null until the customer first taps Pay */
+  paymentId: string | null;
+  status: PaymentStatus | null;
+  /** Razorpay's reason for the latest failed try, while the payment is still open */
+  lastError: string | null;
+  expiresAt: string | null;
+  paidAt: string | null;
+  method: string | null;
+  /** Oldest first */
+  attempts: PaymentAttempt[];
+  /** The pro only: Helpio's transfer to them */
+  payout: { status: PayoutStatus; reference: string | null; sentAt: string | null } | null;
+  canPay: boolean;
+}
+
+export interface RatingSummary {
+  /** One decimal, e.g. 4.6; null with no reviews yet */
+  average: number | null;
+  count: number;
+}
+
+export interface JobReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  /** "You", "Ravi S." or "Asha K." */
+  reviewerLabel: string;
+  reviewerRole: UserRole;
+  createdAt: string;
+}
+
+export interface JobReviews {
+  /** From 100% approval until I've reviewed */
+  canReview: boolean;
+  mine: JobReview | null;
+  /** The other side's review of me */
+  theirs: JobReview | null;
+}
+
+/** A customer's review on a pro's public profile */
+export interface PublicReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  /** "Asha K." */
+  reviewerLabel: string;
+  createdAt: string;
 }
 
 /* ── Notifications ──────────────────────── */
@@ -437,6 +515,8 @@ export interface ProviderCard {
   /** 0 = Monday */
   workDays: number[];
   memberSince: string;
+  /** Customers' ratings after finished jobs */
+  rating: RatingSummary;
 }
 
 export interface ProviderSearchResult {
@@ -452,6 +532,8 @@ export interface ProviderProfile extends ProviderCard {
   categories: { id: string; name: string; skills: PublicSkill[] }[];
   availability: AvailabilitySlot[];
   radiusKm: number | null;
+  /** Newest first, up to 10 */
+  reviews: PublicReview[];
 }
 
 /* ── Job chat (customer and hired pro) ──── */

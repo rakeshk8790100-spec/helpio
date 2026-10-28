@@ -12,6 +12,7 @@ const STATUS_BADGE: Record<JobStatus, { label: string; tone: BadgeTone }> = {
   [JobStatus.ACCEPTED]: { label: 'Pro hired', tone: 'success' },
   [JobStatus.FUNDED]: { label: 'Paid into escrow', tone: 'success' },
   [JobStatus.IN_PROGRESS]: { label: 'In progress', tone: 'brand' },
+  [JobStatus.PAYMENT_DUE]: { label: 'Payment due', tone: 'warning' },
   [JobStatus.COMPLETED]: { label: 'Completed', tone: 'success' },
   [JobStatus.CANCELLED]: { label: 'Cancelled', tone: 'neutral' },
   [JobStatus.DISPUTED]: { label: 'In dispute', tone: 'error' },

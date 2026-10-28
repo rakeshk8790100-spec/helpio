@@ -28,13 +28,15 @@ export type Proficiency = (typeof Proficiency)[keyof typeof Proficiency];
 /** Digits in an emailed password-reset code */
 export const OTP_LENGTH = 6;
 
-/** A custom job, from draft to paid-out. Escrow, PIN and milestones move it past `accepted`. */
+/** A custom job, from draft to paid-out. PIN and milestones move it past `accepted`; paying completes it. */
 export const JobStatus = {
   DRAFT: 'draft',
   OPEN: 'open',
   ACCEPTED: 'accepted',
   FUNDED: 'funded',
   IN_PROGRESS: 'in_progress',
+  /** All four stages approved; the customer pays the hired quote on Razorpay */
+  PAYMENT_DUE: 'payment_due',
   COMPLETED: 'completed',
   CANCELLED: 'cancelled',
   DISPUTED: 'disputed',
@@ -89,6 +91,35 @@ export const JobEventType = {
   MILESTONE_APPROVED: 'milestone_approved',
   CHANGES_REQUESTED: 'changes_requested',
   STAGE_OVERDUE: 'stage_overdue',
+  PAYMENT_FAILED: 'payment_failed',
+  PAID: 'paid',
+  REVIEWED: 'reviewed',
   COMPLETED: 'completed',
 } as const;
 export type JobEventType = (typeof JobEventType)[keyof typeof JobEventType];
+
+/** A Razorpay payment link: open (a failed try keeps it open), paid, or closed without a payment */
+export const PaymentStatus = {
+  PENDING: 'pending',
+  PAID: 'paid',
+  EXPIRED: 'expired',
+  CANCELLED: 'cancelled',
+} as const;
+export type PaymentStatus = (typeof PaymentStatus)[keyof typeof PaymentStatus];
+
+/** One try on Razorpay, in Razorpay's own words */
+export const PaymentAttemptStatus = {
+  CREATED: 'created',
+  AUTHORIZED: 'authorized',
+  CAPTURED: 'captured',
+  REFUNDED: 'refunded',
+  FAILED: 'failed',
+} as const;
+export type PaymentAttemptStatus = (typeof PaymentAttemptStatus)[keyof typeof PaymentAttemptStatus];
+
+/** Helpio sends the pro their money by hand after the customer pays */
+export const PayoutStatus = {
+  PENDING: 'pending',
+  PAID: 'paid',
+} as const;
+export type PayoutStatus = (typeof PayoutStatus)[keyof typeof PayoutStatus];

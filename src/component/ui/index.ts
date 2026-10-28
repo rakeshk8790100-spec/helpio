@@ -14,6 +14,7 @@ export { default as IconTile } from './IconTile';
 export { default as MenuRow } from './MenuRow';
 export { default as PageSkeleton } from './PageSkeleton';
 export { default as ProgressBar } from './ProgressBar';
+export { default as RatingStars } from './RatingStars';
 export { default as SectionHeader } from './SectionHeader';
 export { default as StatTile } from './StatTile';
 export { default as StatusBadge } from './StatusBadge';

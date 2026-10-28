@@ -16,7 +16,9 @@ import {
   useWithdrawQuoteMutation,
 } from '../pages/jobs/jobs.api';
 import { jobBadge, jobFacts } from './jobItems';
+import { useJobPayment } from './useJobPayment';
 import { useJobProgress } from './useJobProgress';
+import { useJobReview } from './useJobReview';
 
 /** Built-in quote notes; saved personal templates can replace these later */
 const QUICK_MESSAGES = [
@@ -40,10 +42,12 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
   const [startError, setStartError] = useState<string>();
   const [form] = Form.useForm<QuoteFormValues>();
   const [quoteError, setQuoteError] = useState<string>();
-  const progress = useJobProgress(id, 'provider', {
-    skip: !job?.hired,
-    otherName: job?.customerName ?? job?.customerLabel ?? 'the customer',
-  });
+  const customerName = job?.customerName ?? job?.customerLabel ?? 'the customer';
+  const progress = useJobProgress(id, 'provider', { skip: !job?.hired, otherName: customerName });
+  // All four stages approved: the customer's payment, and rating them
+  const workDone = Boolean(job?.hired) && (job?.status === JobStatus.PAYMENT_DUE || job?.status === JobStatus.COMPLETED);
+  const payment = useJobPayment(id, 'provider', { skip: !workDone, otherName: customerName });
+  const review = useJobReview(id, 'provider', { skip: !workDone, otherName: customerName });
 
   if (isLoading) return { status: 'loading' };
   if (!job) return { status: 'error', message: apiErrorMessage(error), onRetry: refetch };
@@ -106,6 +110,10 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
       photos: job.attachments,
       customerLabel: job.customerLabel,
       quoteCount: job.quoteCount,
+      customerRating:
+        job.customerRating.count > 0 && job.customerRating.average !== null
+          ? { average: job.customerRating.average, count: job.customerRating.count }
+          : null,
     },
     hired: job.hired
       ? {
@@ -165,6 +173,8 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
           }
         : null,
     progress,
+    payment,
+    review,
     circle: job.areaCircle,
     quote,
     onBack: () =>

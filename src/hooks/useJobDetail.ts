@@ -8,7 +8,9 @@ import { apiErrorMessage } from '../lib/apiError';
 import { useAcceptQuoteMutation, useDeclineQuoteMutation, useGetJobQuery, useResetStartPinMutation } from '../pages/jobs/jobs.api';
 import { formatClock } from '../lib/utils';
 import { jobBadge, jobFacts } from './jobItems';
+import { useJobPayment } from './useJobPayment';
 import { useJobProgress } from './useJobProgress';
+import { useJobReview } from './useJobReview';
 
 /** /jobs/:id: the customer's job hub: details, photos, quotes to accept or decline, then the hired pro. */
 export const useJobDetail = (id: string): JobDetailLayoutProps => {
@@ -19,7 +21,12 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
   const [declineQuote] = useDeclineQuoteMutation();
   const [resetPin, { isLoading: resetting }] = useResetStartPinMutation();
   const [acting, setActing] = useState<{ quoteId: string; action: 'accept' | 'reject' } | null>(null);
-  const progress = useJobProgress(id, 'customer', { skip: !job?.hired, otherName: job?.hired?.providerLabel ?? 'Your pro' });
+  const proName = job?.hired?.providerLabel ?? 'Your pro';
+  const progress = useJobProgress(id, 'customer', { skip: !job?.hired, otherName: proName });
+  // All four stages approved: pay, and rate the pro
+  const workDone = Boolean(job?.hired) && (job?.status === JobStatus.PAYMENT_DUE || job?.status === JobStatus.COMPLETED);
+  const payment = useJobPayment(id, 'customer', { skip: !workDone, otherName: proName });
+  const review = useJobReview(id, 'customer', { skip: !workDone, otherName: proName });
 
   if (isLoading) return { status: 'loading' };
   if (!job) return { status: 'error', message: apiErrorMessage(error), onRetry: refetch };
@@ -85,6 +92,8 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
           pro: job.hired,
           nextStep: job.status === JobStatus.COMPLETED
             ? `${job.hired.providerLabel} finished your job. Every stage is approved below.`
+            : job.status === JobStatus.PAYMENT_DUE
+            ? `${job.hired.providerLabel} finished all four stages. Pay below to complete the job.`
             : job.startedAt
             ? `${job.hired.providerLabel} is working on your job. You'll approve each 25% with photos below.`
             : `${job.hired.providerLabel} has your job details and address. Share the PIN only when they're at your door: work starts with it.`,
@@ -108,6 +117,8 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
         }
       : null,
     progress,
+    payment,
+    review,
     invites: job.invites.map((invite) => ({
       invite,
       onOpen: () => navigate(toPath(RouterKeys.PRO_PROFILE, { id: invite.providerId })),
