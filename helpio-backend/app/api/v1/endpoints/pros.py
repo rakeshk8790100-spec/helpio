@@ -49,4 +49,4 @@ def provider_profile(
 ) -> ProviderProfileResponse:
     """A pro's public profile. Distance is from the chosen (or default) address, rounded to 0.5 km."""
     place = directory.resolve_place(db, user, address_id=address_id, latitude=None, longitude=None, pincode=None)
-    return directory.profile(db, str(provider_id), place)
+    return directory.profile(db, str(provider_id), place, viewer_id=user.id)

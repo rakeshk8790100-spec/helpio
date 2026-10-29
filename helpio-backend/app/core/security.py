@@ -40,7 +40,7 @@ def verify_secret(secret: str, stored_hash: str) -> bool:
         return False
 
 
-def create_access_token(*, subject: str, role: str, version: int = 0) -> str:
+def create_access_token(*, subject: str, role: str, version: int = 0, minutes: int | None = None) -> str:
     settings = get_settings()
     now = datetime.now(timezone.utc)
     payload: dict[str, Any] = {
@@ -49,7 +49,7 @@ def create_access_token(*, subject: str, role: str, version: int = 0) -> str:
         # The user's token_version at issue time; a later bump invalidates this token.
         "ver": version,
         "iat": int(now.timestamp()),
-        "exp": int((now + timedelta(minutes=settings.auth_token_minutes)).timestamp()),
+        "exp": int((now + timedelta(minutes=minutes or settings.auth_token_minutes)).timestamp()),
         "nonce": token_urlsafe(8),
     }
     header = {"alg": "HS256", "typ": "JWT"}

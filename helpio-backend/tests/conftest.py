@@ -1,9 +1,15 @@
+import os
 from collections.abc import Iterator
 from datetime import timedelta
 from itertools import count
 
 import pytest
-from fastapi.testclient import TestClient
+
+# Tests don't depend on the approval switches in .env.dev: sign-ups are approved unless a test says otherwise
+os.environ["REQUIRE_CUSTOMER_APPROVAL"] = "false"
+os.environ["REQUIRE_PROVIDER_APPROVAL"] = "false"
+
+from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker

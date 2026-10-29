@@ -8,6 +8,7 @@ from html import escape
 from typing import Protocol
 
 from app.core.config import get_settings
+from app.core.runtime_settings import runtime_settings
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +16,7 @@ SUBJECTS = {
     "signup": "Verify your Helpio email",
     "login": "Your Helpio login code",
     "password_reset": "Reset your Helpio password",
+    "admin_login": "Your Helpio admin login code",
 }
 
 
@@ -44,8 +46,20 @@ class BrevoOtpEmailClient:
         button = f'<p><a href="{escape(link)}">Open in Helpio</a></p>' if link else ""
         self._send(to_email, subject, f"<p>{escape(body)}</p>{button}")
 
-    def _send(self, to_email: str, subject: str, html: str) -> None:
-        settings = get_settings()
+    def check(self) -> None:
+        """Log in to Brevo's SMTP server without sending anything (the console's Test button)."""
+        settings = self._configured()
+        try:
+            with smtplib.SMTP(self.smtp_host, self.smtp_port, timeout=10) as smtp:
+                smtp.starttls()
+                smtp.login(settings.brevo_smtp_login, settings.brevo_smtp_key.get_secret_value())
+        except smtplib.SMTPAuthenticationError as error:
+            raise RuntimeError("Brevo rejected the SMTP login or key") from error
+        except (smtplib.SMTPException, OSError) as error:
+            raise RuntimeError(f"Brevo can't be reached: {type(error).__name__}") from error
+
+    def _configured(self):
+        settings = runtime_settings()
         missing = [
             name
             for name, value in {
@@ -57,7 +71,10 @@ class BrevoOtpEmailClient:
         ]
         if missing:
             raise RuntimeError("Configure " + ", ".join(missing) + " before sending email")
+        return settings
 
+    def _send(self, to_email: str, subject: str, html: str) -> None:
+        settings = self._configured()
         message = EmailMessage()
         message["From"] = formataddr(("Helpio", settings.brevo_from_email))
         message["To"] = to_email

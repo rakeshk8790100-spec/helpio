@@ -23,6 +23,7 @@ from app.modules.jobs.exceptions import (
     JobNotFoundForQuoteError,
     JobNotStartableError,
     PinLockedError,
+    ProviderNotVerifiedError,
     WrongPinError,
     QuoteNotPendingError,
     ProviderUnavailableError,
@@ -92,6 +93,8 @@ from app.modules.jobs.schema import (
     QuoteResponse,
     UpdateJobRequest,
 )
+from app.modules.auth.model import ApprovalStatus
+from app.modules.providers.access import provider_can_work
 from app.modules.providers.exceptions import ProviderProfileNotFoundError
 from app.modules.providers.model import OnboardingStatus, Proficiency, ProviderProfile
 from app.modules.notifications.service import NotificationService
@@ -314,7 +317,7 @@ class JobService:
             raise TooManyInvitesError(MAX_INVITES)
         profile = ProviderRepository(db).get_profile(payload.provider_id)
         provider = db.get(AuthUser, payload.provider_id)
-        if profile is None or profile.onboarding_status != OnboardingStatus.COMPLETE or not provider or not provider.is_active:
+        if not provider_can_work(profile, provider):
             raise ProviderUnavailableError
         quoted = any(q.provider_id == provider.id and q.status == QuoteStatus.PENDING for q in job.quotes)
         job.invites.append(JobInvite(
@@ -400,8 +403,8 @@ class JobService:
         return NearbyJobDetailResponse(
             **self._nearby_response(job, user, match.metres).model_dump(),
             attachments=self._attachments(job),
-            # Sign-up only; quoting on a job that isn't open is refused separately
-            can_quote=profile.onboarding_status == OnboardingStatus.COMPLETE,
+            # Sign-up and verification only; quoting on a job that isn't open is refused separately
+            can_quote=provider_can_work(profile, user),
             hired=hired,
             exact_location=ExactLocation(
                 latitude=job.latitude, longitude=job.longitude, pincode=job.pincode, area_name=job.area_name,
@@ -416,6 +419,8 @@ class JobService:
         profile = self._provider_profile(db, user)
         if profile.onboarding_status != OnboardingStatus.COMPLETE:
             raise ProviderNotReadyError
+        if not provider_can_work(profile, user):
+            raise ProviderNotVerifiedError
         repo = JobRepository(db)
         job = repo.get(job_id)
         if job is None:
@@ -507,9 +512,12 @@ class JobService:
                     key="service_area", label="Service area and availability",
                     state="done" if status == OnboardingStatus.COMPLETE else "pending",
                 ),
-                ChecklistItem(key="kyc", label="ID and selfie verification", state="unavailable"),
+                ChecklistItem(
+                    key="verification", label="Helpio verification",
+                    state="done" if user.approval_status == ApprovalStatus.APPROVED else "pending",
+                ),
             ],
-            can_quote=status == OnboardingStatus.COMPLETE,
+            can_quote=provider_can_work(profile, user),
             active_job=self._nearby_response(active, user, None) if active else None,
             quotes=QuoteCounts(
                 pending=counts.get(QuoteStatus.PENDING, 0),
@@ -534,8 +542,12 @@ class JobService:
 
     def _apply(self, db: Session, job: Job, fields: JobFields, *, require_complete: bool = False) -> None:
         values = fields.model_dump(exclude_unset=True, exclude={"title", "submit"})
-        if values.get("category_id") is not None and db.get(CatalogCategory, values["category_id"]) is None:
-            raise UnknownCategoryError
+        category_id = values.get("category_id")
+        # A category switched off in the admin console can't be picked anew; a job that has it keeps it
+        if category_id is not None and category_id != job.category_id:
+            category = db.get(CatalogCategory, category_id)
+            if category is None or not category.is_active:
+                raise UnknownCategoryError
         for name, value in values.items():
             setattr(job, name, value)
         if fields.submit or require_complete:

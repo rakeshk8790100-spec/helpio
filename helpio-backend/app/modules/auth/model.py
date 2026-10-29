@@ -20,11 +20,24 @@ class OtpPurpose(StrEnum):
     SIGNUP = "signup"
     LOGIN = "login"
     PASSWORD_RESET = "password_reset"
+    # The second step of every admin console log-in
+    ADMIN_LOGIN = "admin_login"
+
+
+class ApprovalStatus(StrEnum):
+    """New admins (and, when switched on, new customers and providers) wait for an admin's approval."""
+
+    APPROVED = "approved"
+    PENDING = "pending"
+    REJECTED = "rejected"
 
 
 class AuthUser(Base):
     __tablename__ = "auth_users"
-    __table_args__ = (Index("ux_auth_users_phone", "phone", unique=True),)
+    __table_args__ = (
+        Index("ux_auth_users_phone", "phone", unique=True),
+        Index("ix_auth_users_role_approval", "role", "approval_status"),
+    )
 
     id: Mapped[str] = mapped_column(Uuid(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
@@ -38,6 +51,15 @@ class AuthUser(Base):
     auth_provider: Mapped[str] = mapped_column(String(20), nullable=False, default="email")
     google_sub: Mapped[str | None] = mapped_column(String(255), unique=True, index=True, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    approval_status: Mapped[ApprovalStatus] = mapped_column(
+        str_enum(ApprovalStatus), nullable=False, default=ApprovalStatus.APPROVED
+    )
+    # The admin's reason when rejecting
+    approval_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    approved_by: Mapped[str | None] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("auth_users.id", ondelete="SET NULL"), nullable=True
+    )
     # Access tokens carry the version they were issued with; bumping it signs the user out everywhere.
     token_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)

@@ -95,3 +95,20 @@ class SamePasswordError(AuthError):
 class UnsupportedAvatarError(AuthError):
     status_code = 422
     detail = "Use a JPG, PNG or WebP photo up to 5 MB"
+
+
+class UseAdminLoginError(AuthError):
+    status_code = 403
+    detail = "Administrators log in at the admin console."
+
+
+class AccountPendingError(AuthError):
+    status_code = 403
+    detail = "Your account is waiting for approval. We'll email you once it's approved."
+
+
+class AccountRejectedError(AuthError):
+    status_code = 403
+
+    def __init__(self, note: str | None = None) -> None:
+        super().__init__("Your account wasn't approved." + (f" {note}" if note else ""))

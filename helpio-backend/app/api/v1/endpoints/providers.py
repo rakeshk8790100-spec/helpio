@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
@@ -41,12 +41,13 @@ def save_skills(
 @router.put("/service-setup", response_model=OnboardingResponse)
 def save_service_setup(
     payload: SaveServiceSetupRequest,
+    background: BackgroundTasks,
     user: AuthUser = Depends(current_provider),
     db: Session = Depends(get_db),
     service: ProviderService = Depends(get_provider_service),
 ) -> OnboardingResponse:
     """Weekly availability, service location and radius. Completes provider sign-up."""
-    return service.save_service_setup(db, user, payload)
+    return service.save_service_setup(db, user, payload, background)
 
 
 @router.patch("/profile", response_model=OnboardingResponse)

@@ -6,7 +6,7 @@ from fastapi import BackgroundTasks
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.runtime_settings import runtime_settings
 from app.core.database import utc_now
 from app.core.geo import short_name
 from app.integrations.cloudinary import JOB_ATTACHMENTS_FOLDER, CloudinaryStorage, FileStorage
@@ -153,7 +153,7 @@ def notify_overdue(db: Session, notifications: NotificationService | None = None
             emails.append((user, title, body, link))
         flagged += 1
     db.commit()
-    base = get_settings().app_web_url.rstrip("/")
+    base = runtime_settings().app_web_url.rstrip("/")
     for user, title, body, link in emails:
         if user.email:
             send_email(notifications.email_client, user.email, title, body, f"{base}{link}" if base else None)

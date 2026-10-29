@@ -38,5 +38,11 @@ class JobReview(Base):
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, nullable=False, default=utc_now)
     # When the other side can see it; set on saving, so reviews show right away
     revealed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Hidden by an admin (abuse, contact details): kept for the record, left out of ratings and profiles
+    hidden_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    hidden_by: Mapped[str | None] = mapped_column(
+        Uuid(as_uuid=False), ForeignKey("auth_users.id", ondelete="SET NULL"), nullable=True
+    )
+    hidden_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     author: Mapped[AuthUser] = relationship(foreign_keys=[author_id], lazy="joined")

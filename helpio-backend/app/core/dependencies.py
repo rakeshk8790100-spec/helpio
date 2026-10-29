@@ -5,6 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_engine
+from app.core.runtime_settings import refresh_runtime_settings
 
 
 def get_db() -> Generator[Session, None, None]:
@@ -28,4 +29,6 @@ def get_db() -> Generator[Session, None, None]:
         ) from error
 
     with Session(engine) as session:
+        # Pick up API keys and switches saved in the admin console (one tiny query, at most every 15 s)
+        refresh_runtime_settings(session)
         yield session

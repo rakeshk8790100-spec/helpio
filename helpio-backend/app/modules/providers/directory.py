@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.exceptions import AppError
 from app.core.geo import approx_km, bounding_box, distance_m, short_name
-from app.modules.auth.model import AuthUser
+from app.modules.auth.model import ApprovalStatus, AuthUser
 from app.modules.customers.exceptions import AddressNotFoundError
 from app.modules.customers.model import CustomerAddress
 from app.modules.customers.service import list_addresses
@@ -110,7 +110,9 @@ class ProviderDirectory:
             has_more=start + PAGE_SIZE < len(ranked),
         )
 
-    def profile(self, db: Session, provider_id: str, place: Place | None) -> ProviderProfileResponse:
+    def profile(
+        self, db: Session, provider_id: str, place: Place | None, viewer_id: str | None = None
+    ) -> ProviderProfileResponse:
         row = db.execute(
             select(ProviderProfile, AuthUser)
             .join(AuthUser, AuthUser.id == ProviderProfile.user_id)
@@ -118,6 +120,8 @@ class ProviderDirectory:
                 ProviderProfile.user_id == provider_id,
                 ProviderProfile.onboarding_status == OnboardingStatus.COMPLETE,
                 AuthUser.is_active.is_(True),
+                # Hidden until Helpio verifies them, except from their own preview
+                or_(AuthUser.approval_status == ApprovalStatus.APPROVED, AuthUser.id == viewer_id),
             )
             .options(selectinload(ProviderProfile.skills), selectinload(ProviderProfile.availability))
         ).first()
@@ -171,6 +175,7 @@ class ProviderDirectory:
             .where(
                 ProviderProfile.onboarding_status == OnboardingStatus.COMPLETE,
                 AuthUser.is_active.is_(True),
+                AuthUser.approval_status == ApprovalStatus.APPROVED,
                 or_(*places),
             )
             .options(selectinload(ProviderProfile.skills), selectinload(ProviderProfile.availability))

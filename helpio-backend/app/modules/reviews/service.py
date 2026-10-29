@@ -62,7 +62,11 @@ class ReviewService:
         reviews = ReviewRepository(db).for_job(job.id)
         mine = next((review for review in reviews if review.author_id == user.id), None)
         theirs = next(
-            (review for review in reviews if review.subject_id == user.id and review.revealed_at is not None), None
+            (
+                review for review in reviews
+                if review.subject_id == user.id and review.revealed_at is not None and review.hidden_at is None
+            ),
+            None,
         )
         return JobReviewsResponse(
             can_review=mine is None and job.status in REVIEWABLE,

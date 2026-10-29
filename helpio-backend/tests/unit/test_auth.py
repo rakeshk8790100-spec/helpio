@@ -47,7 +47,7 @@ def test_customer_sign_up_signs_in_after_the_email_code(client, email_client):
     assert session["user"] | {"id": None} == {
         "id": None, "email": "asha@example.com", "name": "Asha Kumar", "phone": "+919876543210",
         "role": "customer", "avatar_url": None, "onboarding_status": None,
-        "favorite_skill_ids": [], "favorites_prompt_open": True,
+        "favorite_skill_ids": [], "favorites_prompt_open": True, "is_owner": False, "approval_status": "approved",
     }
     me = client.get(ME, headers=bearer(session["access_token"]))
     assert me.status_code == 200
@@ -137,11 +137,16 @@ def test_disabled_account_cannot_log_in(client, engine):
     assert _login(client).status_code == 403
 
 
-def test_admin_logs_in_without_a_role(client, email_client, engine):
+def test_admin_logs_in_at_the_console_with_an_emailed_code(client, email_client, engine):
     with Session(engine) as db:
         AuthService(email_client=email_client).create_admin(db, email="admin@helpio.in", password=PASSWORD, name="Admin")
 
-    response = _login(client, email="admin@helpio.in", role=None)
+    # The customer and provider log-in refuses admins, so the emailed code can't be skipped
+    assert _login(client, email="admin@helpio.in", role=None).status_code == 403
+    sent = client.post("/api/v1/admin/auth/login", json={"email": "admin@helpio.in", "password": PASSWORD})
+    assert sent.status_code == 200, sent.text
+    code = email_client.last_code("admin@helpio.in")
+    response = client.post("/api/v1/admin/auth/verify", json={"email": "admin@helpio.in", "otp": code})
     assert response.status_code == 200
     assert response.json()["user"]["role"] == "admin"
     assert client.post("/api/v1/auth/signup", json={}).status_code == 404

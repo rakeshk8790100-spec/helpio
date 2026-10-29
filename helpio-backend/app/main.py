@@ -8,24 +8,38 @@ from app.core.config import get_settings
 from app.core.database import close_database
 from app.core.dependencies import get_db
 from app.core.exceptions import register_exception_handlers
+from app.core.monitoring import OVERDUE_CHECK, beat
+from app.core.runtime_settings import runtime_settings
 from app.modules.jobs.milestones import notify_overdue
 
 logger = logging.getLogger(__name__)
+
+# While the check is switched off (0), look again this often in case the admin console turns it on
+IDLE_SECONDS = 60
 
 
 def check_overdue_once(app: FastAPI) -> None:
     # Same session source as requests, so test overrides apply here too
     sessions = app.dependency_overrides.get(get_db, get_db)()
     try:
-        notify_overdue(next(sessions))
+        db = next(sessions)
+        try:
+            flagged = notify_overdue(db)
+        except Exception as error:
+            db.rollback()
+            beat(db, OVERDUE_CHECK, error=f"{type(error).__name__}: {error}")
+            raise
+        beat(db, OVERDUE_CHECK, flagged=flagged)
     finally:
         sessions.close()
 
 
-async def check_overdue_forever(app: FastAPI, every: int) -> None:
-    """Flag late progress updates; waits first, so a short-lived app (tests) never runs it."""
+async def check_overdue_forever(app: FastAPI) -> None:
+    """Flag late progress updates; waits first, so a short-lived app (tests) never runs it. 0 seconds turns it off."""
     while True:
-        await asyncio.sleep(every)
+        await asyncio.sleep(runtime_settings().overdue_check_seconds or IDLE_SECONDS)
+        if not runtime_settings().overdue_check_seconds:
+            continue
         try:
             await asyncio.to_thread(check_overdue_once, app)
         except Exception:
@@ -34,13 +48,13 @@ async def check_overdue_forever(app: FastAPI, every: int) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    every = get_settings().overdue_check_seconds
-    task = asyncio.create_task(check_overdue_forever(app, every)) if every else None
+    if get_settings().app_env == "prod" and not get_settings().settings_encryption_key.get_secret_value():
+        logger.warning("SETTINGS_ENCRYPTION_KEY is not set: API keys can't be saved in the admin console")
+    task = asyncio.create_task(check_overdue_forever(app))
     yield
-    if task is not None:
-        task.cancel()
-        with suppress(asyncio.CancelledError):
-            await task
+    task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
     close_database()
 
 

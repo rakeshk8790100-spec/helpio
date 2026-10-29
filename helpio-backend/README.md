@@ -212,6 +212,45 @@ completes the job. The money stays in Helpio's Razorpay account; an admin sends 
 A failed try keeps the payment `pending` with Razorpay's reason in `last_error`; the customer can pay again on the same
 link. Every try is a `payment_attempts` row, keyed by Razorpay's payment id, so repeated webhooks never duplicate it.
 
+## Admin console
+
+The console lives in the web app at `/admin` (desktop). Admins log in with their password and then a 6-digit code emailed
+to them; `POST /auth/login` refuses admins (403), so the code can't be skipped. Admin sessions last
+`AUTH_ADMIN_TOKEN_MINUTES` (12 hours). The owner is the admin whose email is `ADMIN_OWNER_EMAIL`: only the owner answers
+access requests and manages other admins.
+
+**First admin (the owner):** open `/admin/request-access` with the `ADMIN_OWNER_EMAIL` address and enter the emailed code;
+that address is approved at once. `python -m scripts.create_admin` also works (CLI admins are approved).
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/admin/auth/login` `{email, password}`, `POST /api/v1/admin/auth/verify` `{email, otp}` | Log-in: the password, then the emailed code; returns the session. 5 failed attempts within 15 minutes lock that email for 15 minutes (429). Pending or rejected admins get 403. |
+| `POST /api/v1/admin/auth/request-access` `{name, email, phone, password}`, `POST /api/v1/admin/auth/request-access/verify` `{email, otp}` | Ask for access: the code proves the email, the request waits for the owner (who is emailed a link to `/admin/admins`). |
+| `GET /api/v1/admin/admins`, `POST /api/v1/admin/admins/{id}/approve`, `/reject` `{reason}`, `/deactivate` `{reason?}`, `/activate` | Owner only. Each decision is emailed to the admin; deactivating signs them out everywhere. The owner's own access can't be changed. |
+| `GET /api/v1/admin/audit` `?action&admin_id&target_type&target_id&page&page_size` | Every admin: the audit log, newest first (actions and console log-ins, failed ones included; never secret values). |
+| `GET /api/v1/admin/approvals` `?role=customer\|provider`, `GET /api/v1/admin/approvals/count` | New customers and providers waiting for approval, oldest first (providers with skills, area and working days); the counts feed the console's badges. |
+| `POST /api/v1/admin/users/{id}/approve` `{note?}`, `POST /api/v1/admin/users/{id}/reject` `{reason}` | Approving lets a customer log in and a provider quote and be found; both are told in the app and by email. Rejecting emails the reason and signs them out. |
+
+| `GET /api/v1/admin/dashboard`, `GET /api/v1/admin/status` | Every admin. Dashboard: today's numbers (India time) and the latest activity. Status: the database, Razorpay, Cloudinary, Brevo and Google checked live (reused for 30 s), the late-update check, webhooks and payment checks (last worked or failed), this server's emails, items waiting for an admin, and unexpected server errors (counted per route). |
+| `GET /api/v1/admin/settings`, `PUT /api/v1/admin/settings` `{changes: {key: value \| null}}`, `POST /api/v1/admin/settings/{razorpay\|cloudinary\|email\|google}/test` | Owner only. Third-party keys, the app address, payment link lifetime, the late-update interval and the approval switches. A saved value replaces the same `.env` setting within 15 seconds on every server; `null` goes back to `.env`. Secrets are encrypted with `SETTINGS_ENCRYPTION_KEY` and only ever shown masked (`••••1AIZ`). The audit log records which settings changed, never values. |
+| `GET /api/v1/public-config` | Public: `{google_client_id}` as set in the console or `.env`, for the web app's Google button. |
+| `GET /api/v1/admin/users` `?role&approval&active&q&page`, `GET /api/v1/admin/users/{id}` | Customers and providers, newest first (`q` searches name, email and mobile); one person with their jobs, quotes, reviews, payments and (providers) skills, area and money owed. |
+| `POST /api/v1/admin/users/{id}/deactivate` `{reason?}`, `/activate`, `/sign-out` | Deactivating signs them out everywhere and blocks log-in; sign-out ends every session but lets them log in again. |
+| `GET /api/v1/admin/jobs` `?status&q&page`, `GET /api/v1/admin/jobs/{id}` | Every job; one job with both people (contact details), quotes, stages with photos, the timeline, payments and reviews. |
+| `GET /api/v1/admin/jobs/{id}/messages` | The chat, read-only, for disputes. Each read is recorded in the audit log (`chat.view`). |
+| `POST /api/v1/admin/jobs/{id}/cancel` `{reason}` | Only before work starts (open or hired, not started): pending quotes are declined and both sides are told the reason. |
+| `GET /api/v1/admin/payments` `?status&page`, `POST /api/v1/admin/payments/{id}/recheck` | Every payment link with its tries; re-check asks Razorpay now (a missed webhook, a stuck payment). |
+| `GET /api/v1/admin/payouts` `?status=pending\|paid`, `POST /api/v1/admin/payouts/{payment_id}/paid` `{reference}` | Paid jobs whose pro is waiting for Helpio's transfer, and recording a transfer (audited, the pro is told). |
+| `GET /api/v1/admin/reviews` `?hidden&stars&page`, `POST /api/v1/admin/reviews/{id}/hide` `{reason}`, `/unhide` | Hidden reviews are kept but left out of ratings, profiles and the other side's view. |
+| `GET /api/v1/admin/catalog`, `POST /api/v1/admin/catalog/categories`, `PUT /api/v1/admin/catalog/categories/{id}`, `POST /api/v1/admin/catalog/categories/{id}/skills`, `PUT /api/v1/admin/catalog/categories/{id}/skills/{skill_id}` | Categories (name, icon, order, on/off) and their services. Nothing is deleted: a switched-off item disappears from `/catalog` and pickers, and can't be chosen for new jobs; jobs and providers that have it keep it. |
+
+**Approving new sign-ups** is switched on with `REQUIRE_CUSTOMER_APPROVAL` and `REQUIRE_PROVIDER_APPROVAL` (both off by
+default). While on, a new customer's `POST /auth/register/verify` (or first Google sign-in) answers 202
+`{email, approval_status: "pending"}` with no session, and log-in answers 403 until an admin approves. A new provider
+gets a session to finish signing up, but can't quote, isn't in search and can't be asked directly until approved
+(`approval_status: "pending"` on `/auth/me`). The owner is emailed about each waiting customer, and about each provider
+once they finish signing up (`NOTIFY_NEW_SIGNUPS`).
+
 ## Migrations
 
 Apply these in order in the Supabase SQL editor (each is safe to re-run):
@@ -235,6 +274,9 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 17. `migrations/202611030001_signup_email_verification.sql`: sign-up details waiting for their emailed code
 18. `migrations/202611040001_catalog_expansion.sql`: the home services catalogue, 14 categories and 82 skills
 19. `migrations/202611050001_payments_and_reviews.sql`: the `payment_due` job status, Razorpay payment links with every attempt and the pro's payout, and one review each way per job
+20. `migrations/202611060001_admin_access.sql`: approval of accounts (`approval_status` on `auth_users`), the admin log-in code, admin access requests and the admin audit log
+21. `migrations/202611070001_settings_monitoring.sql`: settings saved in the admin console (secrets encrypted), background-job heartbeats and the server error log
+22. `migrations/202611080001_moderation_catalog.sql`: hidden reviews (kept, left out of ratings) and catalog categories and services that can be switched off
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

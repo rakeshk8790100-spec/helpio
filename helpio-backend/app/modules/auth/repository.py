@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
-from app.modules.auth.model import AuthOtp, AuthUser, OtpPurpose, PendingSignup
+from app.modules.auth.model import AuthOtp, AuthUser, OtpPurpose, PendingSignup, UserRole
 
 
 class AuthRepository:
@@ -87,10 +88,16 @@ class AuthRepository:
             .execution_options(synchronize_session=False)
         )
 
-    def latest_open_signup_for_update(self, *, email: str, now: datetime) -> PendingSignup | None:
+    def latest_open_signup_for_update(
+        self, *, email: str, now: datetime, roles: Collection[UserRole]
+    ) -> PendingSignup | None:
+        """Only the given roles, so a customer sign-up code can never finish an admin access request."""
         return self.db.scalar(
             select(PendingSignup)
-            .where(PendingSignup.email == email, PendingSignup.consumed_at.is_(None), PendingSignup.expires_at > now)
+            .where(
+                PendingSignup.email == email, PendingSignup.role.in_(roles),
+                PendingSignup.consumed_at.is_(None), PendingSignup.expires_at > now,
+            )
             .order_by(PendingSignup.created_at.desc())
             .limit(1)
             .with_for_update()

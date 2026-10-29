@@ -8,7 +8,7 @@ from typing import Protocol
 
 import httpx
 
-from app.core.config import get_settings
+from app.core.runtime_settings import runtime_settings
 from app.core.exceptions import AppError
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ def hmac_sha256(secret: str, message: bytes) -> str:
 
 class RazorpayGateway:
     def __init__(self) -> None:
-        settings = get_settings()
+        settings = runtime_settings()
         self.key_id = settings.razorpay_key_id.strip()
         self.secret = settings.razorpay_key_secret.get_secret_value()
         self.webhook_secret = settings.razorpay_webhook_secret.get_secret_value()
@@ -102,6 +102,10 @@ class RazorpayGateway:
         """The redirect back from a paid link is signed with the key secret over `link|reference|status|payment`."""
         expected = hmac_sha256(self.secret, f"{link_id}|{reference_id}|{status}|{payment_id}".encode())
         return hmac.compare_digest(expected, signature)
+
+    def ping(self) -> None:
+        """An authenticated call that changes nothing (the console's Test button)."""
+        self._call("GET", "/payment_links?count=1")
 
     def verify_webhook(self, body: bytes, signature: str) -> bool:
         """Webhooks are signed with the webhook secret over the raw body; refused until that secret is set."""

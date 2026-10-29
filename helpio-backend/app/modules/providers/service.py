@@ -1,6 +1,10 @@
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
-from app.modules.auth.model import AuthUser
+from app.core.runtime_settings import runtime_settings
+from app.integrations.email import NotificationEmailClient, get_notification_email_client
+from app.modules.auth.model import ApprovalStatus, AuthUser
+from app.modules.notifications.owner import email_owner
 from app.modules.catalog.repository import CatalogRepository
 from app.modules.providers.exceptions import ProviderProfileNotFoundError, SkillsRequiredError, UnknownSkillError
 from app.modules.providers.model import OnboardingStatus, ProviderAvailability, ProviderProfile, ProviderSkill
@@ -17,6 +21,15 @@ from app.modules.providers.schema import (
 
 
 class ProviderService:
+    def __init__(self, *, notification_client: NotificationEmailClient | None = None) -> None:
+        self._notification_client = notification_client
+
+    @property
+    def notification_client(self) -> NotificationEmailClient:
+        if self._notification_client is None:
+            self._notification_client = get_notification_email_client()
+        return self._notification_client
+
     def get_onboarding(self, db: Session, user: AuthUser) -> OnboardingResponse:
         return self._response(self._profile(db, user))
 
@@ -39,10 +52,13 @@ class ProviderService:
         db.commit()
         return self.get_onboarding(db, user)
 
-    def save_service_setup(self, db: Session, user: AuthUser, payload: SaveServiceSetupRequest) -> OnboardingResponse:
+    def save_service_setup(
+        self, db: Session, user: AuthUser, payload: SaveServiceSetupRequest, background: BackgroundTasks | None = None
+    ) -> OnboardingResponse:
         profile = self._profile(db, user)
         if profile.onboarding_status == OnboardingStatus.SKILLS:
             raise SkillsRequiredError
+        finishing = profile.onboarding_status != OnboardingStatus.COMPLETE
 
         profile.availability = [
             ProviderAvailability(user_id=profile.user_id, day_of_week=slot.day, start_time=slot.start, end_time=slot.end)
@@ -56,6 +72,14 @@ class ProviderService:
         profile.radius_m = payload.radius_m
         profile.onboarding_status = OnboardingStatus.COMPLETE
         db.commit()
+        # A complete profile is worth reviewing: tell the owner once, when sign-up finishes
+        if finishing and user.approval_status == ApprovalStatus.PENDING and runtime_settings().notify_new_signups:
+            email_owner(
+                self.notification_client, "New provider waiting for verification",
+                f"{user.name or user.email} ({user.email}) finished signing up as a provider in {area.area_name}. "
+                "Verify or reject them in the admin console.",
+                "/admin/approvals", background,
+            )
         return self.get_onboarding(db, user)
 
     def update_profile(self, db: Session, user: AuthUser, payload: UpdateProviderProfileRequest) -> OnboardingResponse:

@@ -168,3 +168,8 @@ class MilestonePhotosRequiredError(JobError):
 class EstimateAlreadySetError(JobError):
     status_code = 409
     detail = "The time estimate is already set for this job"
+
+
+class ProviderNotVerifiedError(JobError):
+    status_code = 409
+    detail = "Helpio is verifying your profile. You can quote once you're approved."

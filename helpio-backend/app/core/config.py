@@ -28,6 +28,15 @@ class Settings(BaseSettings):
     auth_secret_key: SecretStr = SecretStr(DEFAULT_SECRET_KEY)
     # 30 days: sign-in is by emailed code, so short sessions would mean an email per visit.
     auth_token_minutes: int = Field(default=43_200, ge=5, le=525_600)
+    # Admin console sessions: 12 hours, and every log-in needs an emailed code
+    auth_admin_token_minutes: int = Field(default=720, ge=15, le=10_080)
+    # The owner: the only admin who approves other admins and changes API keys and settings
+    admin_owner_email: str = ""
+    # New customers can't log in, and new providers can't quote or be found, until an admin approves them
+    require_customer_approval: bool = False
+    require_provider_approval: bool = False
+    # Email the owner when a sign-up is waiting for approval
+    notify_new_signups: bool = True
     # Dev only: print OTP emails to the server log instead of sending them.
     auth_dev_email_console: bool = False
 
@@ -58,6 +67,9 @@ class Settings(BaseSettings):
 
     # Comma-separated browser origins allowed to call the API, e.g. "https://app.helpio.in".
     cors_origins: str = ""
+
+    # Encrypts API keys saved in the admin console (a Fernet key). Without it, secrets can only come from .env.
+    settings_encryption_key: SecretStr = SecretStr("")
 
     @model_validator(mode="after")
     def check_production_safety(self) -> "Settings":

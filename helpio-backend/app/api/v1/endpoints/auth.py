@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
@@ -10,6 +10,7 @@ from app.modules.auth.schema import (
     GoogleLoginRequest,
     LoginRequest,
     MessageResponse,
+    PendingApprovalResponse,
     RegisterRequest,
     ResetPasswordRequest,
     SessionResponse,
@@ -39,14 +40,24 @@ def register(
     return service.register(db, payload)
 
 
-@router.post("/register/verify", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register/verify", response_model=SessionResponse | PendingApprovalResponse, status_code=status.HTTP_201_CREATED
+)
 def verify_signup(
     payload: VerifySignupRequest,
+    response: Response,
+    background: BackgroundTasks,
     db: Session = Depends(get_db),
     service: AuthService = Depends(get_auth_service),
-) -> SessionResponse:
-    """Step 2: the emailed code creates the account with a verified email and signs in (5 wrong tries end it)."""
-    return service.verify_signup(db, payload)
+) -> SessionResponse | PendingApprovalResponse:
+    """
+    Step 2: the emailed code creates the account with a verified email and signs in (5 wrong tries end it).
+    A customer who needs an admin's approval gets 202 with `approval_status: pending` and no session.
+    """
+    result = service.verify_signup(db, payload, background)
+    if isinstance(result, PendingApprovalResponse):
+        response.status_code = status.HTTP_202_ACCEPTED
+    return result
 
 
 @router.post("/login", response_model=SessionResponse)
@@ -59,14 +70,22 @@ def login(
     return service.login(db, payload)
 
 
-@router.post("/google", response_model=SessionResponse)
+@router.post("/google", response_model=SessionResponse | PendingApprovalResponse)
 def google_login(
     payload: GoogleLoginRequest,
+    response: Response,
+    background: BackgroundTasks,
     db: Session = Depends(get_db),
     service: AuthService = Depends(get_auth_service),
-) -> SessionResponse:
-    """Customers only: verify a Google ID token and sign in, creating the account if needed."""
-    return service.google_login(db, payload)
+) -> SessionResponse | PendingApprovalResponse:
+    """
+    Customers only: verify a Google ID token and sign in, creating the account if needed. A new account that needs
+    an admin's approval gets 202 with `approval_status: pending` and no session.
+    """
+    result = service.google_login(db, payload, background)
+    if isinstance(result, PendingApprovalResponse):
+        response.status_code = status.HTTP_202_ACCEPTED
+    return result
 
 
 # ── Forgotten password ───────────────────────────────────────────────────────

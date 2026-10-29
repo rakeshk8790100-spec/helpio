@@ -3,7 +3,8 @@ import logging
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.monitoring import email_failed, email_sent
+from app.core.runtime_settings import runtime_settings
 from app.integrations.email import NotificationEmailClient, get_notification_email_client
 from app.modules.auth.model import AuthUser
 from app.modules.notifications.model import Notification
@@ -17,8 +18,11 @@ def send_email(client: NotificationEmailClient, to_email: str, subject: str, bod
     """Best effort: the in-app notification is already saved, so a failed email is only logged."""
     try:
         client.send_notification(to_email=to_email, subject=subject, body=body, link=link)
-    except RuntimeError:
+    except RuntimeError as error:
+        email_failed(str(error))
         logger.exception("Notification email to user failed")
+    else:
+        email_sent()
 
 
 class NotificationService:
@@ -40,7 +44,7 @@ class NotificationService:
             Notification(user_id=user.id, type=type, title=title, body=body, job_id=job_id, link=link)
         )
         if background is not None and user.email:
-            base = get_settings().app_web_url.rstrip("/")
+            base = runtime_settings().app_web_url.rstrip("/")
             url = f"{base}{link}" if base and link else None
             background.add_task(send_email, self.email_client, user.email, title, body, url)
         return notification

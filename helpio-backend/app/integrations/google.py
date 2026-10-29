@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from app.core.config import get_settings
+from app.core.runtime_settings import runtime_settings
 
 
 class GoogleTokenVerifier(Protocol):
@@ -12,7 +12,7 @@ class GoogleTokenVerifier(Protocol):
 
 class GoogleOAuthTokenVerifier:
     def verify(self, id_token: str) -> dict[str, object]:
-        settings = get_settings()
+        settings = runtime_settings()
         client_id = settings.google_client_id.strip()
         if not client_id:
             raise ValueError("Configure GOOGLE_CLIENT_ID before enabling Google login")

@@ -24,7 +24,7 @@ class ReviewRepository:
     def latest_about(self, user_id: str, limit: int) -> Sequence[JobReview]:
         return self.db.scalars(
             select(JobReview)
-            .where(JobReview.subject_id == user_id, JobReview.revealed_at.is_not(None))
+            .where(JobReview.subject_id == user_id, JobReview.revealed_at.is_not(None), JobReview.hidden_at.is_(None))
             .order_by(JobReview.created_at.desc())
             .limit(limit)
         ).all()
@@ -35,7 +35,7 @@ class ReviewRepository:
             return {}
         rows = self.db.execute(
             select(JobReview.subject_id, func.avg(JobReview.stars), func.count())
-            .where(JobReview.subject_id.in_(user_ids), JobReview.revealed_at.is_not(None))
+            .where(JobReview.subject_id.in_(user_ids), JobReview.revealed_at.is_not(None), JobReview.hidden_at.is_(None))
             .group_by(JobReview.subject_id)
         )
         return {user_id: RatingSummary(average=round(float(average), 1), count=count) for user_id, average, count in rows}

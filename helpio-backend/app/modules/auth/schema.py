@@ -19,6 +19,15 @@ class RegisterRequest(BaseModel):
     password: NewPassword
 
 
+class AdminAccessRequest(BaseModel):
+    """Asking for admin console access: the owner approves it before the first log-in."""
+
+    name: PersonName
+    email: Email
+    phone: IndianMobile
+    password: NewPassword
+
+
 class SignupCodeResponse(BaseModel):
     # Where the code went
     email: str
@@ -59,6 +68,17 @@ class UserResponse(BaseModel):
     # Customers only: favourite services, and whether to show the popup at sign-in
     favorite_skill_ids: list[str] = []
     favorites_prompt_open: bool = False
+    # Admins only: the owner, who manages other admins and the API keys
+    is_owner: bool = False
+    # pending: a provider waiting for Helpio's verification (customers can't log in until approved)
+    approval_status: Literal["approved", "pending", "rejected"] = "approved"
+
+
+class PendingApprovalResponse(BaseModel):
+    """A new customer account waiting for an admin: no session until it's approved."""
+
+    email: str
+    approval_status: Literal["pending"] = "pending"
 
 
 class SessionResponse(BaseModel):

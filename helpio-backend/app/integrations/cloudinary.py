@@ -9,7 +9,7 @@ from typing import Protocol
 
 import httpx
 
-from app.core.config import get_settings
+from app.core.runtime_settings import runtime_settings
 from app.core.exceptions import AppError
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ def sign(params: dict[str, str], secret: str) -> str:
 
 class CloudinaryStorage:
     def __init__(self) -> None:
-        settings = get_settings()
+        settings = runtime_settings()
         self.cloud = settings.cloudinary_cloud_name.strip()
         self.preset = settings.cloudinary_upload_preset.strip()
         self.api_key = settings.cloudinary_api_key.strip()
@@ -69,6 +69,23 @@ class CloudinaryStorage:
             f"{resource_type}/upload", params, files={"file": (public_id, content, content_type)}, signed=not self.preset
         )
         return StoredFile(url=data["secure_url"], public_id=data["public_id"], resource_type=resource_type)
+
+    def ping(self) -> None:
+        """Admin API check of the key and secret (the console's Test button)."""
+        if not (self.api_key and self.secret):
+            raise FileStorageUnavailableError("Add the API key and secret to test Cloudinary")
+        try:
+            response = httpx.get(
+                f"https://api.cloudinary.com/v1_1/{self.cloud}/ping", auth=(self.api_key, self.secret), timeout=10
+            )
+            response.raise_for_status()
+        except httpx.HTTPStatusError as error:
+            raise FileStorageUnavailableError(
+                "Cloudinary rejected the cloud name, API key or secret" if error.response.status_code in (401, 404)
+                else f"Cloudinary answered {error.response.status_code}"
+            ) from error
+        except httpx.HTTPError as error:
+            raise FileStorageUnavailableError("Cloudinary can't be reached") from error
 
     def delete(self, public_id: str, resource_type: str) -> None:
         """Best effort: the photo is already gone from the job, so a refused delete only leaves an orphan file."""

@@ -13,7 +13,8 @@ from fastapi import BackgroundTasks
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.core.monitoring import PAYMENT_SYNC, RAZORPAY_WEBHOOK, beat
+from app.core.runtime_settings import runtime_settings
 from app.core.database import utc_now
 from app.integrations.payment import PaymentGateway, PaymentGatewayError, RazorpayGateway
 from app.modules.auth.model import AuthUser
@@ -80,9 +81,10 @@ class PaymentService:
         if current is not None and current.status == PaymentStatus.PENDING and self._stale(current):
             try:
                 self._sync(db, job, current)
-            except PaymentGatewayError:
+            except PaymentGatewayError as error:
                 # Show what's known; the next view or webhook catches up
                 db.rollback()
+                beat(db, PAYMENT_SYNC, error=error.detail)
         return self._response(db, job, provider_id, user)
 
     def start(self, db: Session, user: AuthUser, job_id: str) -> StartPaymentResponse:
@@ -125,6 +127,7 @@ class PaymentService:
     ) -> None:
         """Razorpay's `payment_link.*` and `payment.*` events: find our payment, then sync it."""
         if not self.gateway.verify_webhook(body, signature):
+            beat(db, RAZORPAY_WEBHOOK, error="A webhook arrived with a wrong signature (check RAZORPAY_WEBHOOK_SECRET)")
             raise WebhookSignatureError
         event = json.loads(body)
         kind = str(event.get("event", ""))
@@ -141,8 +144,24 @@ class PaymentService:
         if payment is None or job is None:
             # Another integration on the same Razorpay account, or a link this app didn't make
             logger.info("Razorpay %s has no matching Helpio payment", kind)
+            beat(db, RAZORPAY_WEBHOOK, last_event=kind)
             return
-        self._sync(db, job, payment, background, seen=entity)
+        try:
+            self._sync(db, job, payment, background, seen=entity)
+        except PaymentGatewayError as error:
+            db.rollback()
+            beat(db, RAZORPAY_WEBHOOK, error=f"{kind}: {error.detail}")
+            raise
+        beat(db, RAZORPAY_WEBHOOK, last_event=kind)
+
+    def resync(self, db: Session, payment_id: str) -> Payment:
+        """Admins: ask Razorpay about this payment now (a missed webhook, a stuck payment)."""
+        payment = self._get(db, payment_id)
+        job = db.get(Job, payment.job_id) if payment is not None else None
+        if payment is None or job is None:
+            raise PaymentNotFoundError
+        self._sync(db, job, payment)
+        return payment
 
     def payouts(self, db: Session, status: PayoutStatus) -> list[PayoutItemResponse]:
         """Admins: paid jobs whose pro is still waiting for Helpio's transfer (or already got it)."""
@@ -177,7 +196,7 @@ class PaymentService:
     # ----- Helpers -----
 
     def _new_link(self, db: Session, job: Job, provider_id: str) -> StartPaymentResponse:
-        settings = get_settings()
+        settings = runtime_settings()
         expires = utc_now() + timedelta(minutes=settings.payment_link_expiry_minutes)
         payment = Payment(
             id=str(uuid4()), job_id=job.id, customer_id=job.customer_id, provider_id=provider_id,
@@ -272,6 +291,7 @@ class PaymentService:
                 payment.status = PaymentStatus.EXPIRED
         payment.synced_at = now
         db.commit()
+        beat(db, PAYMENT_SYNC)
 
     def _mark_paid(
         self, db: Session, job: Job, payment: Payment, captured: PaymentAttempt | None,
