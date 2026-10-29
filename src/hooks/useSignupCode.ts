@@ -18,6 +18,7 @@ export const useSignupCode = (role: SelfServiceRole) => {
   const [codeForm] = Form.useForm<EmailCodeFormValues>();
   // Set once a code was sent; kept so Resend can send the same details again
   const [sent, setSent] = useState<SignupDetails | null>(null);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const { secondsLeft, start } = useCountdown();
   const [register, { isLoading: sending }] = useRegisterMutation();
@@ -44,7 +45,9 @@ export const useSignupCode = (role: SelfServiceRole) => {
     onSubmit: async ({ otp }) => {
       setError(undefined);
       try {
-        await verify({ email: sent.email, otp }).unwrap();
+        const result = await verify({ email: sent.email, otp }).unwrap();
+        // A customer waiting for an admin: no session yet, the page says so
+        if ('pendingApproval' in result) setPendingEmail(result.email);
       } catch (e) {
         setError(apiErrorMessage(e));
         codeForm.setFieldValue('otp', '');
@@ -61,5 +64,5 @@ export const useSignupCode = (role: SelfServiceRole) => {
     },
   };
 
-  return { send, sending: sending && !sent, error, step };
+  return { send, sending: sending && !sent, error, step: pendingEmail ? null : step, pending: pendingEmail };
 };

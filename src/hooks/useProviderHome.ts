@@ -53,9 +53,9 @@ export const useProviderHome = (user: AuthUser): ProviderHomeLayoutProps => {
     pendingQuotes: data.quotes.pending,
     checklist: unfinished ? {
       items: data.checklist,
-      lockedNote: data.canQuote
-        ? 'ID and selfie checks open soon. You can already quote on nearby jobs.'
-        : 'Quoting unlocks once your skills and service area are saved.',
+      lockedNote: pendingStep
+        ? 'Quoting unlocks once your skills and service area are saved.'
+        : "Helpio is checking your details. You can quote as soon as you're verified, and we'll let you know.",
       ...(pendingStep && { actionLabel: 'Continue sign-up', onAction: () => navigate(pendingStep) }),
     } : null,
     active: active && copy ? {

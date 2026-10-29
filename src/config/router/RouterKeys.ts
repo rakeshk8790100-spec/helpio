@@ -33,6 +33,20 @@ export const RouterKeys = {
   PRO_EARNINGS: '/pro/earnings',
   SERVICE_DETAIL: '/services/:id',
   CATEGORY: '/categories/:id',
+  /** Admin console (desktop): log-in with an emailed code, access requests, then the console */
+  ADMIN: '/admin',
+  ADMIN_LOGIN: '/admin/login',
+  ADMIN_REQUEST_ACCESS: '/admin/request-access',
+  ADMIN_APPROVALS: '/admin/approvals',
+  ADMIN_STATUS: '/admin/status',
+  ADMIN_USERS: '/admin/users',
+  ADMIN_JOBS: '/admin/jobs',
+  ADMIN_PAYMENTS: '/admin/payments',
+  ADMIN_REVIEWS: '/admin/reviews',
+  ADMIN_CATALOG: '/admin/catalog',
+  ADMIN_SETTINGS: '/admin/settings',
+  ADMIN_ADMINS: '/admin/admins',
+  ADMIN_AUDIT: '/admin/audit',
 } as const;
 
 /** Fill `:param` segments, e.g. toPath(RouterKeys.SERVICE_DETAIL, { id: 's1' }). */

@@ -2,13 +2,16 @@ import { Alert, Button, Form } from 'antd';
 import AuthHeader from './authHeader';
 import { EmailField, NameField, PasswordField, PhoneField } from './authFields';
 import EmailCodeStep from './emailCodeStep';
+import PendingApproval from './pendingApproval';
 import GoogleSignIn from './googleSignIn';
 import type { SignupLayoutProps } from './signup.layout.types';
 
 /** /signup: customer name, email, mobile and password (Google below the form), then the emailed code. */
 const SignupLayout = (p: SignupLayoutProps) => (
   <div className="flex flex-col gap-6">
-    {p.code ? (
+    {p.pending ? (
+      <PendingApproval {...p.pending} />
+    ) : p.code ? (
       <EmailCodeStep {...p.code} error={p.error} />
     ) : (
       <>

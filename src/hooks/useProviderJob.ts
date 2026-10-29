@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { App, Form } from 'antd';
 import type { ProviderJobLayoutProps, ProviderQuoteProps, QuoteFormValues } from '../client/default/jobs/jobs.layout.types';
 import type { AuthUser } from '../common/CommonDto';
-import { JobStatus, QuoteStatus } from '../common/CommonEnum';
+import { ApprovalStatus, JobStatus, QuoteStatus } from '../common/CommonEnum';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { estimateOptions, formatClock } from '../lib/utils';
 import { apiErrorMessage } from '../lib/apiError';
@@ -70,12 +70,19 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
           },
         }
     : !job.canQuote
-      ? {
-          state: 'locked',
-          reason: 'Quoting unlocks once your skills and service area are saved.',
-          actionLabel: 'Finish sign-up',
-          onAction: () => navigate(pendingOnboardingPath(user) ?? RouterKeys.ONBOARDING_SKILLS),
-        }
+      ? pendingOnboardingPath(user) || user.approvalStatus !== ApprovalStatus.PENDING
+        ? {
+            state: 'locked',
+            reason: 'Quoting unlocks once your skills and service area are saved.',
+            actionLabel: 'Finish sign-up',
+            onAction: () => navigate(pendingOnboardingPath(user) ?? RouterKeys.ONBOARDING_SKILLS),
+          }
+        : {
+            state: 'locked',
+            reason: "Helpio is verifying your profile. You can quote once you're approved, and we'll let you know.",
+            actionLabel: 'See your checklist',
+            onAction: () => navigate(RouterKeys.HOME),
+          }
       : {
           state: 'form',
           form,

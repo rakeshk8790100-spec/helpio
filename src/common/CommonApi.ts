@@ -1,7 +1,7 @@
 import { baseApi, dispatchOnSuccess } from '../config/base_service/base.api';
 import { sessionRenewed, sessionStarted, signedOut, userUpdated } from '../redux/authSlice';
 import type { AuthSession, AuthUser, Job, JobQuote, MapCircle, NearbyJob, Service, SkillCategory } from './CommonDto';
-import type { InviteStatus, JobStatus, MilestoneStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
+import type { ApprovalStatus, InviteStatus, JobStatus, MilestoneStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
 import { MOCK_SERVICES } from './CommonMock';
 
 /* ── Wire format (snake_case) of the session endpoints, mapped once here ── */
@@ -16,6 +16,8 @@ export interface UserApiDto {
   onboarding_status: OnboardingStatus | null;
   favorite_skill_ids?: string[];
   favorites_prompt_open?: boolean;
+  is_owner?: boolean;
+  approval_status?: ApprovalStatus;
 }
 
 export interface SessionApiDto {
@@ -34,6 +36,8 @@ export const toAuthUser = (dto: UserApiDto): AuthUser => ({
   onboardingStatus: dto.onboarding_status,
   favoriteSkillIds: dto.favorite_skill_ids ?? [],
   favoritesPromptOpen: dto.favorites_prompt_open ?? false,
+  isOwner: dto.is_owner ?? false,
+  approvalStatus: dto.approval_status ?? 'approved',
 });
 
 export const toAuthSession = (dto: SessionApiDto): AuthSession => ({
@@ -171,6 +175,12 @@ export const startSessionOnSuccess = dispatchOnSuccess<AuthSession>(sessionStart
 /** Endpoints shared by several screens (landing, search, app shell, sign-in flows). */
 export const commonApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    /** Values set in the admin console that the app needs before sign-in (e.g. the Google client ID) */
+    getPublicConfig: builder.query<{ googleClientId: string }, void>({
+      query: () => '/public-config',
+      transformResponse: (dto: { google_client_id: string }) => ({ googleClientId: dto.google_client_id }),
+      providesTags: ['Settings'],
+    }),
     // Mocked until the backend is ready; replace with `query: (q) => ({ url: '/services', params: { q } })`
     searchServices: builder.query<Service[], string>({
       queryFn: (q) => {
@@ -242,6 +252,7 @@ export const commonApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetPublicConfigQuery,
   useSearchServicesQuery,
   useGetSkillCatalogQuery,
   useGetMeQuery,

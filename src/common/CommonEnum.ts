@@ -10,6 +10,14 @@ export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 /** Roles that sign themselves up; each has its own log-in and sign-up pages. */
 export type SelfServiceRole = typeof UserRole.CUSTOMER | typeof UserRole.PROVIDER;
 
+/** New admins (and, when switched on, new customers and providers) wait for an admin's approval */
+export const ApprovalStatus = {
+  APPROVED: 'approved',
+  PENDING: 'pending',
+  REJECTED: 'rejected',
+} as const;
+export type ApprovalStatus = (typeof ApprovalStatus)[keyof typeof ApprovalStatus];
+
 /** Provider sign-up progress: the next step to complete, or `complete`. */
 export const OnboardingStatus = {
   SKILLS: 'skills',

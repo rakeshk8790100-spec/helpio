@@ -22,8 +22,10 @@ export const needsProfile = (user: AuthUser) => user.role === UserRole.CUSTOMER 
 export const homePath = (user: AuthUser) => pendingOnboardingPath(user) ?? RouterKeys.HOME;
 
 /** Signed-out visitors log in on the page for the audience a route is meant for. */
-export const loginPathFor = (roles?: UserRole[]) =>
-  roles?.length === 1 && roles[0] === UserRole.PROVIDER ? RouterKeys.PRO_LOGIN : RouterKeys.LOGIN;
+export const loginPathFor = (roles?: UserRole[]) => {
+  if (roles?.length === 1 && roles[0] === UserRole.ADMIN) return RouterKeys.ADMIN_LOGIN;
+  return roles?.length === 1 && roles[0] === UserRole.PROVIDER ? RouterKeys.PRO_LOGIN : RouterKeys.LOGIN;
+};
 
 /** Only same-app paths are accepted as a post-login target (prevents open redirects). */
 export const safeNext = (next: string | null) => (next && next.startsWith('/') && !next.startsWith('//') ? next : null);

@@ -17,6 +17,8 @@ export interface SignupLayoutProps {
   error?: string;
   /** Set once the code is emailed: shown in place of the form */
   code: EmailCodeStepProps | null;
+  /** The account waits for an admin's approval: shown in place of everything else */
+  pending: { email: string; onHome: () => void } | null;
   /** null hides it */
   google: GoogleOption | null;
   onLogin: () => void;

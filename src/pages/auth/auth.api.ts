@@ -1,6 +1,26 @@
 import { startSessionOnSuccess, toAuthSession } from '../../common/CommonApi';
-import type { AuthSession } from '../../common/CommonDto';
+import type { SessionApiDto } from '../../common/CommonApi';
+import type { AuthSession, SignInResult } from '../../common/CommonDto';
 import { baseApi } from '../../config/base_service/base.api';
+import type { Dispatch } from '@reduxjs/toolkit';
+import { sessionStarted } from '../../redux/authSlice';
+
+/** A sign-up code or Google sign-in: a session, or (a customer waiting for an admin) no session yet */
+const toSignInResult = (dto: SessionApiDto | { email: string; approval_status: 'pending' }): SignInResult =>
+  'access_token' in dto ? toAuthSession(dto) : { pendingApproval: true, email: dto.email };
+
+/** Stores the session only when there is one */
+const startSessionIfSignedIn = async (
+  _: unknown,
+  { dispatch, queryFulfilled }: { dispatch: Dispatch; queryFulfilled: Promise<{ data: SignInResult }> },
+) => {
+  try {
+    const { data } = await queryFulfilled;
+    if ('token' in data) dispatch(sessionStarted(data));
+  } catch {
+    // Handled by the caller.
+  }
+};
 import type {
   ForgotPasswordDto,
   GoogleLoginDto,
@@ -26,21 +46,21 @@ export const authApi = baseApi.injectEndpoints({
         expiresInMinutes: dto.expires_in_minutes,
       }),
     }),
-    /** Sign-up step 2: the code creates the account and signs in. */
-    verifySignup: builder.mutation<AuthSession, VerifySignupDto>({
+    /** Sign-up step 2: the code creates the account and signs in (a customer waiting for approval gets no session). */
+    verifySignup: builder.mutation<SignInResult, VerifySignupDto>({
       query: (body) => ({ url: '/auth/register/verify', method: 'POST', body }),
-      transformResponse: toAuthSession,
-      onQueryStarted: startSessionOnSuccess,
+      transformResponse: toSignInResult,
+      onQueryStarted: startSessionIfSignedIn,
     }),
     login: builder.mutation<AuthSession, LoginDto>({
       query: (body) => ({ url: '/auth/login', method: 'POST', body }),
       transformResponse: toAuthSession,
       onQueryStarted: startSessionOnSuccess,
     }),
-    googleLogin: builder.mutation<AuthSession, GoogleLoginDto>({
+    googleLogin: builder.mutation<SignInResult, GoogleLoginDto>({
       query: (body) => ({ url: '/auth/google', method: 'POST', body }),
-      transformResponse: toAuthSession,
-      onQueryStarted: startSessionOnSuccess,
+      transformResponse: toSignInResult,
+      onQueryStarted: startSessionIfSignedIn,
     }),
     /** Emails a reset code. Answers the same whether or not the account exists. */
     forgotPassword: builder.mutation<void, ForgotPasswordDto>({

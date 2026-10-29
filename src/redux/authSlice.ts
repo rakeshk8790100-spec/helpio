@@ -22,6 +22,8 @@ const initialState: AuthState = {
         ...stored.user,
         favoriteSkillIds: stored.user.favoriteSkillIds ?? [],
         favoritesPromptOpen: stored.user.favoritesPromptOpen ?? false,
+        isOwner: stored.user.isOwner ?? false,
+        approvalStatus: stored.user.approvalStatus ?? 'approved',
       }
     : null,
   favoritesPromptPending: false,

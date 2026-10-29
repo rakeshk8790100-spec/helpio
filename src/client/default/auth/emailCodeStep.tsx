@@ -4,15 +4,20 @@ import { OTP_LENGTH } from '../../../common/CommonEnum';
 import { OtpField } from './authFields';
 import type { EmailCodeStepProps } from './emailCodeStep.types';
 
-/** Sign-up, after the details: enter the code emailed to prove the address. */
-const EmailCodeStep = ({ error, ...p }: EmailCodeStepProps & { error?: string }) => (
+/** Sign-up, after the details: enter the code emailed to prove the address (also the admin console's log-in code). */
+const EmailCodeStep = ({
+  error,
+  title = 'Verify your email',
+  submitLabel = 'Verify & continue',
+  ...p
+}: EmailCodeStepProps & { error?: string; title?: string; submitLabel?: string }) => (
   <div className="flex flex-col gap-6">
     <div className="flex flex-col items-start gap-3">
       <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600">
         <MailCheck size={22} />
       </span>
       <div>
-        <div className="text-xl font-bold text-slate-900">Verify your email</div>
+        <div className="text-xl font-bold text-slate-900">{title}</div>
         <div className="mt-1 text-sm text-slate-600">
           We sent a {OTP_LENGTH}-digit code to <span className="font-medium text-slate-900">{p.email}</span>.{' '}
           <button type="button" onClick={p.onChangeEmail} className="font-medium text-indigo-600">
@@ -28,7 +33,7 @@ const EmailCodeStep = ({ error, ...p }: EmailCodeStepProps & { error?: string })
       <Form form={p.form} layout="vertical" requiredMark={false} preserve={false} onFinish={p.onSubmit}>
         <OtpField />
         <Button type="primary" htmlType="submit" size="large" block loading={p.submitting}>
-          Verify & continue
+          {submitLabel}
         </Button>
         <div className="mt-4 text-center text-sm text-slate-600">
           Didn't get it? Check spam, or{' '}

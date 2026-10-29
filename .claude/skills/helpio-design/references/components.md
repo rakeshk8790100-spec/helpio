@@ -64,6 +64,13 @@ All components are pure: data comes in through props and actions go out through 
 |---|---|
 | `AppLayout` | 430px mobile shell: header with `HelpioLogo`, scrolling content (`<Outlet/>`), role-based bottom tabs (customer: Home/Search/My jobs/Profile; provider: Home/Jobs/Earnings/Profile) and Log in button (both hidden on log-in, sign-up and password pages) |
 | `ComingSoon` | Placeholder for routes not built yet (catch-all child route) |
+| `AdminLayout` | Desktop shell of the admin console (`/admin/*`): 240px sidebar with the sections (owner-only ones hidden from staff), Development/Live tag and the signed-in admin with Log out; content up to 1440px. Below `lg` it asks for a computer |
+
+## `src/component/admin` (admin console, desktop)
+| Component | Purpose | Key props |
+|---|---|---|
+| `PageHeader` | Console page title, one-line description and right-aligned actions or filters | `title`, `description?`, `actions?` |
+| `KpiCard` | A labelled number (dashboard, status), amber when something waits for an admin; a button when `onClick` opens the page behind it | `label`, `value`, `hint?`, `attention?`, `onClick?` |
 
 ## Before creating a new component
 1. Search this catalogue and `src/component/**`. Extend an existing component with an optional prop rather than forking it.

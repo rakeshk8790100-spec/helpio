@@ -14,11 +14,12 @@ import HeroPage from '../hero/hero.page';
 const CustomerHome = ({ user }: { user: AuthUser }) => <CustomerHomeLayout {...useCustomerHome(user)} />;
 const ProviderHome = ({ user }: { user: AuthUser }) => <ProviderHomeLayout {...useProviderHome(user)} />;
 
-/** `/`: the public landing page when signed out, otherwise the customer or provider home. */
+/** `/`: the public landing page when signed out, otherwise the customer or provider home (admins: the console). */
 const HomePage = () => {
   const user = useAppSelector(selectCurrentUser);
 
-  if (!user || user.role === UserRole.ADMIN) return <HeroPage />;
+  if (!user) return <HeroPage />;
+  if (user.role === UserRole.ADMIN) return <Navigate to={RouterKeys.ADMIN} replace />;
   // Unfinished sign-up (customer profile, provider onboarding) comes first
   const redirect = signUpRedirect(user, RouterKeys.HOME);
   if (redirect) return <Navigate to={redirect} replace />;

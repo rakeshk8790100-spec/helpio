@@ -1,9 +1,11 @@
 import { createBrowserRouter } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
+import AdminLayout from "../../component/layout/adminLayout";
 import AppLayout from "../../component/layout/appLayout";
 import ComingSoon from "../../component/layout/comingSoon";
 import { UserRole } from "../../common/CommonEnum";
 import RequireAuth from "../../pages/auth/RequireAuth";
+import { adminPublicRoutes, adminRoutes } from "../../pages/admin/routes";
 import { authRoutes } from "../../pages/auth/routes";
 import HomePage from "../../pages/home/home.page";
 import { customerJobRoutes, providerJobRoutes } from "../../pages/jobs/routes";
@@ -19,6 +21,17 @@ import { RouterKeys } from "./RouterKeys";
 const comingSoon = (paths: string[]): RouteObject[] => paths.map((path) => ({ path, element: <ComingSoon /> }));
 
 const myRouter = createBrowserRouter([
+  // Admin console (desktop, its own shell): log-in and access requests, then admin screens
+  {
+    path: RouterKeys.ADMIN,
+    children: [
+      ...adminPublicRoutes,
+      {
+        element: <RequireAuth roles={[UserRole.ADMIN]} />,
+        children: [{ element: <AdminLayout />, children: adminRoutes }],
+      },
+    ],
+  },
   {
     path: "/",
     element: <AppLayout />,

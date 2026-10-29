@@ -76,6 +76,15 @@ Status always pairs colour with a text label (`StatusBadge`), never colour alone
 - **Gated actions:** quoting stays locked until verification is approved, and the provider can't start until escrow is funded. Always show why something is locked.
 - **Safety:** an active-job surface always offers Safety (red).
 
+## Admin console (desktop)
+The admin console (`/admin/*`) is the one desktop surface. It keeps the palette, type and tokens above, with denser data.
+- **Shell:** `AdminLayout` (white 240px sidebar, `bg-slate-50` page, content `max-w-[1440px]` with `px-8 py-6`). Below `lg` it shows "Open the admin console on a computer" instead.
+- **Page:** `PageHeader` (`text-2xl font-bold` title, one-line description, actions on the right), then content. One page per sidebar section.
+- **Data:** antd `Table` inside `rounded-2xl border border-slate-100 bg-white shadow-sm`, server-side pages (`?page=` in the URL), filters in the header's actions. Status is a `StatusBadge`, never colour alone.
+- **Actions:** small buttons in the last column; destructive ones are `danger` and ask for a reason in a `Modal` (required when the person affected is told why). One primary per row.
+- **Log-in pages** (`/admin/login`, `/admin/request-access`) sit outside the shell in a centred `max-w-md` card and reuse the auth fields and `EmailCodeStep`.
+- **No gradients** in the console: it's a tool, not a marketing surface.
+
 ## Accessibility
 - Every clickable element is a `<button type="button">` or a link, and icon-only buttons need an `aria-label`.
 - Tap targets are at least 40px (`h-10`) for primary actions.

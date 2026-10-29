@@ -30,6 +30,7 @@ export const useSignup = (): SignupLayoutProps => {
       void signup.send({ name: name.trim(), email, phone, password });
     },
     code: signup.step,
+    pending: signup.pending ? { email: signup.pending, onHome: () => navigate(RouterKeys.HOME) } : null,
     google,
     onLogin: () => navigate(next ? withQuery(RouterKeys.LOGIN, { next }) : RouterKeys.LOGIN),
     onSwitchAudience: () => navigate(RouterKeys.PRO_SIGNUP),
