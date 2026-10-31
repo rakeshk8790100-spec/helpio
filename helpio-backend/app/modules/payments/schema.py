@@ -83,6 +83,35 @@ class PayoutItemResponse(BaseModel):
     payout_at: datetime | None
 
 
+class ProviderEarningItem(BaseModel):
+    """A paid job, as the pro sees it: what the customer paid and whether Helpio has sent it on."""
+
+    payment_id: str
+    job_id: str
+    job_title: str
+    amount_paise: int
+    paid_at: datetime | None
+    # "upi" or "netbanking"
+    method: str | None
+    payout_status: PayoutStatus
+    # UTR or UPI reference of Helpio's transfer
+    payout_reference: str | None
+    payout_at: datetime | None
+
+
+class ProviderEarningsResponse(BaseModel):
+    # Everything customers have paid for the pro's jobs
+    total_paise: int
+    # Paid in the last 7 days (as on the provider home)
+    week_paise: int
+    # Paid by customers, not yet sent on by Helpio
+    to_receive_paise: int
+    # Already sent to the pro
+    received_paise: int
+    # Latest payment first
+    items: list[ProviderEarningItem]
+
+
 class MarkPayoutRequest(BaseModel):
     # UTR or UPI reference of the transfer
     reference: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=80)]

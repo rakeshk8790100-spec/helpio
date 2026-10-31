@@ -6,6 +6,9 @@ from app.modules.auth.model import AuthUser
 from app.modules.jobs.dependencies import get_job_service
 from app.modules.jobs.schema import ProviderHomeResponse
 from app.modules.jobs.service import JobService
+from app.modules.payments.dependencies import get_payment_service
+from app.modules.payments.schema import ProviderEarningsResponse
+from app.modules.payments.service import PaymentService
 from app.modules.providers.dependencies import current_provider, get_provider_service
 from app.modules.providers.schema import (
     OnboardingResponse,
@@ -69,3 +72,13 @@ def provider_home(
 ) -> ProviderHomeResponse:
     """Everything the provider home screen needs: sign-up checklist, active job, quotes, nearby jobs, earnings."""
     return service.provider_home(db, user)
+
+
+@router.get("/earnings", response_model=ProviderEarningsResponse)
+def provider_earnings(
+    user: AuthUser = Depends(current_provider),
+    db: Session = Depends(get_db),
+    service: PaymentService = Depends(get_payment_service),
+) -> ProviderEarningsResponse:
+    """Totals and every paid job, with Helpio's payout to the provider (pending, or sent with its reference)."""
+    return service.earnings(db, user)

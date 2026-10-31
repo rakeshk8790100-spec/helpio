@@ -40,6 +40,8 @@ from app.modules.payments.schema import (
     PaymentAttemptResponse,
     PayoutItemResponse,
     PayoutResponse,
+    ProviderEarningItem,
+    ProviderEarningsResponse,
     StartPaymentResponse,
 )
 
@@ -166,6 +168,24 @@ class PaymentService:
     def payouts(self, db: Session, status: PayoutStatus) -> list[PayoutItemResponse]:
         """Admins: paid jobs whose pro is still waiting for Helpio's transfer (or already got it)."""
         return [self._payout_item(db, payment) for payment in PaymentRepository(db).payouts(status)]
+
+    def earnings(self, db: Session, user: AuthUser) -> ProviderEarningsResponse:
+        """The pro: totals, then every paid job and whether Helpio has sent the money on."""
+        repo = PaymentRepository(db)
+        return ProviderEarningsResponse(
+            total_paise=repo.paid_total(user.id),
+            week_paise=repo.paid_total(user.id, since=utc_now() - timedelta(days=7)),
+            to_receive_paise=repo.paid_total(user.id, payout=PayoutStatus.PENDING),
+            received_paise=repo.paid_total(user.id, payout=PayoutStatus.PAID),
+            items=[
+                ProviderEarningItem(
+                    payment_id=payment.id, job_id=payment.job_id, job_title=title, amount_paise=payment.amount_paise,
+                    paid_at=payment.paid_at, method=payment.method, payout_status=payment.payout_status,
+                    payout_reference=payment.payout_reference, payout_at=payment.payout_at,
+                )
+                for payment, title in repo.earnings_for_provider(user.id)
+            ],
+        )
 
     def mark_payout(
         self, db: Session, admin: AuthUser, payment_id: str, reference: str, background: BackgroundTasks | None = None

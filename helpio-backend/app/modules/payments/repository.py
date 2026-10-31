@@ -1,9 +1,10 @@
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import Row, func, select
 from sqlalchemy.orm import Session
 
+from app.modules.jobs.model import Job
 from app.modules.payments.model import Payment, PaymentStatus, PayoutStatus
 
 
@@ -43,6 +44,15 @@ class PaymentRepository:
             select(Payment)
             .where(Payment.status == PaymentStatus.PAID, Payment.payout_status == status)
             .order_by(Payment.paid_at)
+        ).all()
+
+    def earnings_for_provider(self, provider_id: str) -> Sequence[Row[tuple[Payment, str]]]:
+        """The pro's paid jobs with their titles, latest payment first."""
+        return self.db.execute(
+            select(Payment, Job.title)
+            .join(Job, Job.id == Payment.job_id)
+            .where(Payment.provider_id == provider_id, Payment.status == PaymentStatus.PAID)
+            .order_by(Payment.paid_at.desc())
         ).all()
 
     def paid_total(self, provider_id: str, *, payout: PayoutStatus | None = None, since: datetime | None = None) -> int:
