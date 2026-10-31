@@ -769,6 +769,30 @@ export interface ProviderHome {
   earnings: { week: number; wallet: number };
 }
 
+/** A paid job, as the pro sees it: what the customer paid (₹) and whether Helpio has sent it on */
+export interface EarningItem {
+  paymentId: string;
+  jobId: string;
+  jobTitle: string;
+  amount: number;
+  paidAt: string | null;
+  method: string | null;
+  payoutStatus: PayoutStatus;
+  /** UTR or UPI reference of Helpio's transfer */
+  payoutReference: string | null;
+  payoutAt: string | null;
+}
+
+export interface ProviderEarnings {
+  /** ₹: everything customers have paid, the last 7 days, still to be sent on, already sent */
+  total: number;
+  week: number;
+  toReceive: number;
+  received: number;
+  /** Latest payment first */
+  items: EarningItem[];
+}
+
 /* ── Customer addresses ─────────────────── */
 
 export interface Address {

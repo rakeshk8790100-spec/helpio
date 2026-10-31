@@ -7,6 +7,7 @@ import { UserRole } from "../../common/CommonEnum";
 import RequireAuth from "../../pages/auth/RequireAuth";
 import { adminPublicRoutes, adminRoutes } from "../../pages/admin/routes";
 import { authRoutes } from "../../pages/auth/routes";
+import EarningsPage from "../../pages/earnings/earnings.page";
 import HomePage from "../../pages/home/home.page";
 import { customerJobRoutes, providerJobRoutes } from "../../pages/jobs/routes";
 import { onboardingRoutes } from "../../pages/onboarding/routes";
@@ -57,7 +58,8 @@ const myRouter = createBrowserRouter([
         children: [
           ...providerJobRoutes,
           ...providerProfileRoutes,
-          ...comingSoon([RouterKeys.PRO_VERIFICATION, RouterKeys.PRO_WORK, RouterKeys.PRO_EARNINGS]),
+          { path: RouterKeys.PRO_EARNINGS, element: <EarningsPage /> },
+          ...comingSoon([RouterKeys.PRO_VERIFICATION, RouterKeys.PRO_WORK]),
         ],
       },
       // Both roles: own profile and pros' public profiles; anything else not built yet shows ComingSoon
