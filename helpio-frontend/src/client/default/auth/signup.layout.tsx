@@ -1,0 +1,58 @@
+import { Alert, Button, Form } from 'antd';
+import AuthHeader from './authHeader';
+import { EmailField, NameField, PasswordField, PhoneField } from './authFields';
+import EmailCodeStep from './emailCodeStep';
+import PendingApproval from './pendingApproval';
+import GoogleSignIn from './googleSignIn';
+import type { SignupLayoutProps } from './signup.layout.types';
+
+/** /signup: customer name, email, mobile and password (Google below the form), then the emailed code. */
+const SignupLayout = (p: SignupLayoutProps) => (
+  <div className="flex flex-col gap-6">
+    {p.pending ? (
+      <PendingApproval {...p.pending} />
+    ) : p.code ? (
+      <EmailCodeStep {...p.code} error={p.error} />
+    ) : (
+      <>
+        <AuthHeader title="Create your account" subtitle="Book trusted help near you in minutes." />
+
+        {p.error && <Alert type="error" showIcon title={p.error} />}
+
+        <section className="rounded-2xl border border-slate-100 p-5 shadow-sm">
+          <Form form={p.form} layout="vertical" requiredMark={false} validateTrigger="onBlur" onFinish={p.onSubmit}>
+            <NameField />
+            <EmailField />
+            <PhoneField />
+            <PasswordField />
+            <Button type="primary" htmlType="submit" size="large" block loading={p.submitting}>
+              Create account
+            </Button>
+          </Form>
+          {p.google && <GoogleSignIn google={p.google} />}
+        </section>
+      </>
+    )}
+
+    <div className="flex flex-col items-center text-sm text-slate-600">
+      <div>
+        Already have an account?{' '}
+        <Button type="link" onClick={p.onLogin} className="!px-0 !font-semibold">
+          Log in
+        </Button>
+      </div>
+      <div>
+        Are you a professional?{' '}
+        <Button type="link" onClick={p.onSwitchAudience} className="!px-0 !font-semibold">
+          Join as a pro
+        </Button>
+      </div>
+    </div>
+
+    <div className="text-center text-[11px] text-slate-500">
+      By continuing you agree to Helpio's Terms of Service and Privacy Policy.
+    </div>
+  </div>
+);
+
+export default SignupLayout;
