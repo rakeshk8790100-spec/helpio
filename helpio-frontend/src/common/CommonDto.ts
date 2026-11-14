@@ -170,6 +170,8 @@ export interface Job {
   coordinates: Coordinates | null;
   areaName: string | null;
   pincode: string | null;
+  /** Flat, building and street: shared only with the hired pro */
+  addressLine: string | null;
   budget: number | null;
   /** ISO date-time */
   scheduledAt: string | null;
@@ -275,6 +277,8 @@ export interface JobDetail extends Job {
   hired: HiredPro | null;
   /** Hired, not started yet: shared with the pro at the door */
   startPin: string | null;
+  /** The pro entered a wrong PIN too often; a new PIN unlocks it */
+  pinLocked: boolean;
   startedAt: string | null;
   unreadMessages: number;
 }
@@ -284,7 +288,12 @@ export interface NearbyJobDetail extends NearbyJob {
   canQuote: boolean;
   /** My quote was accepted: the exact place and the customer's name are shared from here on */
   hired: boolean;
-  exactLocation: { coordinates: Coordinates | null; pincode: string | null; areaName: string | null } | null;
+  exactLocation: {
+    coordinates: Coordinates | null;
+    pincode: string | null;
+    areaName: string | null;
+    addressLine: string | null;
+  } | null;
   customerName: string | null;
   startedAt: string | null;
   unreadMessages: number;

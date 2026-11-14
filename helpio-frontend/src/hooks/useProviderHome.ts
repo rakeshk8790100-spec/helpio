@@ -8,8 +8,9 @@ import { firstName } from '../lib/utils';
 import { pendingOnboardingPath } from '../pages/auth/authRedirect';
 import { useGetProviderHomeQuery } from '../pages/home/home.api';
 import { callEmergency } from '../lib/safety';
+import { LIVE } from './jobItems';
 
-/** What the active-job card says for each hired stage. The provider never starts before escrow is funded. */
+/** What the active-job card says for each hired stage. Work starts with the customer's PIN. */
 const ACTIVE_COPY: Partial<Record<JobStatus, (job: NearbyJob) => { statusLabel: string; nextStep: string; actionLabel: string }>> = {
   [JobStatus.ACCEPTED]: () => ({
     statusLabel: 'You are hired',
@@ -36,7 +37,7 @@ const ACTIVE_COPY: Partial<Record<JobStatus, (job: NearbyJob) => { statusLabel: 
 /** Signed-in provider home: earnings, sign-up checklist, live job and nearby jobs to quote on. */
 export const useProviderHome = (user: AuthUser): ProviderHomeLayoutProps => {
   const navigate = useNavigate();
-  const { data, error, isLoading, refetch } = useGetProviderHomeQuery();
+  const { data, error, isLoading, refetch } = useGetProviderHomeQuery(undefined, LIVE);
 
   if (isLoading) return { status: 'loading' };
   if (!data) return { status: 'error', message: apiErrorMessage(error), onRetry: refetch };

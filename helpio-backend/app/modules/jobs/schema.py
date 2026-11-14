@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, Field, StringConstraints, model_validator
 
+from app.modules.customers.schema import AddressLine
 from app.modules.jobs.model import InviteStatus, JobEventType, JobStatus, MilestoneStatus, QuoteStatus
 from app.modules.providers.model import OnboardingStatus, Proficiency
 from app.modules.reviews.schema import RatingSummary
@@ -25,7 +26,10 @@ class JobFields(BaseModel):
     longitude: float | None = Field(default=None, ge=-180, le=180)
     pincode: str | None = Field(default=None, pattern=r"^[1-9]\d{5}$")
     area_name: AreaName | None = None
+    # Flat, building and street; only the hired pro sees it
+    address_line: AddressLine | None = None
     budget_paise: int | None = Field(default=None, ge=MIN_AMOUNT_PAISE, le=MAX_AMOUNT_PAISE)
+    # Not in the past (checked when it changes)
     scheduled_at: AwareDatetime | None = None
     duration_mins: int | None = Field(default=None, ge=15, le=24 * 60)
     is_emergency: bool = False
@@ -40,7 +44,8 @@ class JobFields(BaseModel):
 
 
 class CreateJobRequest(JobFields):
-    title: Title
+    # Optional: made from the description (or category) when left out
+    title: Title | None = None
 
 
 class UpdateJobRequest(JobFields):
@@ -59,6 +64,7 @@ class JobResponse(BaseModel):
     longitude: float | None
     pincode: str | None
     area_name: str | None
+    address_line: str | None
     budget_paise: int | None
     scheduled_at: datetime | None
     duration_mins: int | None
@@ -232,6 +238,8 @@ class JobDetailResponse(JobResponse):
     hired: HiredProResponse | None
     # Hired, not started: the customer shares it with the pro at the door
     start_pin: str | None
+    # The pro entered a wrong PIN too often; the customer gets a new one to unlock
+    pin_locked: bool
     started_at: datetime | None
     unread_messages: int
 
@@ -241,6 +249,7 @@ class ExactLocation(BaseModel):
     longitude: float | None
     pincode: str | None
     area_name: str | None
+    address_line: str | None
 
 
 class NearbyJobDetailResponse(NearbyJobResponse):
@@ -254,6 +263,23 @@ class NearbyJobDetailResponse(NearbyJobResponse):
     unread_messages: int
     # How other pros rated this customer
     customer_rating: RatingSummary
+
+
+class AssistJobRequest(BaseModel):
+    # What the customer typed, e.g. "kitchen tap leaking since yesterday"
+    text: Annotated[str, StringConstraints(strip_whitespace=True, min_length=3, max_length=1000)]
+
+
+class AssistJobResponse(BaseModel):
+    """A first draft of the job form, for the customer to check before posting."""
+
+    title: str
+    category_id: str | None
+    description: str
+    duration_mins: int | None
+    is_emergency: bool
+    # "ai" when Claude wrote it, "keywords" when it was matched without AI
+    source: Literal["ai", "keywords"]
 
 
 class CategoryOption(BaseModel):

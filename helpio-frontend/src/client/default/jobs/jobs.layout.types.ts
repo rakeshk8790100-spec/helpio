@@ -10,14 +10,35 @@ import type { WithLoading, WithStatus } from '../layout.types';
 
 // ----- Customer: post a job -----
 
+/** When the customer needs the work; nothing picked means "flexible" */
+export const WhenDay = {
+  ASAP: 'asap',
+  TODAY: 'today',
+  TOMORROW: 'tomorrow',
+  DATE: 'date',
+} as const;
+export type WhenDay = (typeof WhenDay)[keyof typeof WhenDay];
+
+export const WhenSlot = {
+  MORNING: 'morning',
+  AFTERNOON: 'afternoon',
+  EVENING: 'evening',
+} as const;
+export type WhenSlot = (typeof WhenSlot)[keyof typeof WhenSlot];
+
 export interface PostJobFormValues {
-  title: string;
+  /** Optional: the API makes one from the description */
+  title?: string;
   description?: string;
   categoryId?: string;
   pincode?: string;
   areaName?: string;
-  /** "YYYY-MM-DDTHH:mm" from a datetime-local input */
-  when?: string;
+  /** Flat, building and street ("somewhere else" only; a saved address brings its own) */
+  addressLine?: string;
+  whenDay?: WhenDay;
+  /** "YYYY-MM-DD", with `whenDay` "date" */
+  whenDate?: string;
+  whenSlot?: WhenSlot;
   durationMins?: number;
   /** ₹ */
   budget?: number;
@@ -29,21 +50,47 @@ export type PostJobMode = 'new' | 'draft' | 'edit';
 export type PostJobLayoutProps = WithLoading<{
   /** A new job, a saved draft, or a posted job being changed */
   mode: PostJobMode;
+  /** New jobs start by describing the job in a few words; the form is then filled in from it */
+  step: 'describe' | 'details';
+  describe: {
+    value: string;
+    onChange: (value: string) => void;
+    /** Fill the form in from the text */
+    onContinue: () => void;
+    /** Go to the form with the text as the description */
+    onSkip: () => void;
+    loading: boolean;
+  };
+  /** The form was filled in from the customer's words: "ai" (Claude) or "keywords" */
+  suggestion: { source: 'ai' | 'keywords'; onStartOver: () => void } | null;
   /** Posting for a chosen pro: the job is sent to them once posted */
   invitee: string | null;
   /** Saved addresses as quick picks; `selectedId` null means "somewhere else" */
   addresses: { items: { id: string; label: string }[]; selectedId: string | null; onSelect: (id: string | null) => void } | null;
+  /** Ask for flat and street ("somewhere else"); a saved address shows its own line instead */
+  askAddressLine: boolean;
+  savedAddressLine: string | null;
   form: FormInstance<PostJobFormValues>;
   initialValues: Partial<PostJobFormValues>;
+  onValuesChange: (changed: Partial<PostJobFormValues>) => void;
   categories: ChipOption<string>[];
   location: ComponentProps<typeof CurrentLocationButton>;
-  onImprove: () => void;
+  when: {
+    dayOptions: ChipOption<WhenDay>[];
+    slotOptions: ChipOption<WhenSlot>[];
+    showDate: boolean;
+    showSlots: boolean;
+    /** Earliest date for "pick a date": "YYYY-MM-DD" */
+    minDate: string;
+  };
   photos: ComponentProps<typeof PhotoPicker>;
   /** Which button is busy */
-  saving: 'draft' | 'post' | null;
+  saving: 'draft' | 'post' | 'delete' | null;
   error?: string;
   onSaveDraft: () => void;
   onPost: () => void;
+  /** Saved drafts only */
+  onDeleteDraft: (() => void) | null;
   /** Edit mode: leave without saving */
   onCancel: () => void;
 }>;
@@ -236,7 +283,7 @@ export interface JobSummary {
 export type JobDetailLayoutProps = WithStatus<{
   summary: JobSummary;
   /** Shown instead of quotes while the job is a draft */
-  draft: { onContinue: () => void } | null;
+  draft: { onContinue: () => void; onDelete: () => void; deleting: boolean } | null;
   /** Posted and nobody hired yet; `hasQuotes` adds a note that quoters will see the change */
   edit: { onEdit: () => void; hasQuotes: boolean } | null;
   /** The pro the customer hired, and what happens next */
@@ -245,7 +292,8 @@ export type JobDetailLayoutProps = WithStatus<{
     nextStep: string;
     onOpen: () => void;
     /** Until work starts: the PIN to share at the door */
-    pin: { value: string; resetting: boolean; onReset: () => void } | null;
+    /** `locked`: the pro entered a wrong PIN too often; a new PIN unlocks it */
+    pin: { value: string; locked: boolean; resetting: boolean; onReset: () => void } | null;
     /** e.g. "Work started at 4:05 PM" */
     startedLabel: string | null;
     chat: { unread: number; onOpen: () => void };

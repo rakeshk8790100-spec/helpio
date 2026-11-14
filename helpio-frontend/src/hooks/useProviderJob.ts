@@ -15,7 +15,7 @@ import {
   useStartJobMutation,
   useWithdrawQuoteMutation,
 } from '../pages/jobs/jobs.api';
-import { jobBadge, jobFacts } from './jobItems';
+import { LIVE, jobBadge, jobFacts } from './jobItems';
 import { useJobPayment } from './useJobPayment';
 import { useJobProgress } from './useJobProgress';
 import { useJobReview } from './useJobReview';
@@ -31,7 +31,7 @@ const QUICK_MESSAGES = [
 export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutProps => {
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const { data: job, error, isLoading, refetch } = useGetNearbyJobQuery(id);
+  const { data: job, error, isLoading, refetch } = useGetNearbyJobQuery(id, LIVE);
   const [createQuote, { isLoading: submitting }] = useCreateQuoteMutation();
   const [withdrawQuote, { isLoading: withdrawing }] = useWithdrawQuoteMutation();
   const [declineInvite, { isLoading: declining }] = useDeclineInviteMutation();
@@ -125,7 +125,11 @@ export const useProviderJob = (id: string, user: AuthUser): ProviderJobLayoutPro
     hired: job.hired
       ? {
           customerName: job.customerName ?? job.customerLabel,
-          address: [job.exactLocation?.areaName, job.exactLocation?.pincode].filter(Boolean).join(' ') || 'Address not given',
+          // Flat and street first (when the customer gave them), then the area and pincode
+          address:
+            [job.exactLocation?.addressLine, [job.exactLocation?.areaName, job.exactLocation?.pincode].filter(Boolean).join(' ')]
+              .filter(Boolean)
+              .join(', ') || 'Address not given',
           coordinates: job.exactLocation?.coordinates ?? null,
           start:
             job.status === JobStatus.ACCEPTED

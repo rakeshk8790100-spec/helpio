@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import re
 import secrets
 from dataclasses import dataclass
 from datetime import timedelta
@@ -31,9 +32,11 @@ from app.modules.jobs.exceptions import (
     AttachmentNotFoundError,
     JobClosedForChangesError,
     JobIncompleteError,
+    JobNotDeletableError,
     JobNotEditableError,
     JobNotFoundError,
     JobNotOpenError,
+    PastScheduleError,
     ProviderNotReadyError,
     QuoteNotFoundError,
     QuoteNotWithdrawableError,
@@ -97,9 +100,11 @@ from app.modules.auth.model import ApprovalStatus
 from app.modules.providers.access import provider_can_work
 from app.modules.providers.exceptions import ProviderProfileNotFoundError
 from app.modules.providers.model import OnboardingStatus, Proficiency, ProviderProfile
+from app.modules.notifications.repository import NotificationRepository
 from app.modules.notifications.service import NotificationService
 from app.modules.payments.model import PayoutStatus
 from app.modules.payments.repository import PaymentRepository
+from app.modules.providers.directory import Place, ProviderDirectory
 from app.modules.providers.repository import ProviderRepository
 from app.modules.reviews.repository import ReviewRepository
 
@@ -111,6 +116,12 @@ EDITABLE_PHOTO_STATUSES = (JobStatus.DRAFT, JobStatus.OPEN)
 PROFICIENCY_RANK = {Proficiency.BEGINNER: 0, Proficiency.INTERMEDIATE: 1, Proficiency.EXPERT: 2}
 MAX_PIN_ATTEMPTS = 5
 MAX_INVITES = 5
+# A posted job alerts the closest pros who do the work; each pro gets at most one such email per half hour
+NEARBY_NOTIFY_LIMIT = 10
+JOB_ALERT_EMAIL_GAP = timedelta(minutes=30)
+# Time to fill in the form: a slot picked as "now" is still fine a few minutes later
+SCHEDULE_SLACK = timedelta(minutes=5)
+TITLE_LENGTH = 60
 
 
 @dataclass(frozen=True)
@@ -152,6 +163,20 @@ def format_minutes(minutes: int) -> str:
     return " ".join(part for part in (f"{hours} hr" if hours else "", f"{mins} min" if mins else "") if part)
 
 
+def derive_title(description: str | None, category_name: str | None) -> str:
+    """A short title from the description's first sentence: "Kitchen tap leaking since yesterday"."""
+    first = re.split(r"[.!?\n]", (description or "").strip(), maxsplit=1)[0].strip()
+    if len(first) > TITLE_LENGTH:
+        first = first[:TITLE_LENGTH].rsplit(" ", 1)[0].rstrip(",;:- ")
+    if len(first) >= 3:
+        return first[0].upper() + first[1:]
+    return f"{category_name} job" if category_name else "New job"
+
+
+def rupees(paise: int) -> str:
+    return f"₹{paise / 100:,.0f}"
+
+
 def new_pin() -> str:
     return f"{secrets.randbelow(10_000):04d}"
 
@@ -174,14 +199,24 @@ class JobService:
 
     # ----- Customer -----
 
-    def create_job(self, db: Session, user: AuthUser, payload: CreateJobRequest) -> JobResponse:
-        job = Job(customer_id=user.id, title=payload.title, quotes=[])
+    def create_job(
+        self, db: Session, user: AuthUser, payload: CreateJobRequest, background: BackgroundTasks | None = None
+    ) -> JobResponse:
+        job = Job(customer_id=user.id, title=payload.title or "", quotes=[])
         self._apply(db, job, payload)
+        if not payload.title:
+            category = db.get(CatalogCategory, job.category_id) if job.category_id else None
+            job.title = derive_title(job.description, category.name if category else None)
         JobRepository(db).add(job)
+        if job.status == JobStatus.OPEN:
+            self._announce(db, job, background)
         db.commit()
         return self._job_response(job)
 
-    def update_job(self, db: Session, user: AuthUser, job_id: str, payload: UpdateJobRequest) -> JobResponse:
+    def update_job(
+        self, db: Session, user: AuthUser, job_id: str, payload: UpdateJobRequest,
+        background: BackgroundTasks | None = None,
+    ) -> JobResponse:
         job = self._own_job(db, user, job_id)
         # Editable until a pro is hired; quotes already sent stay, and their pros see the job was changed
         if job.status not in (JobStatus.DRAFT, JobStatus.OPEN):
@@ -193,8 +228,20 @@ class JobService:
         self._apply(db, job, payload, require_complete=posted)
         if posted:
             job.edited_at = utc_now()
+            self._tell_quoted_pros(db, job)
+        elif job.status == JobStatus.OPEN:
+            self._announce(db, job, background)
         db.commit()
         return self._job_response(job)
+
+    def delete_draft(self, db: Session, user: AuthUser, job_id: str) -> None:
+        job = self._own_job(db, user, job_id)
+        if job.status != JobStatus.DRAFT:
+            raise JobNotDeletableError
+        for attachment in job.attachments:
+            self.storage.delete(attachment.public_id, attachment.resource_type)
+        db.delete(job)
+        db.commit()
 
     def my_jobs(self, db: Session, user: AuthUser) -> list[JobResponse]:
         return [self._job_response(job) for job in JobRepository(db).list_for_customer(user.id)]
@@ -209,6 +256,7 @@ class JobService:
             quotes=[self._customer_quote(job, quote, profiles.get(quote.provider_id)) for quote in quotes],
             hired=self._hired(job),
             start_pin=job.start_pin if job.status == JobStatus.ACCEPTED else None,
+            pin_locked=job.status == JobStatus.ACCEPTED and job.start_pin_attempts >= MAX_PIN_ATTEMPTS,
             started_at=job.started_at,
             unread_messages=unread_count(db, job.id, user.id),
             invites=[
@@ -223,7 +271,7 @@ class JobService:
     def accept_quote(
         self, db: Session, user: AuthUser, job_id: str, quote_id: str, background: BackgroundTasks | None = None
     ) -> JobDetailResponse:
-        """Hire the pro: their quote is accepted, every other pending quote declined. Escrow comes later."""
+        """Hire the pro: their quote is accepted, every other pending quote declined. Payment comes after the work."""
         job, quote = self._own_pending_quote(db, user, job_id, quote_id)
         quote.status = QuoteStatus.ACCEPTED
         for other in job.quotes:
@@ -265,8 +313,15 @@ class JobService:
             raise PinLockedError
         if not hmac.compare_digest(pin, job.start_pin):
             job.start_pin_attempts += 1
-            db.commit()
             left = MAX_PIN_ATTEMPTS - job.start_pin_attempts
+            if left <= 0:
+                self.notifications.notify(
+                    db, job.customer, type="pin_locked", title="Get a new start PIN",
+                    body=f"{short_name(user.name, 'Your pro')} entered a wrong PIN too many times for \"{job.title}\". "
+                         "Open the job to get a new PIN and share it in person.",
+                    job_id=job.id, link=customer_link(job.id), background=background,
+                )
+            db.commit()
             if left <= 0:
                 raise PinLockedError
             raise WrongPinError(left)
@@ -306,7 +361,10 @@ class JobService:
             raise QuoteNotPendingError
         return job, quote
 
-    def invite_provider(self, db: Session, user: AuthUser, job_id: str, payload: CreateInviteRequest) -> JobDetailResponse:
+    def invite_provider(
+        self, db: Session, user: AuthUser, job_id: str, payload: CreateInviteRequest,
+        background: BackgroundTasks | None = None,
+    ) -> JobDetailResponse:
         """Send an open job straight to a chosen pro; they see it first, wherever they work, and reply with a quote."""
         job = self._own_job(db, user, job_id)
         if job.status != JobStatus.OPEN:
@@ -324,6 +382,13 @@ class JobService:
             provider_id=provider.id, message=payload.message,
             status=InviteStatus.QUOTED if quoted else InviteStatus.PENDING,
         ))
+        if not quoted:
+            where = f" in {job.area_name}" if job.area_name else ""
+            self.notifications.notify(
+                db, provider, type="job_invite", title="A customer asked you for a quote",
+                body=f"{short_name(user.name, 'A customer')} sent you \"{job.title}\"{where}. Reply with your price.",
+                job_id=job.id, link=provider_link(job.id), background=background,
+            )
         db.commit()
         return self.get_job(db, user, job.id)
 
@@ -408,6 +473,7 @@ class JobService:
             hired=hired,
             exact_location=ExactLocation(
                 latitude=job.latitude, longitude=job.longitude, pincode=job.pincode, area_name=job.area_name,
+                address_line=job.address_line,
             ) if hired else None,
             customer_name=job.customer.name if hired else None,
             started_at=job.started_at if hired else None,
@@ -415,7 +481,10 @@ class JobService:
             customer_rating=ReviewRepository(db).summary(job.customer_id),
         )
 
-    def create_quote(self, db: Session, user: AuthUser, job_id: str, payload: CreateQuoteRequest) -> QuoteResponse:
+    def create_quote(
+        self, db: Session, user: AuthUser, job_id: str, payload: CreateQuoteRequest,
+        background: BackgroundTasks | None = None,
+    ) -> QuoteResponse:
         profile = self._provider_profile(db, user)
         if profile.onboarding_status != OnboardingStatus.COMPLETE:
             raise ProviderNotReadyError
@@ -433,6 +502,7 @@ class JobService:
         quote = repo.get_quote(job.id, user.id)
         if quote is not None and quote.status != QuoteStatus.WITHDRAWN:
             raise AlreadyQuotedError
+        first_quote = not pending_quotes(job)
         if quote is None:
             quote = repo.add_quote(
                 JobQuote(job_id=job.id, provider_id=user.id, amount_paise=payload.amount_paise, message=payload.message)
@@ -445,6 +515,14 @@ class JobService:
             # `created_at` means "last sent", so an earlier job edit no longer counts as newer
             quote.created_at = utc_now()
         self._set_invite(job, user.id, InviteStatus.QUOTED)
+        self.notifications.notify(
+            db, job.customer, type="quote_received", title=f"New quote: {rupees(payload.amount_paise)}",
+            body=f"{short_name(user.name, 'A pro')} sent a quote for \"{job.title}\". "
+                 "Compare quotes and hire when you're ready.",
+            job_id=job.id, link=customer_link(job.id),
+            # The first quote (or any on an emergency) is emailed; later ones show in the app
+            background=background if first_quote or job.is_emergency else None,
+        )
         db.commit()
         return self._quote_response(quote)
 
@@ -460,6 +538,11 @@ class JobService:
         quote = next((q for q in job.quotes if q.provider_id == user.id and q.status == QuoteStatus.PENDING), None)
         if quote is not None:
             quote.status = QuoteStatus.WITHDRAWN
+        self.notifications.notify(
+            db, job.customer, type="invite_declined", title="A pro can't take your job",
+            body=f"{short_name(user.name, 'The pro')} can't take \"{job.title}\". Other pros nearby can still quote.",
+            job_id=job.id, link=customer_link(job.id),
+        )
         db.commit()
 
     def withdraw_quote(self, db: Session, user: AuthUser, job_id: str) -> QuoteResponse:
@@ -473,6 +556,12 @@ class JobService:
         job = JobRepository(db).get(job_id)
         if job is not None and any(i.provider_id == user.id and i.status == InviteStatus.QUOTED for i in job.invites):
             self._set_invite(job, user.id, InviteStatus.PENDING)
+        if job is not None and job.status == JobStatus.OPEN:
+            self.notifications.notify(
+                db, job.customer, type="quote_withdrawn", title="A quote was withdrawn",
+                body=f"{short_name(user.name, 'A pro')} withdrew their quote for \"{job.title}\".",
+                job_id=job.id, link=customer_link(job.id),
+            )
         db.commit()
         return self._quote_response(quote)
 
@@ -548,8 +637,14 @@ class JobService:
             category = db.get(CatalogCategory, category_id)
             if category is None or not category.is_active:
                 raise UnknownCategoryError
+        scheduled_at = values.get("scheduled_at")
+        if scheduled_at is not None and scheduled_at != job.scheduled_at and scheduled_at < utc_now() - SCHEDULE_SLACK:
+            raise PastScheduleError
         for name, value in values.items():
             setattr(job, name, value)
+        if fields.submit and job.scheduled_at is not None and job.scheduled_at < utc_now() - SCHEDULE_SLACK:
+            # A draft saved for a time that has since passed
+            raise PastScheduleError
         if fields.submit or require_complete:
             missing = [
                 label for label, value in (
@@ -560,6 +655,43 @@ class JobService:
             if missing:
                 raise JobIncompleteError(missing)
             job.status = JobStatus.OPEN
+
+    def _announce(self, db: Session, job: Job, background: BackgroundTasks | None) -> None:
+        """Tell the closest pros who do this kind of work about a newly posted job."""
+        candidates = []
+        place = Place(job.latitude, job.longitude, job.pincode, job.area_name)
+        for profile, provider in ProviderDirectory().serving(db, place):
+            if provider.id == job.customer_id or all(item.skill.category_id != job.category_id for item in profile.skills):
+                continue
+            metres = None
+            if None not in (profile.latitude, profile.longitude, job.latitude, job.longitude):
+                metres = distance_m(profile.latitude, profile.longitude, job.latitude, job.longitude)
+            candidates.append((metres is None, metres or 0, provider))
+        candidates.sort(key=lambda item: item[:2])
+
+        recent = NotificationRepository(db)
+        since = utc_now() - JOB_ALERT_EMAIL_GAP
+        where = f" in {job.area_name}" if job.area_name else " near you"
+        for _, _, provider in candidates[:NEARBY_NOTIFY_LIMIT]:
+            # Always in the app; emailed at most once per gap, except emergencies
+            email = job.is_emergency or recent.recent_count(provider.id, "job_nearby", since) == 0
+            self.notifications.notify(
+                db, provider, type="job_nearby", title="Urgent job near you" if job.is_emergency else "New job near you",
+                body=f"\"{job.title}\"{where}. Send your quote before others do.",
+                job_id=job.id, link=provider_link(job.id), background=background if email else None,
+            )
+
+    def _tell_quoted_pros(self, db: Session, job: Job) -> None:
+        """Pros who already quoted hear the job changed (once until they look), so they can check their price."""
+        recent = NotificationRepository(db)
+        for quote in pending_quotes(job):
+            if recent.has_unread(quote.provider_id, "job_updated", job.id):
+                continue
+            self.notifications.notify(
+                db, quote.provider, type="job_updated", title="A job you quoted on changed",
+                body=f"The customer edited \"{job.title}\". Check your quote still fits.",
+                job_id=job.id, link=provider_link(job.id),
+            )
 
     def _own_job(self, db: Session, user: AuthUser, job_id: str) -> Job:
         job = JobRepository(db).get(job_id)
@@ -693,7 +825,7 @@ class JobService:
             id=job.id, title=job.title, description=job.description,
             category_id=job.category_id, category_name=job.category.name if job.category else None,
             latitude=job.latitude, longitude=job.longitude, pincode=job.pincode, area_name=job.area_name,
-            budget_paise=job.budget_paise, scheduled_at=job.scheduled_at, duration_mins=job.duration_mins,
+            address_line=job.address_line, budget_paise=job.budget_paise, scheduled_at=job.scheduled_at, duration_mins=job.duration_mins,
             is_emergency=job.is_emergency, status=job.status, progress_pct=job.progress_pct,
             quote_count=len(quotes), lowest_quote_paise=min((quote.amount_paise for quote in quotes), default=None),
             created_at=job.created_at, updated_at=job.updated_at, edited_at=job.edited_at,

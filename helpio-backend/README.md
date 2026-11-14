@@ -141,20 +141,22 @@ Customers post custom jobs; nearby providers quote on them. Money is in paise.
 
 | Endpoint | Purpose |
 |---|---|
-| `POST /api/v1/jobs` | Customer. `title` plus optional `description`, `category_id`, `latitude`/`longitude`, `pincode`, `area_name`, `budget_paise`, `scheduled_at`, `duration_mins`, `is_emergency`. Saved as a draft unless `submit: true`, which needs description, category, area and pincode and opens it to providers. |
+| `POST /api/v1/jobs` | Customer. Optional `title` (made from the description's first sentence when left out), `description`, `category_id`, `latitude`/`longitude`, `pincode`, `area_name`, `address_line` (flat and street, shown only to the hired pro), `budget_paise`, `scheduled_at` (not in the past), `duration_mins`, `is_emergency`. Saved as a draft unless `submit: true`, which needs description, category, area and pincode, opens it to providers and alerts the 10 closest pros who do the work (in the app; emailed at most once per 30 minutes per pro, every time for emergencies). |
+| `POST /api/v1/jobs/assist` `{text}` | Customer. A first draft of the job form from one line: `{title, category_id, description, duration_mins, is_emergency, source}`. Claude writes it when `ANTHROPIC_API_KEY` is set (`source: "ai"`, 20 per customer per hour); otherwise the catalog's search words pick the category (`source: "keywords"`). Contact details are masked. |
+| `DELETE /api/v1/jobs/{id}` | Customer. Deletes a draft and its photos; 409 for a posted job. |
 | `PATCH /api/v1/jobs/{id}` | Customer. Edit a draft (`submit: true` posts it) or a posted job until a pro is hired (409 after). A posted job keeps its quotes, must keep description, category, area and pincode, and gets `edited_at`; pros who quoted earlier see `edited_after_my_quote: true` on the job until they re-quote. |
 | `GET /api/v1/jobs/mine` | Customer. Own jobs with `quote_count` and `lowest_quote_paise`. |
-| `GET /api/v1/jobs/{id}` | Customer, own job. Adds photo URLs and the quotes received: amount, message, status, provider as "Ravi S.", their proficiency and experience in the job's category, and distance rounded to 0.5 km. |
+| `GET /api/v1/jobs/{id}` | Customer, own job. Adds photo URLs and the quotes received: amount, message, status, provider as "Ravi S.", their proficiency and experience in the job's category, and distance rounded to 0.5 km. `pin_locked` is true after the pro's 5 wrong PIN tries. |
 | `POST /api/v1/jobs/{id}/attachments` (multipart `file`) | Customer, before a pro is hired. Up to 6 files (JPG/PNG/WebP/MP4, 10 MB). The API uploads the file to Cloudinary (folder `helpio/jobs/<job id>`) and saves its URL; returns `{id, content_type, url}`. |
 | `DELETE /api/v1/jobs/{id}/attachments/{attachment_id}` | Customer. Deletes the file from Cloudinary and the job. |
 | `GET /api/v1/customers/me/home` | Customer home: `active_job`, `awaiting_decision` (open jobs with quotes), `waiting_for_quotes`, `drafts`. |
 | `GET /api/v1/jobs/nearby` `?category_id&max_km&has_budget&urgent_only` | Provider. `{area, jobs}`: their own centre and radius (null without coordinates) and the open jobs in their skill categories within `radius_m` (or the same pincode when either side has no coordinates); emergencies first, then closest. Masked: no customer contact, coordinates or pincode, distance rounded to 0.5 km, customer as "Asha K.", and `area_circle`, a 600 m circle whose centre is moved 200–400 m from the real spot (keyed by `AUTH_SECRET_KEY`, so the offset can't be worked out). |
 | `GET /api/v1/jobs/nearby/{id}` | Provider. One nearby job as above, plus photo URLs and `can_quote`. |
 | `DELETE /api/v1/jobs/{id}/quotes/mine` | Provider. Withdraws a pending quote; quoting again re-opens it. |
-| `POST /api/v1/jobs/{id}/quotes/{quote_id}/accept` | Customer, open job and pending quote: hires that pro. The quote is `accepted`, every other pending quote `rejected`, the job `accepted`. No payment yet (escrow comes later). Returns the job detail with `hired` (name, photo, price). |
+| `POST /api/v1/jobs/{id}/quotes/{quote_id}/accept` | Customer, open job and pending quote: hires that pro. The quote is `accepted`, every other pending quote `rejected`, the job `accepted`. The customer pays once all four stages are approved. Returns the job detail with `hired` (name, photo, price). |
 | `POST /api/v1/jobs/{id}/quotes/{quote_id}/decline` | Customer: turns one pending quote down (`rejected`); the job stays open. 409 for a quote already answered or on a hired job. |
 
-After hire, only the hired pro can still open the job (`GET /api/v1/jobs/nearby/{id}`), now with `hired: true`, `exact_location` (coordinates, pincode, area) and `customer_name`. Other pros get 404, and quoting, withdrawing and editing are refused.
+After hire, only the hired pro can still open the job (`GET /api/v1/jobs/nearby/{id}`), now with `hired: true`, `exact_location` (coordinates, pincode, area, address line) and `customer_name`. Other pros get 404, and quoting, withdrawing and editing are refused.
 
 **Starting work and chat (after hire):**
 
@@ -277,6 +279,7 @@ Apply these in order in the Supabase SQL editor (each is safe to re-run):
 20. `migrations/202611060001_admin_access.sql`: approval of accounts (`approval_status` on `auth_users`), the admin log-in code, admin access requests and the admin audit log
 21. `migrations/202611070001_settings_monitoring.sql`: settings saved in the admin console (secrets encrypted), background-job heartbeats and the server error log
 22. `migrations/202611080001_moderation_catalog.sql`: hidden reviews (kept, left out of ratings) and catalog categories and services that can be switched off
+23. `migrations/202611090001_posting_and_search.sql`: the job's address line for the hired pro, and search words on catalog categories and services ("plumber", "maid", "bijli")
 
 All tables have RLS enabled and no access for the `anon`/`authenticated` roles; this backend's
 server-side connection enforces the rules.

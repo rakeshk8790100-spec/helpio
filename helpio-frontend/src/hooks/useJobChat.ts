@@ -19,8 +19,8 @@ export const useJobChat = (jobId: string, backTo: string): JobChatLayoutProps =>
   const [draft, setDraft] = useState('');
   const [sendError, setSendError] = useState<string>();
 
-  // Reading clears the unread badge on the job pages: refresh them on the way out
-  useEffect(() => () => void dispatch(baseApi.util.invalidateTags(['Jobs'])), [dispatch]);
+  // Reading clears the unread badge on the job pages and the chat alert in the bell: refresh them on the way out
+  useEffect(() => () => void dispatch(baseApi.util.invalidateTags(['Jobs', 'Notifications'])), [dispatch]);
 
   if (isLoading) return { status: 'loading' };
   if (!data) return { status: 'error', message: apiErrorMessage(error), onRetry: refetch };

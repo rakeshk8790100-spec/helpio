@@ -42,6 +42,7 @@ export interface JobDetailApiDto extends JobApiDto {
   invites: InviteApiDto[];
   hired: { provider_id: string; provider_label: string; avatar_url: string | null; amount_paise: number } | null;
   start_pin: string | null;
+  pin_locked: boolean;
   started_at: string | null;
   unread_messages: number;
 }
@@ -50,7 +51,13 @@ export interface NearbyJobDetailApiDto extends NearbyJobApiDto {
   attachments: AttachmentApiDto[];
   can_quote: boolean;
   hired: boolean;
-  exact_location: { latitude: number | null; longitude: number | null; pincode: string | null; area_name: string | null } | null;
+  exact_location: {
+    latitude: number | null;
+    longitude: number | null;
+    pincode: string | null;
+    area_name: string | null;
+    address_line: string | null;
+  } | null;
   customer_name: string | null;
   started_at: string | null;
   unread_messages: number;
@@ -122,6 +129,8 @@ export interface JobInput {
   coordinates?: Coordinates | null;
   pincode?: string | null;
   areaName?: string | null;
+  /** Flat, building and street; only the hired pro sees it */
+  addressLine?: string | null;
   /** ₹ */
   budget?: number | null;
   /** ISO date-time with timezone */
@@ -130,6 +139,26 @@ export interface JobInput {
   isEmergency?: boolean;
   /** true posts the job to nearby providers */
   submit: boolean;
+}
+
+/** A first draft of the post form from the customer's own words */
+export interface AssistJobApiDto {
+  title: string;
+  category_id: string | null;
+  description: string;
+  duration_mins: number | null;
+  is_emergency: boolean;
+  source: 'ai' | 'keywords';
+}
+
+export interface JobDraftSuggestion {
+  title: string;
+  categoryId: string | null;
+  description: string;
+  durationMins: number | null;
+  isEmergency: boolean;
+  /** "ai" when Claude wrote it */
+  source: 'ai' | 'keywords';
 }
 
 export interface NearbyFilters {

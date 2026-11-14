@@ -6,7 +6,7 @@ import { JobStatus } from '../common/CommonEnum';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
 import { useGetMyJobsQuery } from '../pages/jobs/jobs.api';
-import { toJobItem } from './jobItems';
+import { LIVE, toJobItem } from './jobItems';
 
 const TABS: { value: JobsTab; label: string; statuses: JobStatus[]; empty: string }[] = [
   { value: JobsTab.OPEN, label: 'Open', statuses: [JobStatus.OPEN], empty: 'No open jobs. Post one to get quotes from pros nearby.' },
@@ -29,7 +29,7 @@ const TABS: { value: JobsTab; label: string; statuses: JobStatus[]; empty: strin
 export const useMyJobs = (): MyJobsLayoutProps => {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const { data, error, isLoading, refetch } = useGetMyJobsQuery();
+  const { data, error, isLoading, refetch } = useGetMyJobsQuery(undefined, LIVE);
   const tab = TABS.find((t) => t.value === params.get('tab')) ?? TABS[0];
 
   const open = (job: Job) => navigate(toPath(RouterKeys.JOB_DETAIL, { id: job.id }));

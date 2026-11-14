@@ -24,7 +24,7 @@ All components are pure: data comes in through props and actions go out through 
 | `IconTile` | Icon square + caption for grids | `Icon`, `label`, `onClick?` | category/shortcut tiles |
 | `PageSkeleton` | Page-level loading skeleton | none | spinners |
 | `ChipMultiSelect` | Multi-select chip group; works inside antd `Form.Item` | `options: { value, label }[]`, `value?`, `onChange?`, `ariaLabel` | checkbox groups for days/tags |
-| `ChipSelect` | Single-choice chip group that wraps (e.g. service radius); works inside `Form.Item` | `options`, `value?`, `onChange?`, `ariaLabel` | `Segmented` with too many options for 360px |
+| `ChipSelect` | Single-choice chip group that wraps (e.g. service radius); works inside `Form.Item`. `allowClear` lets a second tap clear an optional choice; an option with `disabled` shows but can't be picked (e.g. a passed time slot) | `options`, `value?`, `onChange?`, `ariaLabel`, `allowClear?` | `Segmented` with too many options for 360px |
 | `StepProgress` | Segmented "Step N of M" bar for multi-screen flows | `steps: string[]`, `current` (1-based) | ad-hoc progress bars |
 | `GoogleButton` | Official Google Identity Services button | `clientId`, `onCredential(idToken)` | custom Google buttons |
 | `ProgressBar` | Thin progress bar with `role="progressbar"` (milestones 0/25/50/75/100) | `value`, `label`, `variant?: 'plain' \| 'glass'` | ad-hoc width bars |
@@ -39,8 +39,8 @@ All components are pure: data comes in through props and actions go out through 
 | `SearchBox` | Sticky service search with suggestions + "post a custom job" fallback | `value`, `onChange`, `term`, `results`, `loading`, `onSelect`, `onPostCustom` |
 | `ServiceCard` | Bookable service tile (carousel) | `service`, `onBook` |
 | `CategoryGrid` | 4-column category grid + optional "More" | `categories`, `onSelect`, `onMore?`, `max?` |
-| `PostJobComposer` | Dark CTA card: describe job, AI improve, post | `value`, `onChange`, `onImprove`, `onSubmit`, `improving?` |
-| `TrustStrip` | Four-tile trust explainer (escrow, PIN, proof, masked chat); copy works for both sides | `title?` |
+| `PostJobComposer` | Dark CTA card: describe a job in your own words, then Continue (Enter works too) to the post form, which fills itself in from it | `value`, `onChange`, `onSubmit`, `title?`, `hint?` |
+| `TrustStrip` | Four-tile trust explainer (pay for approved work, PIN, proof, masked chat); copy works for both sides | `title?` |
 | `AudienceCard` | Entry card for one audience on a shared page ("I need help" / "I want to earn") | `Icon`, `eyebrow`, `title`, `highlight`, `ctaLabel`, `onClick`, `tone: 'brand' \| 'dark'` |
 | `EarningsCalculator` | Provider earnings estimate: skill chips + hours slider + live total (for dark sections) | `rates`, `skillId`, `onSkillChange`, `hours`, `onHoursChange`, `monthlyEstimate`, `benefits` |
 | `TestimonialCard` | Rated quote with a Customer/Provider badge (carousel) | `testimonial` |
@@ -54,7 +54,7 @@ All components are pure: data comes in through props and actions go out through 
 | `ChecklistCard` | Dark provider checklist (done/pending/coming soon) with a locked-action note and one CTA | `title`, `items`, `lockedNote?`, `actionLabel?`, `onAction?` |
 | `CurrentLocationButton` | "Use my current location", or "added" with Remove; geolocation errors suggest the pincode (pair with `useCurrentLocation`) | `coordinates`, `locating`, `error?`, `onLocate`, `onClear` |
 | `PhotoPicker` | Up to `max` photos/videos as a thumbnail grid with add tile, upload spinner, error and remove | `items: PhotoItem[]`, `max`, `onAdd(files)`, `onRemove(id)`, `disabled?` |
-| `QuoteCard` | A provider's quote for the customer: "Ravi S.", proficiency, ~distance, price, note, Decline/Accept (locked with a reason until escrow exists) | `quote: CustomerQuote`, `cheapest?`, `lockedNote?`, `onAccept?`, `onReject?` |
+| `QuoteCard` | A provider's quote for the customer: "Ravi S.", proficiency, ~distance, price, note, Decline/Accept (optionally locked with a reason) | `quote: CustomerQuote`, `cheapest?`, `lockedNote?`, `onAccept?`, `onReject?` |
 | `JobMap` | OpenStreetMap (react-leaflet) with the provider's radius and approximate job circles only, never exact pins; popups open the job | `area`, `jobs: JobMapItem[]`, `center?`, `height?` |
 | `ProviderCard` | A pro in search results: photo, name, level, area · ~distance, matched skills, working days; `compact` for carousels | `provider: ProviderCard`, `onOpen`, `compact?` |
 | `PROFICIENCY_LABEL` | Customer-facing level names (Beginner / Skilled / Expert) | constant |

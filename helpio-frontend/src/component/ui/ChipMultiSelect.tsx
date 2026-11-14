@@ -3,6 +3,8 @@ import Chip from './Chip';
 export interface ChipOption<T extends string | number> {
   value: T;
   label: string;
+  /** Shown but not pickable, e.g. a time slot that has passed */
+  disabled?: boolean;
 }
 
 interface Props<T extends string | number> {

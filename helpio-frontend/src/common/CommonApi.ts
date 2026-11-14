@@ -57,6 +57,7 @@ export interface JobApiDto {
   longitude: number | null;
   area_name: string | null;
   pincode: string | null;
+  address_line: string | null;
   budget_paise: number | null;
   scheduled_at: string | null;
   duration_mins: number | null;
@@ -119,6 +120,7 @@ export const toJob = (dto: JobApiDto): Job => ({
   coordinates: dto.latitude !== null && dto.longitude !== null ? { latitude: dto.latitude, longitude: dto.longitude } : null,
   areaName: dto.area_name,
   pincode: dto.pincode,
+  addressLine: dto.address_line,
   budget: toRupees(dto.budget_paise),
   scheduledAt: dto.scheduled_at,
   durationMins: dto.duration_mins,

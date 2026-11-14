@@ -21,15 +21,6 @@ export const initials = (name: string) =>
     .slice(0, 2)
     .toUpperCase();
 
-/**
- * Placeholder for the AI job-description helper: expands a short note into a structured brief.
- * Replace with the real AI endpoint once available.
- */
-export const draftJobDescription = (text: string) =>
-  `I need help with: ${text.trim()}.\n\n` +
-  `• What's wrong: \n• Since when: \n• Preferred date/time: \n• Access notes (parking, floor, pets): \n\n` +
-  `Please share photos/estimate before starting.`;
-
 export const WEEKDAY_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
 /** "09:30" (24h) → "9:30 AM" */

@@ -5,9 +5,16 @@ import type { JobDetailLayoutProps } from '../client/default/jobs/jobs.layout.ty
 import { JobStatus, QuoteStatus } from '../common/CommonEnum';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
-import { useAcceptQuoteMutation, useDeclineQuoteMutation, useGetJobQuery, useResetStartPinMutation } from '../pages/jobs/jobs.api';
+import {
+  jobsApi,
+  useAcceptQuoteMutation,
+  useDeclineQuoteMutation,
+  useDeleteJobMutation,
+  useGetJobQuery,
+  useResetStartPinMutation,
+} from '../pages/jobs/jobs.api';
 import { formatClock } from '../lib/utils';
-import { jobBadge, jobFacts } from './jobItems';
+import { LIVE, jobBadge, jobFacts, livePollMs } from './jobItems';
 import { useJobPayment } from './useJobPayment';
 import { useJobProgress } from './useJobProgress';
 import { useJobReview } from './useJobReview';
@@ -16,10 +23,13 @@ import { useJobReview } from './useJobReview';
 export const useJobDetail = (id: string): JobDetailLayoutProps => {
   const navigate = useNavigate();
   const { message } = App.useApp();
-  const { data: job, error, isLoading, refetch } = useGetJobQuery(id);
+  // The cached status sets the polling speed, so new quotes and the pro's updates show up without a reload
+  const status = jobsApi.endpoints.getJob.useQueryState(id).data?.status;
+  const { data: job, error, isLoading, refetch } = useGetJobQuery(id, { ...LIVE, pollingInterval: livePollMs(status) });
   const [acceptQuote] = useAcceptQuoteMutation();
   const [declineQuote] = useDeclineQuoteMutation();
   const [resetPin, { isLoading: resetting }] = useResetStartPinMutation();
+  const [deleteJob, { isLoading: deleting }] = useDeleteJobMutation();
   const [acting, setActing] = useState<{ quoteId: string; action: 'accept' | 'reject' } | null>(null);
   const proName = job?.hired?.providerLabel ?? 'Your pro';
   const progress = useJobProgress(id, 'customer', { skip: !job?.hired, otherName: proName });
@@ -63,7 +73,21 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
       description: job.description,
       photos: job.attachments,
     },
-    draft: isDraft ? { onContinue: () => navigate(withQuery(RouterKeys.POST_JOB, { job: job.id })) } : null,
+    draft: isDraft
+      ? {
+          onContinue: () => navigate(withQuery(RouterKeys.POST_JOB, { job: job.id })),
+          deleting,
+          onDelete: async () => {
+            try {
+              await deleteJob(job.id).unwrap();
+              message.success('Draft deleted.');
+              navigate(RouterKeys.JOBS, { replace: true });
+            } catch (e) {
+              message.error(apiErrorMessage(e));
+            }
+          },
+        }
+      : null,
     edit:
       job.status === JobStatus.OPEN
         ? { onEdit: () => navigate(withQuery(RouterKeys.POST_JOB, { job: job.id })), hasQuotes: pending.length > 0 }
@@ -101,6 +125,7 @@ export const useJobDetail = (id: string): JobDetailLayoutProps => {
           pin: job.startPin
             ? {
                 value: job.startPin,
+                locked: job.pinLocked,
                 resetting,
                 onReset: async () => {
                   try {

@@ -7,14 +7,14 @@ import { JobStatus, MilestoneStatus } from '../common/CommonEnum';
 import { MOCK_CATEGORIES } from '../common/CommonMock';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
 import { apiErrorMessage } from '../lib/apiError';
-import { draftJobDescription, firstName } from '../lib/utils';
+import { firstName } from '../lib/utils';
 import { useGetCustomerHomeQuery } from '../pages/home/home.api';
 import { useGetAddressesQuery } from '../pages/profile/profile.api';
 import { useSearchProvidersQuery } from '../pages/pros/pros.api';
 import { useAppDispatch } from '../redux';
 import { favoritesEditorOpened } from '../redux/authSlice';
 import { callEmergency } from '../lib/safety';
-import { toJobItem } from './jobItems';
+import { LIVE, toJobItem } from './jobItems';
 
 const HOME_PROS = 6;
 
@@ -52,7 +52,7 @@ const ACTIVE_COPY: Partial<Record<JobStatus, (job: Job) => { statusLabel: string
 /** Signed-in customer home: live job, quotes to review, posted jobs and drafts, plus search and discovery. */
 export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
   const navigate = useNavigate();
-  const { data, error, isLoading, refetch } = useGetCustomerHomeQuery();
+  const { data, error, isLoading, refetch } = useGetCustomerHomeQuery(undefined, { ...LIVE, pollingInterval: 60_000 });
   const addresses = useGetAddressesQuery();
   // Searches from the default address; skipped until the customer has one
   const pros = useSearchProvidersQuery({}, { skip: !addresses.data?.length });
@@ -110,8 +110,7 @@ export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
     composer: {
       value: jobText,
       onChange: setJobText,
-      onImprove: () => setJobText(draftJobDescription(jobText)),
-      onSubmit: () => postJob(jobText ? { description: jobText } : {}),
+      onSubmit: () => postJob(jobText.trim() ? { describe: jobText.trim() } : {}),
     },
     // Catalogue mocks until a categories/services endpoint exists
     categories: {

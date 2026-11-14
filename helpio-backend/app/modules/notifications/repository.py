@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from datetime import datetime
 
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
@@ -37,3 +38,30 @@ class NotificationRepository:
         if notification_id is not None:
             query = query.where(Notification.id == notification_id)
         self.db.execute(query.values(read_at=utc_now()))
+
+    def recent_count(self, user_id: str, type: str, since: datetime) -> int:
+        """How many alerts of this kind the user got since then; spaces out emails such as new-job alerts."""
+        return self.db.scalar(
+            select(func.count()).select_from(Notification).where(
+                Notification.user_id == user_id, Notification.type == type, Notification.created_at >= since
+            )
+        ) or 0
+
+    def has_unread(self, user_id: str, type: str, job_id: str) -> bool:
+        return self.db.scalar(
+            select(Notification.id).where(
+                Notification.user_id == user_id, Notification.type == type, Notification.job_id == job_id,
+                Notification.read_at.is_(None),
+            ).limit(1)
+        ) is not None
+
+    def mark_read_for_job(self, user_id: str, job_id: str, type: str) -> None:
+        """Opening a screen (e.g. the chat) clears its alerts from the bell."""
+        self.db.execute(
+            update(Notification)
+            .where(
+                Notification.user_id == user_id, Notification.job_id == job_id, Notification.type == type,
+                Notification.read_at.is_(None),
+            )
+            .values(read_at=utc_now())
+        )

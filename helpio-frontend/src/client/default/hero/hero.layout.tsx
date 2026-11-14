@@ -31,7 +31,7 @@ import type { LandingLayoutProps } from './hero.layout.types';
 const CUSTOMER_STEPS: StepListItem[] = [
   { Icon: FilePlus, title: 'Book or post a job', text: 'Pick a service, or describe anything custom in a few words.' },
   { Icon: Scale, title: 'Compare quotes', text: 'See price, rating, distance and warranty side by side.' },
-  { Icon: ShieldCheck, title: 'Pay safely', text: 'Your money waits in escrow; work starts with your PIN.' },
+  { Icon: ShieldCheck, title: 'Pay safely', text: 'Work starts with your PIN, and you pay only after approving each stage.' },
   { Icon: CircleCheck, title: 'Approve & release', text: 'Review proof at each stage and pay only for approved work.' },
 ];
 
@@ -42,7 +42,7 @@ const PROVIDER_STEPS: StepListItem[] = [
   { Icon: BriefcaseBusiness, title: 'Start earning', text: 'Quote on nearby jobs and get paid weekly.' },
 ];
 
-const PROVIDER_BENEFITS = ['Choose your own jobs', 'Work near home', 'Payment secured in escrow', 'Weekly payouts'];
+const PROVIDER_BENEFITS = ['Choose your own jobs', 'Work near home', 'Paid through Helpio for approved work', 'Job alerts near you'];
 
 /** Public landing page, one scroll for both audiences. Search first (customers), earn section mid-page (providers). */
 const HeroLayout = (p: LandingLayoutProps) => {

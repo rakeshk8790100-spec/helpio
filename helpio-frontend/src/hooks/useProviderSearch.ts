@@ -100,7 +100,13 @@ export const useProviderSearch = (): ProviderSearchLayoutProps => {
               hasMore: search.data.hasMore,
               loadingMore: search.isFetching && page > 1,
               onLoadMore: () => setPage((n) => n + 1),
-              onPostJob: () => navigate(withQuery(RouterKeys.POST_JOB, q ? { title: q } : {})),
+              onPostJob: () =>
+                navigate(
+                  withQuery(RouterKeys.POST_JOB, {
+                    ...(q && { describe: q }),
+                    ...(categoryId && { category: categoryId }),
+                  }),
+                ),
             },
   };
 };

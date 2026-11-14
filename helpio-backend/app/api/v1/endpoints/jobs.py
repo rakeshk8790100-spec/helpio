@@ -9,7 +9,14 @@ from app.core.dependencies import get_db
 from app.modules.auth.model import AuthUser
 from app.modules.auth.dependencies import get_current_user
 from app.modules.jobs.chat import JobChat
-from app.modules.jobs.dependencies import current_customer, get_job_chat, get_job_service, get_milestone_service
+from app.modules.jobs.assist import JobAssistService
+from app.modules.jobs.dependencies import (
+    current_customer,
+    get_job_assist_service,
+    get_job_chat,
+    get_job_service,
+    get_milestone_service,
+)
 from app.modules.jobs.milestones import MilestoneService
 from app.modules.jobs.schema import (
     MAX_ATTACHMENT_BYTES,
@@ -18,6 +25,8 @@ from app.modules.jobs.schema import (
     ProviderJobResponse,
     RequestChangesRequest,
     SetEstimateRequest,
+    AssistJobRequest,
+    AssistJobResponse,
     AttachmentResponse,
     ChatResponse,
     MessageResponse,
@@ -48,12 +57,24 @@ router = APIRouter(prefix="/jobs", tags=["jobs"])
 @router.post("", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 def create_job(
     payload: CreateJobRequest,
+    background: BackgroundTasks,
     user: AuthUser = Depends(current_customer),
     db: Session = Depends(get_db),
     service: JobService = Depends(get_job_service),
 ) -> JobResponse:
-    """Save a draft, or post the job (`submit: true`) to nearby providers."""
-    return service.create_job(db, user, payload)
+    """Save a draft, or post the job (`submit: true`): the closest pros who do the work are told about it."""
+    return service.create_job(db, user, payload, background)
+
+
+@router.post("/assist", response_model=AssistJobResponse)
+def assist_job(
+    payload: AssistJobRequest,
+    user: AuthUser = Depends(current_customer),
+    db: Session = Depends(get_db),
+    service: JobAssistService = Depends(get_job_assist_service),
+) -> AssistJobResponse:
+    """A first draft of the job form from the customer's own words: Claude when configured, keywords otherwise."""
+    return service.assist(db, user, payload.text)
 
 
 @router.get("/mine", response_model=list[JobResponse])
@@ -109,11 +130,12 @@ def nearby_job(
 def create_quote(
     job_id: str,
     payload: CreateQuoteRequest,
+    background: BackgroundTasks,
     user: AuthUser = Depends(current_provider),
     db: Session = Depends(get_db),
     service: JobService = Depends(get_job_service),
 ) -> QuoteResponse:
-    return service.create_quote(db, user, job_id, payload)
+    return service.create_quote(db, user, job_id, payload, background)
 
 
 @router.post("/{job_id}/invite/decline", status_code=status.HTTP_204_NO_CONTENT)
@@ -182,24 +204,38 @@ def decline_quote(
 def invite_provider(
     job_id: str,
     payload: CreateInviteRequest,
+    background: BackgroundTasks,
     user: AuthUser = Depends(current_customer),
     db: Session = Depends(get_db),
     service: JobService = Depends(get_job_service),
 ) -> JobDetailResponse:
     """Send an open job to a chosen pro (up to 5 per job). They reply with a quote or decline."""
-    return service.invite_provider(db, user, job_id, payload)
+    return service.invite_provider(db, user, job_id, payload, background)
 
 
 @router.patch("/{job_id}", response_model=JobResponse)
 def update_job(
     job_id: str,
     payload: UpdateJobRequest,
+    background: BackgroundTasks,
     user: AuthUser = Depends(current_customer),
     db: Session = Depends(get_db),
     service: JobService = Depends(get_job_service),
 ) -> JobResponse:
     """Edit a draft; `submit: true` posts it."""
-    return service.update_job(db, user, job_id, payload)
+    return service.update_job(db, user, job_id, payload, background)
+
+
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_draft(
+    job_id: str,
+    user: AuthUser = Depends(current_customer),
+    db: Session = Depends(get_db),
+    service: JobService = Depends(get_job_service),
+) -> Response:
+    """Delete a draft and its photos; posted jobs can't be deleted."""
+    service.delete_draft(db, user, job_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/{job_id}/attachments", response_model=AttachmentResponse, status_code=status.HTTP_201_CREATED)
@@ -376,9 +412,10 @@ def list_messages(
 def send_message(
     job_id: str,
     payload: SendMessageRequest,
+    background: BackgroundTasks,
     user: AuthUser = Depends(get_current_user),
     db: Session = Depends(get_db),
     chat: JobChat = Depends(get_job_chat),
 ) -> MessageResponse:
     """Phone numbers and emails are replaced with "•••": contact details stay private on Helpio."""
-    return chat.send(db, user, job_id, payload.body)
+    return chat.send(db, user, job_id, payload.body, background)

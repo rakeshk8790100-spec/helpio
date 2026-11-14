@@ -3,7 +3,7 @@ import SectionHeader from '../ui/SectionHeader';
 
 // Copy is written for both sides: customers are protected, providers are guaranteed payment.
 const ITEMS = [
-  { Icon: ShieldCheck, title: 'Escrow payments', text: 'Payment is secured before work starts and released when the job is approved.' },
+  { Icon: ShieldCheck, title: 'Pay for approved work', text: 'You approve each stage with photos, then pay through Helpio. Pros are paid by Helpio.' },
   { Icon: KeyRound, title: 'Start PIN', text: 'Work begins only when the customer shares a one-time PIN on site.' },
   { Icon: Camera, title: 'Proof at every 25%', text: 'Photos and video for each stage keep everyone on the same page.' },
   { Icon: MessageCircle, title: 'Masked chat', text: 'Talk inside Helpio without sharing personal phone numbers.' },

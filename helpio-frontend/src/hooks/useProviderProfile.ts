@@ -76,7 +76,14 @@ export const useProviderProfile = (id: string, user: AuthUser): ProviderProfileL
               setSendError(apiErrorMessage(e));
             }
           },
-          onPostNew: () => navigate(withQuery(RouterKeys.POST_JOB, { invite: pro.id })),
+          // A pro with one kind of work: the new job starts in that category
+          onPostNew: () =>
+            navigate(
+              withQuery(RouterKeys.POST_JOB, {
+                invite: pro.id,
+                ...(pro.categories.length === 1 && { category: pro.categories[0].id }),
+              }),
+            ),
         }
       : null,
   };

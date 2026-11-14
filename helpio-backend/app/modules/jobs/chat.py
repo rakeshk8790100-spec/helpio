@@ -2,6 +2,7 @@
 import re
 from datetime import datetime
 
+from fastapi import BackgroundTasks
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
@@ -12,6 +13,8 @@ from app.modules.jobs.exceptions import ChatNotAvailableError, JobNotFoundError
 from app.modules.jobs.model import Job, JobMessage, JobStatus, QuoteStatus
 from app.modules.jobs.repository import JobRepository
 from app.modules.jobs.schema import ChatResponse, MessageResponse
+from app.modules.notifications.repository import NotificationRepository
+from app.modules.notifications.service import NotificationService
 
 # 7+ digits, allowing spaces, dots, dashes and a leading +: phone numbers in any common format
 PHONE = re.compile(r"\+?\d[\d\s.\-()]{5,}\d")
@@ -39,6 +42,9 @@ def unread_count(db: Session, job_id: str, reader_id: str) -> int:
 
 
 class JobChat:
+    def __init__(self, *, notifications: NotificationService | None = None) -> None:
+        self.notifications = notifications or NotificationService()
+
     def messages(self, db: Session, user: AuthUser, job_id: str, after: datetime | None) -> ChatResponse:
         job, other = self._conversation(db, user, job_id)
         query = select(JobMessage).where(JobMessage.job_id == job.id)
@@ -51,6 +57,7 @@ class JobChat:
             .where(JobMessage.job_id == job.id, JobMessage.sender_id != user.id, JobMessage.read_at.is_(None))
             .values(read_at=utc_now())
         )
+        NotificationRepository(db).mark_read_for_job(user.id, job.id, "chat_message")
         db.commit()
         names = {user.id: short_name(user.name, "You"), other.id: short_name(other.name, "Helpio user")}
         return ChatResponse(
@@ -58,11 +65,20 @@ class JobChat:
             messages=[self._response(m, user.id, names) for m in rows],
         )
 
-    def send(self, db: Session, user: AuthUser, job_id: str, body: str) -> MessageResponse:
+    def send(
+        self, db: Session, user: AuthUser, job_id: str, body: str, background: BackgroundTasks | None = None
+    ) -> MessageResponse:
         job, other = self._conversation(db, user, job_id)
         text, _ = mask_contacts(body)
         message = JobMessage(job_id=job.id, sender_id=user.id, body=text)
         db.add(message)
+        # One alert until the chat is opened, however many messages follow
+        if not NotificationRepository(db).has_unread(other.id, "chat_message", job.id):
+            link = f"/jobs/{job.id}/chat" if other.id == job.customer_id else f"/pro/jobs/{job.id}/chat"
+            self.notifications.notify(
+                db, other, type="chat_message", title=f"New message from {short_name(user.name, 'Helpio user')}",
+                body=f"About \"{job.title}\": {text[:120]}", job_id=job.id, link=link, background=background,
+            )
         db.commit()
         return self._response(message, user.id, {user.id: short_name(user.name, "You"), other.id: ""})
 

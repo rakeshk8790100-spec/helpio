@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.exceptions import AppError
 from app.core.geo import approx_km, bounding_box, distance_m, short_name
 from app.modules.auth.model import ApprovalStatus, AuthUser
+from app.modules.catalog.search import matched_terms, skill_words, terms as search_terms
 from app.modules.customers.exceptions import AddressNotFoundError
 from app.modules.customers.model import CustomerAddress
 from app.modules.customers.service import list_addresses
@@ -87,19 +88,19 @@ class ProviderDirectory:
     def search(self, db: Session, place: Place | None, query: SearchQuery) -> ProviderSearchResponse:
         if place is None:
             raise LocationRequiredError
-        terms = [term for term in (query.q or "").lower().split() if term]
+        terms = search_terms(query.q)
 
         ranked: list[tuple[tuple, ProviderCardResponse]] = []
-        serving = self._serving(db, place)
+        serving = self.serving(db, place)
         ratings = ReviewRepository(db).summaries([user.id for _, user in serving])
         for profile, user in serving:
-            matched = self._matching_skills(profile.skills, terms, query.category_id, query.skill_ids)
+            matched, relevance = self._matching_skills(profile.skills, terms, query.category_id, query.skill_ids)
             if (terms or query.category_id or query.skill_ids) and not matched:
                 continue
             metres = self._distance(profile, place)
             best = max((PROFICIENCY_RANK[item.proficiency] for item in matched or profile.skills), default=0)
-            # Best matching skill level first, then the closest pro
-            key = (-best, metres is None, metres or 0, user.created_at)
+            # Most search words matched, then the best matching skill level, then the closest pro
+            key = (-relevance, -best, metres is None, metres or 0, user.created_at)
             ranked.append((key, self._card(profile, user, metres, matched, ratings.get(user.id, NO_RATING))))
         ranked.sort(key=lambda item: item[0])
 
@@ -157,7 +158,7 @@ class ProviderDirectory:
 
     # ----- Helpers -----
 
-    def _serving(self, db: Session, place: Place) -> list[tuple[ProviderProfile, AuthUser]]:
+    def serving(self, db: Session, place: Place) -> list[tuple[ProviderProfile, AuthUser]]:
         """Signed-up, active providers whose travel area covers the place (or share its pincode without coordinates)."""
         places = []
         if place.has_point:
@@ -200,16 +201,22 @@ class ProviderDirectory:
     def _matching_skills(
         self, skills: Sequence[ProviderSkill], terms: list[str], category_id: str | None,
         skill_ids: frozenset[str] | None = None,
-    ) -> list[ProviderSkill]:
-        def matches(item: ProviderSkill) -> bool:
+    ) -> tuple[list[ProviderSkill], int]:
+        """Skills that pass the filters and match any search word, and the most words a single skill matched."""
+        if not (terms or category_id or skill_ids):
+            return [], 0
+        matched, relevance = [], 0
+        for item in skills:
             if category_id and item.skill.category_id != category_id:
-                return False
+                continue
             if skill_ids and item.skill_id not in skill_ids:
-                return False
-            text = f"{item.skill.name} {item.skill.category.name}".lower()
-            return all(term in text for term in terms)
-
-        return [item for item in skills if matches(item)] if (terms or category_id or skill_ids) else []
+                continue
+            hits = matched_terms(terms, skill_words(item.skill))
+            if terms and not hits:
+                continue
+            matched.append(item)
+            relevance = max(relevance, hits)
+        return matched, relevance
 
     def _public_skill(self, item: ProviderSkill) -> PublicSkill:
         return PublicSkill(

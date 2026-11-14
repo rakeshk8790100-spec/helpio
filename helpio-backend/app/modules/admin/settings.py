@@ -33,6 +33,7 @@ GROUPS = (
     ("cloudinary", "Cloudinary", "Job photos and videos, and profile photos."),
     ("email", "Email (Brevo)", "Log-in codes and notification emails."),
     ("google", "Google sign-in", "Continue with Google for customers."),
+    ("ai", "AI job assistant", "Claude turns a customer's one line into a job post. Without a key, Helpio matches keywords."),
     ("app", "App", "Links in emails, payment links and the late-update check."),
     ("approvals", "Approvals", "Who waits for an admin after signing up."),
 )

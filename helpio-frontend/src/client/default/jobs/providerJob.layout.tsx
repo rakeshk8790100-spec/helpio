@@ -67,7 +67,7 @@ const QuoteSection = ({ quote }: { quote: ProviderQuoteProps }) => {
   return (
     <section className="rounded-2xl border border-slate-100 p-4 shadow-sm">
       <div className="text-base font-semibold text-slate-900">Send your quote</div>
-      <div className="mt-1 text-xs text-slate-500">Payment is held in escrow before you start, so you're always paid for approved work.</div>
+      <div className="mt-1 text-xs text-slate-500">The customer approves each 25% stage with your photos, then pays the full quote through Helpio.</div>
       <Form form={quote.form} layout="vertical" requiredMark={false} initialValues={quote.initialValues} onFinish={quote.onSubmit} className="!mt-3">
         <Form.Item
           name="amount"

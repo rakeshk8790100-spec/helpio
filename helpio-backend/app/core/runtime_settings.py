@@ -34,7 +34,7 @@ Kind = Literal["text", "secret", "int", "bool"]
 class SettingField:
     # The Settings attribute (and the .env name, upper-cased)
     key: str
-    # razorpay | cloudinary | email | google | app | approvals
+    # razorpay | cloudinary | email | google | ai | app | approvals
     group: str
     label: str
     kind: Kind = "text"
@@ -53,6 +53,8 @@ FIELDS: tuple[SettingField, ...] = (
     SettingField("brevo_smtp_key", "email", "SMTP key", "secret"),
     SettingField("brevo_from_email", "email", "From address", help="A sender verified in Brevo"),
     SettingField("google_client_id", "google", "OAuth web client ID", help="Google Cloud > Credentials"),
+    SettingField("anthropic_api_key", "ai", "Anthropic API key", "secret", "Claude Console > API Keys"),
+    SettingField("ai_model", "ai", "Model", help="claude-haiku-5-5 is fast and low-cost"),
     SettingField("app_web_url", "app", "Web app address", help="Used in email links and payment returns"),
     SettingField("payment_link_expiry_minutes", "app", "Payment link lifetime (minutes)", "int", "16 to 43200"),
     SettingField("overdue_check_seconds", "app", "Late-update check (seconds)", "int", "0 turns it off"),

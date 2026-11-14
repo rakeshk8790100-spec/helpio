@@ -93,6 +93,8 @@ class Job(Base):
     longitude: Mapped[float | None] = mapped_column(Numeric(9, 6, asdecimal=False), nullable=True)
     pincode: Mapped[str | None] = mapped_column(String(6), nullable=True)
     area_name: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Flat, building and street: shown to the hired provider only
+    address_line: Mapped[str | None] = mapped_column(Text, nullable=True)
     budget_paise: Mapped[int | None] = mapped_column(Integer, nullable=True)
     scheduled_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     duration_mins: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)

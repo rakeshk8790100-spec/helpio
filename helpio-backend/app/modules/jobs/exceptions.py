@@ -27,6 +27,16 @@ class UnknownCategoryError(JobError):
     detail = "Unknown category"
 
 
+class PastScheduleError(JobError):
+    status_code = 422
+    detail = "Pick a time from now on"
+
+
+class JobNotDeletableError(JobError):
+    status_code = 409
+    detail = "Only drafts can be deleted"
+
+
 class JobNotOpenError(JobError):
     status_code = 409
     detail = "This job is no longer taking quotes"

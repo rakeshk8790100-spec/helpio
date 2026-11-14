@@ -16,9 +16,11 @@ import type {
 } from '../../common/CommonDto';
 import { baseApi } from '../../config/base_service/base.api';
 import type {
+  AssistJobApiDto,
   AttachmentApiDto,
   ChatApiDto,
   JobDetailApiDto,
+  JobDraftSuggestion,
   JobInput,
   JobPaymentApiDto,
   JobReviewApiDto,
@@ -56,6 +58,7 @@ const toJobDetail = (dto: JobDetailApiDto): JobDetail => ({
     amount: dto.hired.amount_paise / 100,
   },
   startPin: dto.start_pin,
+  pinLocked: dto.pin_locked,
   startedAt: dto.started_at,
   unreadMessages: dto.unread_messages,
 });
@@ -72,6 +75,7 @@ const toNearbyJobDetail = (dto: NearbyJobDetailApiDto): NearbyJobDetail => ({
         : null,
     pincode: dto.exact_location.pincode,
     areaName: dto.exact_location.area_name,
+    addressLine: dto.exact_location.address_line,
   },
   customerName: dto.customer_name,
   startedAt: dto.started_at,
@@ -183,6 +187,7 @@ const toJobBody = (input: JobInput) => {
   }
   if (input.pincode !== undefined) body.pincode = input.pincode;
   if (input.areaName !== undefined) body.area_name = input.areaName;
+  if (input.addressLine !== undefined) body.address_line = input.addressLine;
   if (input.budget !== undefined) body.budget_paise = input.budget === null ? null : Math.round(input.budget * 100);
   if (input.scheduledAt !== undefined) body.scheduled_at = input.scheduledAt;
   if (input.durationMins !== undefined) body.duration_mins = input.durationMins;
@@ -215,7 +220,8 @@ export const jobsApi = baseApi.injectEndpoints({
       transformResponse: toJobDetail,
       invalidatesTags: ['Jobs'],
     }),
-    createJob: builder.mutation<Job, JobInput & { title: string }>({
+    /** No title: the API makes one from the description */
+    createJob: builder.mutation<Job, JobInput>({
       query: (input) => ({ url: '/jobs', method: 'POST', body: toJobBody(input) }),
       transformResponse: toJob,
       invalidatesTags: ['Jobs'],
@@ -224,6 +230,23 @@ export const jobsApi = baseApi.injectEndpoints({
       query: ({ id, ...input }) => ({ url: `/jobs/${id}`, method: 'PATCH', body: toJobBody(input) }),
       transformResponse: toJob,
       invalidatesTags: ['Jobs'],
+    }),
+    /** Drafts only; posted jobs can't be deleted */
+    deleteJob: builder.mutation<void, string>({
+      query: (id) => ({ url: `/jobs/${id}`, method: 'DELETE' }),
+      invalidatesTags: ['Jobs'],
+    }),
+    /** One line from the customer → a first draft of the form (Claude when configured, keywords otherwise) */
+    assistJob: builder.mutation<JobDraftSuggestion, string>({
+      query: (text) => ({ url: '/jobs/assist', method: 'POST', body: { text }, timeout: 30_000 }),
+      transformResponse: (dto: AssistJobApiDto) => ({
+        title: dto.title,
+        categoryId: dto.category_id,
+        description: dto.description,
+        durationMins: dto.duration_mins,
+        isEmergency: dto.is_emergency,
+        source: dto.source,
+      }),
     }),
     /** Uploads one photo or video; the API stores it on Cloudinary and saves its URL on the job */
     addAttachment: builder.mutation<JobAttachment, { jobId: string; file: File }>({
@@ -419,6 +442,8 @@ export const {
   useGetJobQuery,
   useCreateJobMutation,
   useUpdateJobMutation,
+  useDeleteJobMutation,
+  useAssistJobMutation,
   useAddAttachmentMutation,
   useDeleteAttachmentMutation,
   useGetNearbyJobsQuery,

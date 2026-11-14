@@ -32,7 +32,7 @@ export const MOCK_LANDING: LandingDto = {
       id: 't2',
       name: 'Ravi K.',
       role: UserRole.PROVIDER,
-      text: 'I pick jobs near my area and the money is already in escrow before I start. No more chasing payments.',
+      text: 'I pick jobs near my area, and customers pay through Helpio once they approve the work. No more chasing payments.',
       rating: 5,
       meta: 'Plumber · 2 yrs on Helpio',
     },
@@ -48,7 +48,7 @@ export const MOCK_LANDING: LandingDto = {
       id: 't4',
       name: 'Imran A.',
       role: UserRole.PROVIDER,
-      text: 'Weekends only, and I still added ₹18k a month. Weekly payouts are a big help.',
+      text: 'Weekends only, and I still added ₹18k a month. Getting paid through the app is a big help.',
       rating: 4.9,
       meta: 'Electrician · part-time',
     },
@@ -56,7 +56,7 @@ export const MOCK_LANDING: LandingDto = {
   faqs: [
     {
       q: 'Is my payment safe?',
-      a: 'Yes. You pay into Helpio escrow, and money is released to the provider only as you approve each stage of the work.',
+      a: 'Yes. You approve the work stage by stage with photos, and pay through Helpio only once every stage is approved.',
     },
     {
       q: "What if I can't find the service I need?",
@@ -64,7 +64,7 @@ export const MOCK_LANDING: LandingDto = {
     },
     {
       q: 'How do providers get paid?',
-      a: 'Customer payment is secured in escrow before the job starts. After approval it moves to your Helpio wallet, with weekly payouts to your bank.',
+      a: 'The customer pays through Helpio once they approve every stage. It shows in your Helpio wallet, and Helpio sends it to your bank.',
     },
     {
       q: 'What does it take to join as a provider?',

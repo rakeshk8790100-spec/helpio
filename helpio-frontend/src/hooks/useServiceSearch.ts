@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearchServicesQuery } from '../common/CommonApi';
 import type { SearchBox } from '../component/marketplace';
-import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
+import { RouterKeys, withQuery } from '../config/router/RouterKeys';
 import { useDebouncedValue } from './useDebouncedValue';
 
 /** Service search box behaviour (landing and customer home): debounced lookup, open a service or post a custom job. */
@@ -21,7 +21,7 @@ export const useServiceSearch = (): ComponentProps<typeof SearchBox> => {
     term,
     results,
     loading: isFetching,
-    onSelect: (s) => navigate(toPath(RouterKeys.SERVICE_DETAIL, { id: s.id })),
-    onPostCustom: (t) => navigate(withQuery(RouterKeys.POST_JOB, { title: t })),
+    onSelect: (s) => navigate(withQuery(RouterKeys.POST_JOB, { describe: s.name })),
+    onPostCustom: (t) => navigate(withQuery(RouterKeys.POST_JOB, { describe: t })),
   };
 };

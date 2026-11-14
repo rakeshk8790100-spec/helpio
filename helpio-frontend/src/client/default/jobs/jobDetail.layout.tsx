@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button, Popconfirm } from 'antd';
 import { CirclePlay, Hourglass, MessageCircle, Pencil } from 'lucide-react';
 import { QuoteCard } from '../../../component/marketplace';
 import { InviteStatus } from '../../../common/CommonEnum';
@@ -40,17 +40,35 @@ const JobDetailLayout = (p: JobDetailLayoutProps) => {
           {p.hired.pin && (
             <div className="mt-4 rounded-xl bg-white/15 p-3 text-center">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-white/70">Start PIN</div>
-              <div className="mt-1 font-mono text-3xl font-bold tracking-[0.3em]" aria-label={`Start PIN ${p.hired.pin.value.split('').join(' ')}`}>
-                {p.hired.pin.value}
-              </div>
-              <button
-                type="button"
-                onClick={p.hired.pin.onReset}
-                disabled={p.hired.pin.resetting}
-                className="mt-1 text-[11px] font-medium text-white/80 underline disabled:opacity-60"
-              >
-                {p.hired.pin.resetting ? 'Getting a new PIN…' : 'Get a new PIN'}
-              </button>
+              {p.hired.pin.locked ? (
+                <>
+                  <div role="alert" className="mt-1 text-sm font-semibold">
+                    Your pro entered a wrong PIN too many times.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={p.hired.pin.onReset}
+                    disabled={p.hired.pin.resetting}
+                    className="mt-3 h-10 w-full rounded-xl bg-white text-sm font-semibold text-indigo-700 active:scale-[.98] disabled:opacity-60"
+                  >
+                    {p.hired.pin.resetting ? 'Getting a new PIN…' : 'Get a new PIN and share it at the door'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="mt-1 font-mono text-3xl font-bold tracking-[0.3em]" aria-label={`Start PIN ${p.hired.pin.value.split('').join(' ')}`}>
+                    {p.hired.pin.value}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={p.hired.pin.onReset}
+                    disabled={p.hired.pin.resetting}
+                    className="mt-1 text-[11px] font-medium text-white/80 underline disabled:opacity-60"
+                  >
+                    {p.hired.pin.resetting ? 'Getting a new PIN…' : 'Get a new PIN'}
+                  </button>
+                </>
+              )}
             </div>
           )}
           {p.hired.startedLabel && (
@@ -86,6 +104,18 @@ const JobDetailLayout = (p: JobDetailLayoutProps) => {
           <Button type="primary" block size="large" onClick={p.draft.onContinue} className="!mt-3">
             Continue editing
           </Button>
+          <Popconfirm
+            title="Delete this draft?"
+            description="Its details and photos are removed."
+            okText="Delete"
+            okButtonProps={{ danger: true }}
+            cancelText="Keep"
+            onConfirm={p.draft.onDelete}
+          >
+            <Button type="text" danger block loading={p.draft.deleting} className="!mt-1">
+              Delete draft
+            </Button>
+          </Popconfirm>
         </section>
       )}
 

@@ -2,7 +2,7 @@
 import { useCallback, useState } from "react";
 import { Layout } from "antd";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { BriefcaseBusiness, ClipboardList, Home, Search, UserRound, Wallet } from "lucide-react";
+import { BriefcaseBusiness, ClipboardList, Home, PlusCircle, Search, UserRound, Wallet } from "lucide-react";
 import { useGetMeQuery, useLogoutMutation } from "../../common/CommonApi";
 import { UserRole } from "../../common/CommonEnum";
 import { RouterKeys } from "../../config/router/RouterKeys";
@@ -26,6 +26,7 @@ const { Header, Content, Footer } = Layout;
 const CUSTOMER_TABS = [
   { label: "Home", path: RouterKeys.HOME, Icon: Home },
   { label: "Search", path: RouterKeys.SEARCH, Icon: Search },
+  { label: "Post", path: RouterKeys.POST_JOB, Icon: PlusCircle },
   { label: "My jobs", path: RouterKeys.JOBS, Icon: ClipboardList },
   { label: "Profile", path: RouterKeys.PROFILE, Icon: UserRound },
 ];
@@ -75,6 +76,7 @@ const AppLayout = () => {
     navigate(RouterKeys.HOME);
   };
   const onAuthScreen = AUTH_SCREENS.includes(pathname);
+  const isProvider = user?.role === UserRole.PROVIDER;
 
   return (
     <div className="min-h-dvh w-full bg-slate-100 sm:flex sm:justify-center">
@@ -121,9 +123,9 @@ const AppLayout = () => {
         <Footer hidden={onAuthScreen} className="!shrink-0 !border-t !border-slate-200 !bg-white !p-0">
           <nav
             aria-label="Bottom navigation"
-            className="grid grid-cols-4"
+            className={isProvider ? "grid grid-cols-4" : "grid grid-cols-5"}
           >
-            {(user?.role === UserRole.PROVIDER ? PROVIDER_TABS : CUSTOMER_TABS).map(({ label, path, Icon }) => (
+            {(isProvider ? PROVIDER_TABS : CUSTOMER_TABS).map(({ label, path, Icon }) => (
               <NavLink
                 key={path}
                 to={path}

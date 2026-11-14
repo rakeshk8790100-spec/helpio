@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { EARN_SECTION_ID } from '../client/default/hero/hero.layout.types';
 import type { LandingLayoutProps } from '../client/default/hero/hero.layout.types';
 import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
-import { draftJobDescription } from '../lib/utils';
 import { useGetLandingQuery } from '../pages/hero/hero.api';
 import { useServiceSearch } from './useServiceSearch';
 
@@ -46,7 +45,7 @@ export const useLanding = (): LandingLayoutProps => {
 
     popular: {
       items: data.popular,
-      onBook: (s) => navigate(toPath(RouterKeys.SERVICE_DETAIL, { id: s.id })),
+      onBook: (s) => postJob({ describe: s.name }),
       onSeeAll: () => navigate(RouterKeys.SEARCH),
     },
     categories: {
@@ -71,8 +70,7 @@ export const useLanding = (): LandingLayoutProps => {
     composer: {
       value: jobText,
       onChange: setJobText,
-      onImprove: () => setJobText(draftJobDescription(jobText)),
-      onSubmit: () => postJob(jobText ? { description: jobText } : {}),
+      onSubmit: () => postJob(jobText.trim() ? { describe: jobText.trim() } : {}),
     },
   };
 };

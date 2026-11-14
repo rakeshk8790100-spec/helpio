@@ -19,7 +19,7 @@ export const RouterKeys = {
   ONBOARDING_SKILLS: '/onboarding/skills',
   /** Provider sign-up step 3 */
   ONBOARDING_AREA: '/onboarding/service-area',
-  /** Customer jobs: post, list, one job's hub (quotes, escrow, PIN, progress) and masked chat */
+  /** Customer jobs: post, list, one job's hub (quotes, PIN, progress, payment) and masked chat */
   POST_JOB: '/jobs/new',
   JOBS: '/jobs',
   JOB_DETAIL: '/jobs/:id',

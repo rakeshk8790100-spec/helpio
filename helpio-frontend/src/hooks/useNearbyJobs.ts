@@ -10,6 +10,7 @@ import { apiErrorMessage } from '../lib/apiError';
 import { formatINR } from '../lib/utils';
 import { useGetNearbyJobsQuery, useGetProviderJobsQuery } from '../pages/jobs/jobs.api';
 import { useNow } from './useNow';
+import { LIVE } from './jobItems';
 
 /** Distance filter steps in km; 0 means any distance within the provider's radius */
 const DISTANCES = [0, 2, 5, 10, 25];
@@ -70,7 +71,7 @@ export const useNearbyJobs = (): NearbyJobsLayoutProps => {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const tab = Object.values(ProJobsTab).find((value) => value === params.get('tab')) ?? ProJobsTab.NEW;
-  const active = useGetProviderJobsQuery('active');
+  const active = useGetProviderJobsQuery('active', LIVE);
   const completed = useGetProviderJobsQuery('completed', { skip: tab !== ProJobsTab.COMPLETED });
   const hired = tab === ProJobsTab.COMPLETED ? completed : active;
   const now = useNow();

@@ -6,11 +6,21 @@ import { formatDuration, formatINR, formatShortDate } from '../lib/utils';
 
 /* How a job reads in lists and headers, shared by the customer home, My jobs and the job pages. */
 
+/** Job screens refresh when the tab comes back into view or the connection returns, and pause polling while hidden */
+export const LIVE = { refetchOnFocus: true, refetchOnReconnect: true, skipPollingIfUnfocused: true } as const;
+
+/** How often a job page checks for news: fast while quotes come in or the pro is on the way, slower during the work */
+export const livePollMs = (status: JobStatus | undefined) => {
+  if (status === JobStatus.OPEN || status === JobStatus.ACCEPTED) return 15_000;
+  if (status === JobStatus.IN_PROGRESS || status === JobStatus.PAYMENT_DUE) return 30_000;
+  return 0;
+};
+
 const STATUS_BADGE: Record<JobStatus, { label: string; tone: BadgeTone }> = {
   [JobStatus.DRAFT]: { label: 'Draft', tone: 'neutral' },
   [JobStatus.OPEN]: { label: 'Waiting for quotes', tone: 'warning' },
   [JobStatus.ACCEPTED]: { label: 'Pro hired', tone: 'success' },
-  [JobStatus.FUNDED]: { label: 'Paid into escrow', tone: 'success' },
+  [JobStatus.FUNDED]: { label: 'Payment secured', tone: 'success' },
   [JobStatus.IN_PROGRESS]: { label: 'In progress', tone: 'brand' },
   [JobStatus.PAYMENT_DUE]: { label: 'Payment due', tone: 'warning' },
   [JobStatus.COMPLETED]: { label: 'Completed', tone: 'success' },

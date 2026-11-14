@@ -2,7 +2,7 @@ import { App as AntApp, ConfigProvider } from 'antd'
 import { Provider } from 'react-redux'
 import { RouterProvider } from 'react-router-dom'
 
-import { lightTheme } from './client/default/styles/ThemeConfig'
+import { lightTheme } from './client/default/styles/themeConfig'
 import myRouter from './config/router/MyRouter'
 import { store } from './redux'
 
