@@ -32,7 +32,8 @@ class NotificationEmailClient(Protocol):
 
 class BrevoOtpEmailClient:
     smtp_host = "smtp-relay.brevo.com"
-    smtp_port = 587
+    # Brevo's alternate port: Render's free plan blocks outbound 25, 465 and 587
+    smtp_port = 2525
 
     def send_otp(self, *, to_email: str, otp: str, purpose: str, expires_minutes: int) -> None:
         self._send(
