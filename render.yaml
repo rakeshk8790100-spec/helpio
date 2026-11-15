@@ -7,7 +7,7 @@ services:
   - type: web
     name: helpio-backend
     runtime: docker
-    plan: starter            # always on; "free" sleeps when idle and can't take private-network traffic
+    plan: free               # sleeps after 15 min idle; "starter" is always on (then the web app can use the private network)
     region: singapore        # keep both services (and ideally Supabase) in the same region
     rootDir: helpio-backend
     dockerfilePath: ./Dockerfile
@@ -78,7 +78,7 @@ services:
   - type: web
     name: helpio-web
     runtime: docker
-    plan: starter
+    plan: free
     region: singapore
     rootDir: helpio-frontend
     dockerfilePath: ./Dockerfile
@@ -86,14 +86,13 @@ services:
     healthCheckPath: /healthz
     autoDeploy: true
     envVars:
-      # Reach the API over Render's private network (host:port of helpio-backend)
+      # Free plan: reach the API over its public https URL (free services can't take private-network traffic).
+      # Set API_HOST to helpio-backend's onrender.com host name, without https://.
+      # On a paid plan use API_SCHEME=http and API_HOST fromService helpio-backend `hostport` instead.
       - key: API_SCHEME
-        value: http
+        value: https
       - key: API_HOST
-        fromService:
-          type: web
-          name: helpio-backend
-          property: hostport
+        sync: false
       # Build-time (Render passes env vars to `docker build` as build args); public values only
       - key: VITE_GOOGLE_CLIENT_ID
         sync: false
