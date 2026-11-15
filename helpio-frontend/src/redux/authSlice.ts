@@ -7,7 +7,7 @@ import { authStorage } from '@/config/base_service/auth.storage';
 interface AuthState {
   token: string | null;
   user: AuthUser | null;
-  /** Set by an actual sign-in (not a page refresh): the favourites popup may show once. Never persisted. */
+  /** Set on sign-in and on each app load: the favourites popup may show once per visit. Never persisted. */
   favoritesPromptPending: boolean;
   /** The favourites popup opened from the profile or home, to edit the whole set */
   favoritesEditorOpen: boolean;
@@ -21,12 +21,14 @@ const initialState: AuthState = {
     ? {
         ...stored.user,
         favoriteSkillIds: stored.user.favoriteSkillIds ?? [],
+        favoriteRequests: stored.user.favoriteRequests ?? [],
         favoritesPromptOpen: stored.user.favoritesPromptOpen ?? false,
         isOwner: stored.user.isOwner ?? false,
         approvalStatus: stored.user.approvalStatus ?? 'approved',
       }
     : null,
-  favoritesPromptPending: false,
+  // Each visit with a saved session may show it again, until 8 favourites are saved (user.favoritesPromptOpen)
+  favoritesPromptPending: !!stored?.token,
   favoritesEditorOpen: false,
 };
 
@@ -56,6 +58,7 @@ const authSlice = createSlice({
     favoritesChanged: (state, action: PayloadAction<Favorites>) => {
       if (!state.user) return;
       state.user.favoriteSkillIds = action.payload.skillIds;
+      state.user.favoriteRequests = action.payload.requests;
       state.user.favoritesPromptOpen = action.payload.promptOpen;
     },
     userUpdated: (state, action: PayloadAction<AuthUser>) => {

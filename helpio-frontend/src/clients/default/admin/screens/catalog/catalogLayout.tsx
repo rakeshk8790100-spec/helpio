@@ -6,6 +6,7 @@ import { AlertBanner, PageSkeleton, StatusBadge } from '@/components/ui';
 import type { CatalogLayoutProps } from '@/pages/admin/screens/catalog/types/catalog.dto';
 import type { AdminCategory } from '@/pages/admin/types/admin.models';
 import CatalogForm from './catalogForm';
+import { ApproveRequestDialog, CatalogRequests } from './catalogRequests';
 
 /** /admin/catalog: service categories and their services; switch off instead of deleting. */
 const CatalogLayout = (p: CatalogLayoutProps) => {
@@ -24,6 +25,7 @@ const CatalogLayout = (p: CatalogLayoutProps) => {
           </Button>
         }
       />
+      {p.requests && <CatalogRequests requests={p.requests} />}
       <div className="flex flex-col gap-4">
         {c.categories.map((category) => {
           const Icon = categoryIcon(category.icon);
@@ -67,6 +69,7 @@ const CatalogLayout = (p: CatalogLayoutProps) => {
       </div>
 
       {p.editor && <CatalogForm editor={p.editor} />}
+      {p.approver && <ApproveRequestDialog approver={p.approver} />}
     </div>
   );
 };

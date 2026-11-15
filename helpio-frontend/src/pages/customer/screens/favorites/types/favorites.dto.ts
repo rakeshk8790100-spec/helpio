@@ -2,27 +2,48 @@ import type { WithStatus } from '@/common/CommonDto';
 
 /* Contract between the favourites popup's hook (behaviour) and its markup. */
 
-export interface FavoriteChoice {
-  id: string;
+/** A dropdown group: one catalog category and its services not chosen yet */
+export interface FavoriteOptionGroup {
   label: string;
-  selected: boolean;
-  /** Saved before: shown checked, can't be removed from the popup */
+  options: { value: string; label: string }[];
+}
+
+/** One chosen service, shown as a chip under the dropdown */
+export interface FavoriteChoice {
+  /** Skill id, or `name:<typed name>` for a requested one */
+  key: string;
+  label: string;
+  /** Typed by the customer: waits for an admin to add it to the catalog */
+  requested: boolean;
+  /** Saved before: shown, can't be removed from the popup */
   locked: boolean;
-  /** The pick limit is reached and this one isn't picked */
-  disabled: boolean;
 }
 
 export type FavoritesModalLayoutProps = {
-  /** `add`: the popup after sign-in, a few new picks; `edit`: the whole set, from the profile or home */
+  /** `add`: the popup after sign-in, picks until there are 8; `edit`: the whole set, from the profile or home */
   mode: 'add' | 'edit';
-  /** e.g. "2/4 selected" */
-  counter: string;
+  /** e.g. 3 of 8 picked, "5 more to go" */
+  progress: { picked: number; total: number; hint: string };
   saving: boolean;
   skipping: boolean;
   error?: string;
   canSave: boolean;
-  onToggle: (skillId: string) => void;
+  /** No more room: the dropdown is switched off */
+  full: boolean;
+  chosen: FavoriteChoice[];
+  onRemove: (key: string) => void;
   onSave: () => void;
-  /** Add mode: "Skip for now" and the X both count as a skip; edit mode just closes */
+  /** Add mode: "Skip for now" and the X close it until the next visit; edit mode just closes */
   onClose: () => void;
-} & WithStatus<{ sections: { id: string; name: string; choices: FavoriteChoice[] }[] }>;
+} & WithStatus<{
+  search: string;
+  onSearch: (text: string) => void;
+  /** Catalog services matching the search, by category */
+  options: FavoriteOptionGroup[];
+  onPick: (skillId: string) => void;
+  /** Tap-to-add services, a few from each category, not chosen yet */
+  suggestions: { value: string; label: string }[];
+  /** The typed text, when no catalog service is called that: offered as "Add …" */
+  addOption?: string;
+  onAddCustom: (name: string) => void;
+}>;

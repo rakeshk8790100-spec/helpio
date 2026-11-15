@@ -95,7 +95,7 @@ def add_favorites(
     db: Session = Depends(get_db),
     service: CustomerService = Depends(get_customer_service),
 ) -> FavoritesResponse:
-    """Popup: add up to 4 services to the saved ones (8 at most in all). Resets the skip count."""
+    """Popup: add services to the saved ones (8 at most in all). Resets the skip count."""
     return service.add_favorites(db, user, payload)
 
 
@@ -105,7 +105,7 @@ def skip_favorites(
     db: Session = Depends(get_db),
     service: CustomerService = Depends(get_customer_service),
 ) -> FavoritesResponse:
-    """Popup closed without saving; after 3 in a row it stops showing."""
+    """Popup closed without saving; it shows again next visit until 8 are saved."""
     return service.skip_favorites(db, user)
 
 

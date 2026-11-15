@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, StringConstraints
+from pydantic import BaseModel, Field, StringConstraints, model_validator
 
 from app.modules.auth.model import ApprovalStatus, UserRole
 from app.modules.auth.schema import Email
@@ -481,3 +481,29 @@ class SaveSkillRequest(BaseModel):
     name: CatalogName
     sort_order: int = Field(default=0, ge=0, le=999)
     is_active: bool = True
+
+
+class ServiceRequestRowResponse(BaseModel):
+    """Customers asking for the same service (by name key) shown as one row."""
+
+    key: str
+    # As a customer typed it
+    name: str
+    customers: int
+    first_requested_at: datetime
+
+
+class ApproveServiceRequest(BaseModel):
+    """Either add it as a new service in a category, or match it to a service that already exists."""
+
+    category_id: str | None = None
+    name: CatalogName | None = None
+    skill_id: str | None = None
+
+    @model_validator(mode="after")
+    def one_way(self) -> "ApproveServiceRequest":
+        if (self.skill_id is None) == (self.category_id is None):
+            raise ValueError("Send either category_id (with name) or skill_id")
+        if self.category_id is not None and self.name is None:
+            raise ValueError("Name the new service")
+        return self

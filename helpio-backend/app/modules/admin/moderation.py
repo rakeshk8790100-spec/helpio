@@ -1,7 +1,7 @@
 """Reviews and the service catalog in the admin console. Nothing is deleted: reviews are hidden, catalog items switched off."""
 import re
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core.database import utc_now
@@ -12,12 +12,15 @@ from app.modules.admin.schema import (
     AdminCategoryResponse,
     AdminReviewRowResponse,
     AdminSkillResponse,
+    ApproveServiceRequest,
     SaveCategoryRequest,
     SaveSkillRequest,
+    ServiceRequestRowResponse,
 )
 from app.modules.auth.model import AuthUser
 from app.modules.catalog.model import CatalogCategory, CatalogSkill
 from app.modules.catalog.repository import CatalogRepository
+from app.modules.customers.model import CustomerFavoriteSkill, CustomerServiceRequest, ServiceRequestStatus
 from app.modules.jobs.model import Job
 from app.modules.providers.model import ProviderSkill
 from app.modules.reviews.model import JobReview
@@ -111,11 +114,7 @@ class ModerationService:
         if category is None:
             raise CatalogItemNotFoundError
         if skill_id is None:
-            new_id = f"{category.id}-{slug(payload.name)}"[:60]
-            if not slug(payload.name) or db.get(CatalogSkill, new_id) is not None:
-                raise CatalogIdTakenError
-            skill = CatalogSkill(id=new_id, category_id=category.id)
-            db.add(skill)
+            skill = self._new_skill(db, category, payload.name)
         else:
             skill = db.get(CatalogSkill, skill_id)
             if skill is None or skill.category_id != category.id:
@@ -129,7 +128,102 @@ class ModerationService:
         db.commit()
         return self.catalog(db)
 
+    # ----- Services customers asked for -----
+
+    def service_requests(self, db: Session) -> list[ServiceRequestRowResponse]:
+        pending = CustomerServiceRequest.status == ServiceRequestStatus.PENDING
+        rows = db.execute(
+            select(CustomerServiceRequest.name_key, func.count(), func.min(CustomerServiceRequest.created_at))
+            .where(pending)
+            .group_by(CustomerServiceRequest.name_key)
+            .order_by(func.min(CustomerServiceRequest.created_at))
+        ).all()
+        # The earliest spelling wins (later rows overwrite, so read newest first)
+        names = dict(db.execute(
+            select(CustomerServiceRequest.name_key, CustomerServiceRequest.name)
+            .where(pending)
+            .order_by(CustomerServiceRequest.created_at.desc())
+        ).all())
+        return [
+            ServiceRequestRowResponse(key=key, name=names[key], customers=count, first_requested_at=first)
+            for key, count, first in rows
+        ]
+
+    def approve_service_request(
+        self, db: Session, admin: AuthUser, key: str, payload: ApproveServiceRequest, request: RequestInfo
+    ) -> list[ServiceRequestRowResponse]:
+        """Every customer who asked for it gets the service as a favourite."""
+        pending = self._pending(db, key)
+        if payload.skill_id is not None:
+            skill = db.get(CatalogSkill, payload.skill_id)
+            if skill is None:
+                raise CatalogItemNotFoundError
+            summary = f"Matched the requested service {pending[0].name} to {skill.name}"
+        else:
+            category = db.get(CatalogCategory, payload.category_id)
+            if category is None:
+                raise CatalogItemNotFoundError
+            skill = self._new_skill(db, category, payload.name or pending[0].name)
+            skill.sort_order, skill.is_active = len(category.skills) + 1, True
+            db.flush()
+            summary = f"Added service {skill.name} in {category.name}, asked for by {len(pending)} customer(s)"
+        users = [r.user_id for r in pending]
+        has_it = set(db.scalars(
+            select(CustomerFavoriteSkill.user_id)
+            .where(CustomerFavoriteSkill.skill_id == skill.id, CustomerFavoriteSkill.user_id.in_(users))
+        ))
+        db.add_all(CustomerFavoriteSkill(user_id=user_id, skill_id=skill.id) for user_id in users if user_id not in has_it)
+        self._close_requests(db, admin, key, ServiceRequestStatus.APPROVED, skill.id)
+        audit.record(
+            db, action=AuditAction.CATALOG_CHANGED, admin=admin, target_type="skill", target_id=skill.id,
+            summary=summary, request=request,
+        )
+        db.commit()
+        return self.service_requests(db)
+
+    def reject_service_request(
+        self, db: Session, admin: AuthUser, key: str, request: RequestInfo
+    ) -> list[ServiceRequestRowResponse]:
+        """Dropped from those customers' favourites; their popup asks again for the missing one."""
+        pending = self._pending(db, key)
+        self._close_requests(db, admin, key, ServiceRequestStatus.REJECTED, None)
+        audit.record(
+            db, action=AuditAction.CATALOG_CHANGED, admin=admin, target_type="service_request", target_id=key,
+            summary=f"Turned down the requested service {pending[0].name} ({len(pending)} customer(s))",
+            request=request,
+        )
+        db.commit()
+        return self.service_requests(db)
+
     # ----- Helpers -----
+
+    def _new_skill(self, db: Session, category: CatalogCategory, name: str) -> CatalogSkill:
+        new_id = f"{category.id}-{slug(name)}"[:60]
+        if not slug(name) or db.get(CatalogSkill, new_id) is not None:
+            raise CatalogIdTakenError
+        skill = CatalogSkill(id=new_id, category_id=category.id, name=name)
+        db.add(skill)
+        return skill
+
+    def _pending(self, db: Session, key: str) -> list[CustomerServiceRequest]:
+        pending = list(db.scalars(
+            select(CustomerServiceRequest)
+            .where(CustomerServiceRequest.name_key == key, CustomerServiceRequest.status == ServiceRequestStatus.PENDING)
+            .order_by(CustomerServiceRequest.created_at)
+        ))
+        if not pending:
+            raise CatalogItemNotFoundError
+        return pending
+
+    def _close_requests(
+        self, db: Session, admin: AuthUser, key: str, status: ServiceRequestStatus, skill_id: str | None
+    ) -> None:
+        db.execute(
+            update(CustomerServiceRequest)
+            .where(CustomerServiceRequest.name_key == key, CustomerServiceRequest.status == ServiceRequestStatus.PENDING)
+            .values(status=status, skill_id=skill_id, resolved_at=utc_now(), resolved_by=admin.id)
+            .execution_options(synchronize_session=False)
+        )
 
     def _review_rows(self, db: Session, reviews: list[JobReview]) -> list[AdminReviewRowResponse]:
         titles = dict(db.execute(select(Job.id, Job.title).where(Job.id.in_({r.job_id for r in reviews}))).all())

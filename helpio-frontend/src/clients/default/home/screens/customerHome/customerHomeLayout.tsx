@@ -1,5 +1,5 @@
 import { Skeleton } from 'antd';
-import { ClipboardList, Heart, Search, SearchX, Siren } from 'lucide-react';
+import { ClipboardList, Heart, Plus, Search, SearchX, Siren } from 'lucide-react';
 import type { JobItem } from '@/common/JobDisplay';
 import {
   ActiveJobCard,
@@ -87,9 +87,25 @@ const CustomerHomeLayout = (p: CustomerHomeLayoutProps) => {
 
       {/* ④ Discovery */}
       <section>
-        <SectionHeader title="Browse categories" />
+        <SectionHeader title={p.categories.title} />
         <CategoryGrid categories={p.categories.items} onSelect={p.categories.onSelect} onMore={p.categories.onMore} />
       </section>
+      {p.myFavorites && (
+        <section>
+          <SectionHeader title="Your favourite services" actionLabel="Edit" onAction={p.myFavorites.onEdit} />
+          <CategoryGrid categories={p.myFavorites.items} onSelect={p.myFavorites.onSelect} />
+          {p.myFavorites.remaining > 0 && (
+            <button
+              type="button"
+              onClick={p.myFavorites.onEdit}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-indigo-200 py-2.5 text-xs font-semibold text-indigo-600 active:scale-[.98]"
+            >
+              <Plus size={14} />
+              Add {p.myFavorites.remaining} more favourite{p.myFavorites.remaining === 1 ? '' : 's'}
+            </button>
+          )}
+        </section>
+      )}
       {favorites?.kind === 'pick' && (
         <button
           type="button"

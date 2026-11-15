@@ -22,6 +22,45 @@ export interface CatalogProps {
   }>;
   /** Adding or changing a category (with an icon) or a service */
   editor: CatalogEditor | null;
+  /** Services customers asked for; hidden when there are none */
+  requests: {
+    items: ServiceRequestRow[];
+    onApprove: (row: ServiceRequestRow) => void;
+    onReject: (row: ServiceRequestRow) => void;
+    /** The row being turned down right now */
+    rejecting?: string;
+  } | null;
+  /** Adding a requested service to the catalog */
+  approver: RequestApprover | null;
+}
+
+/** Customers asking for the same service, as one row */
+export interface ServiceRequestRow {
+  key: string;
+  name: string;
+  customers: number;
+  firstRequestedAt: string;
+}
+
+/** The approve dialog: a new service in a category, or the same as one that exists */
+export interface RequestApprover {
+  request: ServiceRequestRow;
+  how: 'new' | 'existing';
+  onHowChange: (how: 'new' | 'existing') => void;
+  name: string;
+  onNameChange: (name: string) => void;
+  categoryId?: string;
+  onCategoryChange: (id: string) => void;
+  categories: { value: string; label: string }[];
+  skillId?: string;
+  onSkillChange: (id: string) => void;
+  /** Services by category */
+  skills: { label: string; options: { value: string; label: string }[] }[];
+  canSave: boolean;
+  saving: boolean;
+  error?: string;
+  onSave: () => void;
+  onCancel: () => void;
 }
 
 /** The layout gets the page's props and, per category, its services table's columns (from catalog.colDef) */

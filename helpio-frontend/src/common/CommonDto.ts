@@ -79,6 +79,8 @@ export interface AuthUser {
   onboardingStatus: OnboardingStatus | null;
   /** Customers only: favourite services (catalog skill ids), oldest first */
   favoriteSkillIds: string[];
+  /** Customers only: services they typed that aren't in the catalog yet; they count toward the 8 */
+  favoriteRequests: FavoriteRequest[];
   /** Customers only: show the favourites popup after sign-in */
   favoritesPromptOpen: boolean;
   /** Admins only: the owner, who manages other admins and the API keys */
@@ -88,8 +90,15 @@ export interface AuthUser {
 }
 
 /** The customer's favourite services, as every favourites call returns them */
+/** A service the customer typed because it isn't in the catalog; waiting for an admin to add it */
+export interface FavoriteRequest {
+  id: string;
+  name: string;
+}
+
 export interface Favorites {
   skillIds: string[];
+  requests: FavoriteRequest[];
   promptOpen: boolean;
 }
 

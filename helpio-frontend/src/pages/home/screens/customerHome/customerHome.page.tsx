@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CustomerHomeLayout } from '@/clients';
 import { useGetSkillCatalogQuery } from '@/common/CommonApi';
 import { useGetAddressesQuery } from '@/common/CommonApi';
-import type { AuthUser, Job } from '@/common/CommonDto';
+import type { AuthUser, Category, Job } from '@/common/CommonDto';
 import { JobStatus, MilestoneStatus } from '@/common/CommonEnum';
 import { MOCK_CATEGORIES } from '@/common/CommonMock';
 import { toJobItem } from '@/common/JobDisplay';
@@ -16,10 +16,13 @@ import { firstName } from '@/lib/utils';
 import { useSearchProvidersQuery } from '@/pages/pros/pros.api';
 import { useAppDispatch } from '@/redux';
 import { favoritesEditorOpened } from '@/redux/authSlice';
+import { MAX_FAVORITES } from '@/pages/customer/screens/favorites/types/favorites.enum';
 import { useGetCustomerHomeQuery } from './customerHome.api';
 import type { CustomerHomeLayoutProps } from './types/customerHome.dto';
 
 const HOME_PROS = 6;
+/** Grid tile ids for requested services, so they never clash with skill ids */
+const REQUEST_TILE = 'req:';
 
 /** What the active-job card says for each hired stage: status, next step and button. */
 const ACTIVE_COPY: Partial<Record<JobStatus, (job: Job) => { statusLabel: string; nextStep: string; actionLabel: string }>> = {
@@ -65,12 +68,25 @@ const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
   // '' = all favourites
   const [favoriteFilter, setFavoriteFilter] = useState('');
   const activeFilter = favoriteIds.includes(favoriteFilter) ? favoriteFilter : '';
-  const catalog = useGetSkillCatalogQuery(undefined, { skip: !favoriteIds.length });
+  const catalog = useGetSkillCatalogQuery();
   const favoritePros = useSearchProvidersQuery(
     { skillIds: activeFilter ? [activeFilter] : favoriteIds },
     { skip: !favoriteIds.length || !addresses.data?.length },
   );
-  const skillNames = new Map(catalog.data?.flatMap((c) => c.skills.map((s) => [s.id, s.name] as const)) ?? []);
+  const skills = new Map(
+    catalog.data?.flatMap((c) => c.skills.map((s) => [s.id, { name: s.name, categoryId: c.id, icon: c.icon }] as const)) ?? [],
+  );
+  const skillNames = new Map([...skills].map(([id, s]) => [id, s.name] as const));
+  // Chosen favourites (services still in the catalogue, plus ones asked for), shown under the categories
+  const requests = user.favoriteRequests;
+  const favoriteTiles: Category[] = [
+    ...favoriteIds.flatMap((id) => {
+      const skill = skills.get(id);
+      return skill ? [{ id, name: skill.name, icon: skill.icon }] : [];
+    }),
+    // Not in the catalogue yet: generic icon, opens a search for the name
+    ...requests.map((r) => ({ id: REQUEST_TILE + r.id, name: r.name, icon: '' })),
+  ];
   const openPro = (id: string) => navigate(toPath(RouterKeys.PRO_PROFILE, { id }));
 
   const openJob = (job: Job) => navigate(toPath(RouterKeys.JOB_DETAIL, { id: job.id }));
@@ -115,12 +131,27 @@ const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
       onChange: setJobText,
       onSubmit: () => postJob(jobText.trim() ? { describe: jobText.trim() } : {}),
     },
-    // Catalogue mocks until a categories/services endpoint exists
     categories: {
+      title: 'Browse categories',
+      // Catalogue mocks until a categories/services endpoint exists
       items: MOCK_CATEGORIES,
       onSelect: (c) => navigate(toPath(RouterKeys.CATEGORY, { id: c.id })),
       onMore: () => navigate(RouterKeys.SEARCH),
     },
+    myFavorites: favoriteTiles.length
+      ? {
+          items: favoriteTiles,
+          // Skill tiles open the skill's category; requested ones search pros by the name
+          onSelect: (c) =>
+            navigate(
+              c.id.startsWith(REQUEST_TILE)
+                ? withQuery(RouterKeys.SEARCH, { q: c.name })
+                : toPath(RouterKeys.CATEGORY, { id: skills.get(c.id)?.categoryId ?? c.id }),
+            ),
+          onEdit: () => dispatch(favoritesEditorOpened()),
+          remaining: Math.max(0, MAX_FAVORITES - favoriteIds.length - requests.length),
+        }
+      : null,
     pros: pros.data?.providers.length
       ? {
           items: pros.data.providers.slice(0, HOME_PROS).map((provider) => ({

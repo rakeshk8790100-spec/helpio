@@ -13,17 +13,26 @@ from app.modules.customers.exceptions import (
     TooManyAddressesError,
     UnknownSkillError,
 )
-from app.modules.customers.model import CustomerAddress, CustomerFavoritePrompt, CustomerFavoriteSkill
+from app.modules.catalog.model import CatalogCategory, CatalogSkill
+from app.modules.customers.model import (
+    CustomerAddress,
+    CustomerFavoritePrompt,
+    CustomerFavoriteSkill,
+    CustomerServiceRequest,
+    ServiceRequestStatus,
+)
 from app.modules.customers.schema import (
     MAX_ADDRESSES,
     MAX_FAVORITES,
-    MAX_SKIP_STREAK,
     AddressResponse,
     CreateAddressRequest,
+    FavoriteRequestResponse,
     FavoritesAddRequest,
+    FavoritesChoice,
     FavoritesReplaceRequest,
     FavoritesResponse,
     UpdateAddressRequest,
+    name_key,
 )
 
 
@@ -45,14 +54,25 @@ def favorite_skill_ids(db: Session, user_id: str) -> list[str]:
     ))
 
 
+def pending_requests(db: Session, user_id: str) -> list[CustomerServiceRequest]:
+    """Typed services still waiting for an admin, oldest first."""
+    return list(db.scalars(
+        select(CustomerServiceRequest)
+        .where(CustomerServiceRequest.user_id == user_id, CustomerServiceRequest.status == ServiceRequestStatus.PENDING)
+        .order_by(CustomerServiceRequest.created_at, CustomerServiceRequest.name_key)
+    ))
+
+
+def favorite_requests(db: Session, user_id: str) -> list[FavoriteRequestResponse]:
+    return [FavoriteRequestResponse(id=r.id, name=r.name) for r in pending_requests(db, user_id)]
+
+
 def favorites_prompt_open(db: Session, user_id: str, count: int | None = None) -> bool:
-    """Ask again at sign-in until there are 8 favourites or the popup was skipped 3 times in a row."""
+    """Ask again at every sign-in or visit until there are 8 favourites (pending requests count); skipping only
+    closes it for now."""
     if count is None:
-        count = db.scalar(
-            select(func.count()).select_from(CustomerFavoriteSkill).where(CustomerFavoriteSkill.user_id == user_id)
-        ) or 0
-    prompt = db.get(CustomerFavoritePrompt, user_id)
-    return count < MAX_FAVORITES and (prompt is None or prompt.skip_streak < MAX_SKIP_STREAK)
+        count = len(favorite_skill_ids(db, user_id)) + len(pending_requests(db, user_id))
+    return count < MAX_FAVORITES
 
 
 class CustomerService:
@@ -100,16 +120,22 @@ class CustomerService:
 
     def favorites(self, db: Session, user: AuthUser) -> FavoritesResponse:
         ids = favorite_skill_ids(db, user.id)
-        return FavoritesResponse(skill_ids=ids, prompt_open=favorites_prompt_open(db, user.id, len(ids)))
+        requests = favorite_requests(db, user.id)
+        return FavoritesResponse(
+            skill_ids=ids, requests=requests, prompt_open=favorites_prompt_open(db, user.id, len(ids) + len(requests))
+        )
 
     def add_favorites(self, db: Session, user: AuthUser, payload: FavoritesAddRequest) -> FavoritesResponse:
-        """From the popup: new picks join the saved ones; already-saved ids are ignored."""
-        self._check_skills(db, payload.skill_ids)
+        """From the popup: new picks join the saved ones; already-saved ids and names are ignored."""
+        skill_ids, names = self._resolve(db, payload)
         saved = set(favorite_skill_ids(db, user.id))
-        new = [skill_id for skill_id in payload.skill_ids if skill_id not in saved]
-        if len(saved) + len(new) > MAX_FAVORITES:
+        requested = {r.name_key for r in pending_requests(db, user.id)}
+        new_ids = [skill_id for skill_id in skill_ids if skill_id not in saved]
+        new_names = [name for name in names if name_key(name) not in requested]
+        if len(saved) + len(requested) + len(new_ids) + len(new_names) > MAX_FAVORITES:
             raise FavoritesLimitError(MAX_FAVORITES)
-        db.add_all(CustomerFavoriteSkill(user_id=user.id, skill_id=skill_id) for skill_id in new)
+        db.add_all(CustomerFavoriteSkill(user_id=user.id, skill_id=skill_id) for skill_id in new_ids)
+        self._request(db, user, new_names)
         self._prompt(db, user).skip_streak = 0
         db.commit()
         return self.favorites(db, user)
@@ -121,18 +147,59 @@ class CustomerService:
         return self.favorites(db, user)
 
     def replace_favorites(self, db: Session, user: AuthUser, payload: FavoritesReplaceRequest) -> FavoritesResponse:
-        """From the profile: the whole set at once."""
-        self._check_skills(db, payload.skill_ids)
+        """From the profile: the whole set at once. Pending requests left out are withdrawn."""
+        skill_ids, names = self._resolve(db, payload)
         db.execute(delete(CustomerFavoriteSkill).where(CustomerFavoriteSkill.user_id == user.id))
         # One saved moment, a microsecond apart, so they read back in the order picked
         now = utc_now()
         db.add_all(
             CustomerFavoriteSkill(user_id=user.id, skill_id=skill_id, created_at=now + timedelta(microseconds=index))
-            for index, skill_id in enumerate(payload.skill_ids)
+            for index, skill_id in enumerate(skill_ids)
         )
+        keep = {name_key(name) for name in names}
+        pending = pending_requests(db, user.id)
+        for request in pending:
+            if request.name_key not in keep:
+                db.delete(request)
+        requested = {r.name_key for r in pending}
+        self._request(db, user, [name for name in names if name_key(name) not in requested])
         self._prompt(db, user).skip_streak = 0
         db.commit()
         return self.favorites(db, user)
+
+    def _resolve(self, db: Session, payload: FavoritesChoice) -> tuple[list[str], list[str]]:
+        """Check the ids; a typed name that matches an active catalog service becomes that service."""
+        self._check_skills(db, payload.skill_ids)
+        if not payload.service_names:
+            return payload.skill_ids, []
+        active = db.execute(
+            select(CatalogSkill.id, CatalogSkill.name)
+            .join(CatalogCategory, CatalogCategory.id == CatalogSkill.category_id)
+            .where(CatalogSkill.is_active.is_(True), CatalogCategory.is_active.is_(True))
+        ).all()
+        by_key = {name_key(name): skill_id for skill_id, name in active}
+        skill_ids, names = list(payload.skill_ids), []
+        for name in payload.service_names:
+            match = by_key.get(name_key(name))
+            if match is None:
+                names.append(name)
+            elif match not in skill_ids:
+                skill_ids.append(match)
+        return skill_ids, names
+
+    def _request(self, db: Session, user: AuthUser, names: list[str]) -> None:
+        """New pending requests. A name asked for before (then approved or rejected) is asked for again."""
+        for name in names:
+            key = name_key(name)
+            old = db.scalar(
+                select(CustomerServiceRequest).where(
+                    CustomerServiceRequest.user_id == user.id, CustomerServiceRequest.name_key == key
+                )
+            )
+            if old is not None:
+                db.delete(old)
+                db.flush()
+            db.add(CustomerServiceRequest(user_id=user.id, name=name, name_key=key))
 
     def _check_skills(self, db: Session, skill_ids: list[str]) -> None:
         if CatalogRepository(db).existing_skill_ids(skill_ids) != set(skill_ids):

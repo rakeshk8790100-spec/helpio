@@ -2,6 +2,8 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, EmailStr, Field, StringConstraints, model_validator
 
+from app.modules.customers.schema import FavoriteRequestResponse
+
 Email = Annotated[EmailStr, AfterValidator(str.lower)]
 PersonName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=80)]
 # Indian mobile number as typed (10 digits), stored in E.164 form.
@@ -67,6 +69,8 @@ class UserResponse(BaseModel):
     onboarding_status: Literal["skills", "service_setup", "complete"] | None
     # Customers only: favourite services, and whether to show the popup at sign-in
     favorite_skill_ids: list[str] = []
+    # Typed services waiting for an admin to add them; they count toward the 8
+    favorite_requests: list[FavoriteRequestResponse] = []
     favorites_prompt_open: bool = False
     # Admins only: the owner, who manages other admins and the API keys
     is_owner: bool = False

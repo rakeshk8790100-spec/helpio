@@ -16,10 +16,12 @@ from app.modules.admin.schema import (
     AdminMessageResponse,
     AdminPaymentRowResponse,
     AdminReviewRowResponse,
+    ApproveServiceRequest,
     OptionalReasonRequest,
     ReasonRequest,
     SaveCategoryRequest,
     SaveSkillRequest,
+    ServiceRequestRowResponse,
     UserDetailResponse,
     UserRowResponse,
 )
@@ -265,6 +267,41 @@ def catalog(
 ) -> list[AdminCategoryResponse]:
     """Every category and service, switched off ones too, with how many jobs and providers use them."""
     return service.catalog(db)
+
+
+@router.get("/catalog/requests", response_model=list[ServiceRequestRowResponse])
+def service_requests(
+    _: AuthUser = Depends(current_admin),
+    db: Session = Depends(get_db),
+    service: ModerationService = Depends(get_moderation_service),
+) -> list[ServiceRequestRowResponse]:
+    """Services customers typed that aren't in the catalog, one row per name, oldest first."""
+    return service.service_requests(db)
+
+
+@router.post("/catalog/requests/{key}/approve", response_model=list[ServiceRequestRowResponse])
+def approve_service_request(
+    key: str,
+    payload: ApproveServiceRequest,
+    admin: AuthUser = Depends(current_admin),
+    info: RequestInfo = Depends(request_info),
+    db: Session = Depends(get_db),
+    service: ModerationService = Depends(get_moderation_service),
+) -> list[ServiceRequestRowResponse]:
+    """Add it as a new service in a category, or match it to an existing one; it becomes those customers' favourite."""
+    return service.approve_service_request(db, admin, key, payload, info)
+
+
+@router.post("/catalog/requests/{key}/reject", response_model=list[ServiceRequestRowResponse])
+def reject_service_request(
+    key: str,
+    admin: AuthUser = Depends(current_admin),
+    info: RequestInfo = Depends(request_info),
+    db: Session = Depends(get_db),
+    service: ModerationService = Depends(get_moderation_service),
+) -> list[ServiceRequestRowResponse]:
+    """Removed from those customers' favourites, so their popup asks for another."""
+    return service.reject_service_request(db, admin, key, info)
 
 
 @router.post("/catalog/categories", response_model=list[AdminCategoryResponse])

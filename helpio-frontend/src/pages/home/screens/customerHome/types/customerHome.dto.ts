@@ -33,7 +33,15 @@ export interface CustomerHomeLayoutProps {
   onPostJob: () => void;
   onEmergencyJob: () => void;
   composer: ComponentProps<typeof PostJobComposer>;
-  categories: { items: Category[]; onSelect: (category: Category) => void; onMore: () => void };
+  categories: { title: string; items: Category[]; onSelect: (category: Category) => void; onMore?: () => void };
+  /** The services the customer chose as favourites, shown under the categories; null until they pick one */
+  myFavorites: {
+    items: Category[];
+    onSelect: (service: Category) => void;
+    onEdit: () => void;
+    /** Still to pick to reach 8; 0 when complete */
+    remaining: number;
+  } | null;
   /** Pros serving the default address; hidden when there's no address or nobody yet */
   pros: { items: { provider: ProviderCard; onOpen: () => void }[]; onSeeAll: () => void } | null;
   /**

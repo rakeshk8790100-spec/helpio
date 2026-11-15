@@ -1,4 +1,2 @@
-
-/** Favourites in all, and new picks per popup (the API enforces both too) */
+/** Favourites in all; the popup after sign-in needs all of them (the API enforces the cap too) */
 export const MAX_FAVORITES = 8;
-export const MAX_PER_PROMPT = 4;

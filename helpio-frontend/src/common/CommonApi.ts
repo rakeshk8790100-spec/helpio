@@ -40,6 +40,7 @@ export interface UserApiDto {
   avatar_url: string | null;
   onboarding_status: OnboardingStatus | null;
   favorite_skill_ids?: string[];
+  favorite_requests?: { id: string; name: string }[];
   favorites_prompt_open?: boolean;
   is_owner?: boolean;
   approval_status?: ApprovalStatus;
@@ -60,6 +61,7 @@ export const toAuthUser = (dto: UserApiDto): AuthUser => ({
   avatarUrl: dto.avatar_url,
   onboardingStatus: dto.onboarding_status,
   favoriteSkillIds: dto.favorite_skill_ids ?? [],
+  favoriteRequests: dto.favorite_requests ?? [],
   favoritesPromptOpen: dto.favorites_prompt_open ?? false,
   isOwner: dto.is_owner ?? false,
   approvalStatus: dto.approval_status ?? 'approved',

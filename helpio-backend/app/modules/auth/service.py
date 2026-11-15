@@ -66,7 +66,7 @@ from app.modules.auth.schema import (
     UserResponse,
     VerifySignupRequest,
 )
-from app.modules.customers.service import favorite_skill_ids, favorites_prompt_open
+from app.modules.customers.service import favorite_requests, favorite_skill_ids, favorites_prompt_open
 from app.modules.notifications.owner import email_owner
 from app.modules.providers.model import ProviderProfile
 from app.modules.providers.repository import ProviderRepository
@@ -461,6 +461,7 @@ class AuthService:
     def _user_response(self, db: Session, user: AuthUser) -> UserResponse:
         status = ProviderRepository(db).get_status(user.id) if user.role == UserRole.PROVIDER else None
         favorites = favorite_skill_ids(db, user.id) if user.role == UserRole.CUSTOMER else []
+        requests = favorite_requests(db, user.id) if user.role == UserRole.CUSTOMER else []
         return UserResponse(
             id=user.id,
             email=user.email,
@@ -470,7 +471,9 @@ class AuthService:
             avatar_url=user.avatar_url,
             onboarding_status=status.value if status else None,
             favorite_skill_ids=favorites,
-            favorites_prompt_open=user.role == UserRole.CUSTOMER and favorites_prompt_open(db, user.id, len(favorites)),
+            favorite_requests=requests,
+            favorites_prompt_open=user.role == UserRole.CUSTOMER
+            and favorites_prompt_open(db, user.id, len(favorites) + len(requests)),
             is_owner=user.role == UserRole.ADMIN and is_owner_email(user.email),
             approval_status=user.approval_status.value,
         )

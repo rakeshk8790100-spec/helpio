@@ -4,9 +4,16 @@ import { CatalogLayout } from '@/clients';
 import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
 import { apiErrorMessage } from '@/lib/apiError';
 import type { AdminCategory } from '@/pages/admin/types/admin.models';
-import { useGetAdminCatalogQuery, useSaveCategoryMutation, useSaveSkillMutation } from './catalog.api';
+import {
+  useApproveCatalogRequestMutation,
+  useGetAdminCatalogQuery,
+  useGetCatalogRequestsQuery,
+  useRejectCatalogRequestMutation,
+  useSaveCategoryMutation,
+  useSaveSkillMutation,
+} from './catalog.api';
 import { skillColumns } from './catalog.colDef';
-import type { CatalogFormValues, CatalogLayoutProps, CatalogProps } from './types/catalog.dto';
+import type { CatalogFormValues, CatalogLayoutProps, CatalogProps, ServiceRequestRow } from './types/catalog.dto';
 
 type Editing =
   | { kind: 'category'; category: AdminCategory | null }
@@ -14,13 +21,26 @@ type Editing =
 
 /** /admin/catalog: add or change categories and services; switch them off instead of deleting. */
 const useAdminCatalog = (): CatalogProps => {
-  const { message } = App.useApp();
+  const { message, modal } = App.useApp();
   const [form] = Form.useForm<CatalogFormValues>();
   const { data, error, isLoading, refetch } = useGetAdminCatalogQuery();
   const [saveCategory, { isLoading: savingCategory }] = useSaveCategoryMutation();
   const [saveSkill, { isLoading: savingSkill }] = useSaveSkillMutation();
   const [editing, setEditing] = useState<Editing | null>(null);
   const [editorError, setEditorError] = useState<string>();
+  const requests = useGetCatalogRequestsQuery();
+  const [approveRequest, { isLoading: approving }] = useApproveCatalogRequestMutation();
+  const [rejectRequest, { isLoading: rejecting, originalArgs: rejectingKey }] = useRejectCatalogRequestMutation();
+  const [approval, setApproval] = useState<{
+    request: ServiceRequestRow;
+    how: 'new' | 'existing';
+    name: string;
+    categoryId?: string;
+    skillId?: string;
+    error?: string;
+  } | null>(null);
+  const patchApproval = (patch: Partial<NonNullable<typeof approval>>) =>
+    setApproval((prev) => prev && { ...prev, ...patch, error: undefined });
 
   const open = (next: Editing) => {
     setEditorError(undefined);
@@ -82,7 +102,66 @@ const useAdminCatalog = (): CatalogProps => {
     },
   };
 
+  const approver: CatalogLayoutProps['approver'] = approval && {
+    request: approval.request,
+    how: approval.how,
+    onHowChange: (how) => patchApproval({ how }),
+    name: approval.name,
+    onNameChange: (name) => patchApproval({ name }),
+    categoryId: approval.categoryId,
+    onCategoryChange: (categoryId) => patchApproval({ categoryId }),
+    categories: (data ?? []).map((c) => ({ value: c.id, label: c.isActive ? c.name : `${c.name} (off)` })),
+    skillId: approval.skillId,
+    onSkillChange: (skillId) => patchApproval({ skillId }),
+    skills: (data ?? [])
+      .filter((c) => c.skills.length > 0)
+      .map((c) => ({ label: c.name, options: c.skills.map((s) => ({ value: s.id, label: s.name })) })),
+    canSave:
+      approval.how === 'existing'
+        ? !!approval.skillId
+        : !!approval.categoryId && approval.name.trim().length >= 2,
+    saving: approving,
+    error: approval.error,
+    onCancel: () => setApproval(null),
+    onSave: async () => {
+      const { request, how, name, categoryId, skillId } = approval;
+      try {
+        if (how === 'existing' && skillId) await approveRequest({ key: request.key, skillId }).unwrap();
+        else if (categoryId) await approveRequest({ key: request.key, categoryId, name: name.trim() }).unwrap();
+        message.success(
+          `Added. ${request.customers} customer${request.customers === 1 ? '' : 's'} now have it as a favourite.`,
+        );
+        setApproval(null);
+      } catch (e) {
+        setApproval((prev) => prev && { ...prev, error: apiErrorMessage(e) });
+      }
+    },
+  };
+
   return {
+    requests: requests.data?.length
+      ? {
+          items: requests.data,
+          rejecting: rejecting ? rejectingKey : undefined,
+          onApprove: (request) => setApproval({ request, how: 'new', name: request.name }),
+          onReject: (request) =>
+            modal.confirm({
+              title: `Turn down "${request.name}"?`,
+              content: `It's removed from ${request.customers} customer${request.customers === 1 ? "'s" : "s'"} favourites, and they'll be asked to pick another service.`,
+              okText: 'Turn down',
+              okButtonProps: { danger: true },
+              onOk: async () => {
+                try {
+                  await rejectRequest(request.key).unwrap();
+                  message.success('Turned down.');
+                } catch (e) {
+                  message.error(apiErrorMessage(e));
+                }
+              },
+            }),
+        }
+      : null,
+    approver,
     catalog: isLoading
       ? { status: 'loading' }
       : !data
