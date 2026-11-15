@@ -1,9 +1,9 @@
 import { MapPin, UserRound } from 'lucide-react';
-import type { NearbyJob } from '../../common/CommonDto';
-import { QuoteStatus } from '../../common/CommonEnum';
-import { formatINR } from '../../lib/utils';
-import StatusBadge from '../ui/StatusBadge';
-import type { BadgeTone } from '../ui/StatusBadge';
+import type { NearbyJob } from '@/common/CommonDto';
+import { QuoteStatus } from '@/common/CommonEnum';
+import StatusBadge from '@/components/ui/StatusBadge';
+import type { BadgeTone } from '@/components/ui/StatusBadge';
+import { formatINR } from '@/lib/utils';
 
 const QUOTE_BADGE: Record<QuoteStatus, { label: string; tone: BadgeTone }> = {
   [QuoteStatus.PENDING]: { label: 'Quoted', tone: 'brand' },

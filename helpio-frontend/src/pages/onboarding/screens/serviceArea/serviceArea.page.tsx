@@ -1,7 +1,12 @@
-import ServiceAreaLayout from '../../../../client/default/onboarding/serviceArea.layout';
-import { useServiceSetup } from '../../../../hooks/useServiceSetup';
+import { ServiceAreaLayout } from '@/clients';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { useServiceSetup } from '@/hooks/useServiceSetup';
 
-/** Provider sign-up step 3. Markup lives in client/default/onboarding. */
-const ServiceAreaPage = () => <ServiceAreaLayout {...useServiceSetup()} />;
+/** Provider sign-up step 3: service area and hours. */
+const ServiceAreaPage = () => (
+  <SuspenseWrapper>
+    <ServiceAreaLayout {...useServiceSetup()} />
+  </SuspenseWrapper>
+);
 
 export default ServiceAreaPage;

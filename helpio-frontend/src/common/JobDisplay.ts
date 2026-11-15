@@ -1,13 +1,15 @@
-import type { JobItem } from '../client/default/home/home.layout.types';
-import type { Job, NearbyJob } from '../common/CommonDto';
-import { JobStatus, MilestoneStatus } from '../common/CommonEnum';
-import type { BadgeTone } from '../component/ui';
-import { formatDuration, formatINR, formatShortDate } from '../lib/utils';
+import type { ComponentProps } from 'react';
+import type { JobCard } from '@/components/common';
+import { formatDuration, formatINR, formatShortDate } from '@/lib/utils';
+import type { Job, NearbyJob } from './CommonDto';
+import { JobStatus, MilestoneStatus } from './CommonEnum';
+import { JOB_STATUS_BADGE, plural } from './CommonLabels';
+import type { Badge } from './CommonLabels';
 
 /* How a job reads in lists and headers, shared by the customer home, My jobs and the job pages. */
 
-/** Job screens refresh when the tab comes back into view or the connection returns, and pause polling while hidden */
-export const LIVE = { refetchOnFocus: true, refetchOnReconnect: true, skipPollingIfUnfocused: true } as const;
+/** A customer's job as a list card */
+export type JobItem = ComponentProps<typeof JobCard> & { id: string };
 
 /** How often a job page checks for news: fast while quotes come in or the pro is on the way, slower during the work */
 export const livePollMs = (status: JobStatus | undefined) => {
@@ -16,31 +18,20 @@ export const livePollMs = (status: JobStatus | undefined) => {
   return 0;
 };
 
-const STATUS_BADGE: Record<JobStatus, { label: string; tone: BadgeTone }> = {
-  [JobStatus.DRAFT]: { label: 'Draft', tone: 'neutral' },
-  [JobStatus.OPEN]: { label: 'Waiting for quotes', tone: 'warning' },
-  [JobStatus.ACCEPTED]: { label: 'Pro hired', tone: 'success' },
-  [JobStatus.FUNDED]: { label: 'Payment secured', tone: 'success' },
-  [JobStatus.IN_PROGRESS]: { label: 'In progress', tone: 'brand' },
-  [JobStatus.PAYMENT_DUE]: { label: 'Payment due', tone: 'warning' },
-  [JobStatus.COMPLETED]: { label: 'Completed', tone: 'success' },
-  [JobStatus.CANCELLED]: { label: 'Cancelled', tone: 'neutral' },
-  [JobStatus.DISPUTED]: { label: 'In dispute', tone: 'error' },
-};
-
-const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? '' : 's'}`;
 
 /**
  * Open jobs with quotes show the count instead of "Waiting for quotes";
  * jobs in progress show what's approved, or that an update is waiting for the customer.
  */
-export const jobBadge = (job: Pick<Job, 'status' | 'quoteCount'> & Partial<Pick<Job, 'milestoneStatus' | 'progressPct'>>) => {
-  if (job.status === JobStatus.OPEN && job.quoteCount > 0) return { label: plural(job.quoteCount, 'quote'), tone: 'brand' as BadgeTone };
+export const jobBadge = (
+  job: Pick<Job, 'status' | 'quoteCount'> & Partial<Pick<Job, 'milestoneStatus' | 'progressPct'>>,
+): Badge => {
+  if (job.status === JobStatus.OPEN && job.quoteCount > 0) return { label: plural(job.quoteCount, 'quote'), tone: 'brand' };
   if (job.status === JobStatus.IN_PROGRESS && job.milestoneStatus === MilestoneStatus.SUBMITTED) {
-    return { label: 'Approval needed', tone: 'warning' as BadgeTone };
+    return { label: 'Approval needed', tone: 'warning' };
   }
-  if (job.status === JobStatus.IN_PROGRESS && job.progressPct) return { label: `${job.progressPct}% done`, tone: 'brand' as BadgeTone };
-  return STATUS_BADGE[job.status];
+  if (job.status === JobStatus.IN_PROGRESS && job.progressPct) return { label: `${job.progressPct}% done`, tone: 'brand' };
+  return JOB_STATUS_BADGE[job.status];
 };
 
 export const jobWhere = (job: Pick<Job, 'categoryName' | 'areaName'>) =>

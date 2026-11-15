@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { HelpioLogo } from '../../../component/marketplace';
+import { HelpioLogo } from '@/components/common';
 
 /** The admin log-in and access pages: a centred card on a quiet background, outside the console shell. */
 const AdminAuthCard = ({ children }: { children: ReactNode }) => (

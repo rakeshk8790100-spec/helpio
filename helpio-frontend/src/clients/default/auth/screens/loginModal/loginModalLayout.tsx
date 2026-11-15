@@ -1,11 +1,11 @@
 import { Button, Modal } from 'antd';
 import { ArrowLeft, Briefcase, ChevronRight, Home } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { UserRole } from '../../../common/CommonEnum';
-import type { SelfServiceRole } from '../../../common/CommonEnum';
-import AuthHeader from './authHeader';
-import LoginLayout from './login.layout';
-import type { LoginModalLayoutProps } from './loginModal.layout.types';
+import LoginLayout from '@/clients/default/auth/screens/login/loginLayout';
+import AuthHeader from '@/clients/default/auth/shared/authHeader';
+import { UserRole } from '@/common/CommonEnum';
+import type { SelfServiceRole } from '@/common/CommonEnum';
+import type { LoginModalLayoutProps } from '@/pages/auth/types/auth.dto';
 
 const CHOICES: { role: SelfServiceRole; Icon: LucideIcon; title: string; text: string; iconTone: string }[] = [
   { role: UserRole.CUSTOMER, Icon: Home, title: 'I need help at home', text: 'Log in as a customer', iconTone: 'bg-indigo-50 text-indigo-600' },

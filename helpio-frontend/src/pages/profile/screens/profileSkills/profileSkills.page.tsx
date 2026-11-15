@@ -1,7 +1,12 @@
-import SkillsLayout from '../../../client/default/onboarding/skills.layout';
-import { useOnboardingSkills } from '../../../hooks/useOnboardingSkills';
+import { SkillsLayout } from '@/clients';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { useOnboardingSkills } from '@/hooks/useOnboardingSkills';
 
 /** /profile/skills: the sign-up skills screen, saving back to Profile. */
-const ProfileSkillsPage = () => <SkillsLayout {...useOnboardingSkills({ editing: true })} />;
+const ProfileSkillsPage = () => (
+  <SuspenseWrapper>
+    <SkillsLayout {...useOnboardingSkills({ editing: true })} />
+  </SuspenseWrapper>
+);
 
 export default ProfileSkillsPage;

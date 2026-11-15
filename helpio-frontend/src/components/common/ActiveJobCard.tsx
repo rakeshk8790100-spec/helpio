@@ -1,5 +1,5 @@
 import { ArrowRight, ShieldAlert } from 'lucide-react';
-import ProgressBar from '../ui/ProgressBar';
+import ProgressBar from '@/components/ui/ProgressBar';
 
 interface Props {
   /** e.g. "Active job" */

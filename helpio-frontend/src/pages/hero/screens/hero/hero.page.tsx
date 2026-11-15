@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { EARN_SECTION_ID } from '../client/default/hero/hero.layout.types';
-import type { LandingLayoutProps } from '../client/default/hero/hero.layout.types';
-import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
-import { useGetLandingQuery } from '../pages/hero/hero.api';
-import { useServiceSearch } from './useServiceSearch';
+import { HeroLayout } from '@/clients';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { RouterKeys, toPath, withQuery } from '@/config/router/RouterKeys';
+import { useGetLandingQuery } from './hero.api';
+import { useServiceSearch } from './hero.search';
+import type { LandingLayoutProps } from './types/hero.dto';
+import { EARN_SECTION_ID } from './types/hero.enum';
 
 /** Average weeks per month, for turning weekly hours into a monthly estimate */
 const WEEKS_PER_MONTH = 4.3;
 
 /** All landing page behaviour; returns ready-to-render layout props. */
-export const useLanding = (): LandingLayoutProps => {
+const useLanding = (): LandingLayoutProps => {
   const navigate = useNavigate();
   const { data } = useGetLandingQuery();
 
@@ -23,6 +25,7 @@ export const useLanding = (): LandingLayoutProps => {
   if (!data) return { loading: true };
 
   const rate = data.earningRates.find((r) => r.skillId === skillId) ?? data.earningRates[0];
+  if (!rate) return { loading: true };
   // Round to the nearest ₹100 so the estimate doesn't look falsely precise
   const monthlyEstimate = Math.round((rate.hourlyAvg * hours * WEEKS_PER_MONTH) / 100) * 100;
 
@@ -74,3 +77,12 @@ export const useLanding = (): LandingLayoutProps => {
     },
   };
 };
+
+/** `/` when signed out: the public landing page for customers and providers alike. */
+const HeroPage = () => (
+  <SuspenseWrapper>
+    <HeroLayout {...useLanding()} />
+  </SuspenseWrapper>
+);
+
+export default HeroPage;

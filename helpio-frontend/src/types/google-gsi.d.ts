@@ -1,3 +1,4 @@
+
 /* Minimal typings for Google Identity Services (https://accounts.google.com/gsi/client). */
 
 interface GoogleCredentialResponse {

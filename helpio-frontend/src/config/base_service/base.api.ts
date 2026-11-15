@@ -20,6 +20,18 @@ export const baseApi = createApi({
 
 export default baseApi;
 
+/** Screens that change while you look: refresh when the tab returns or the connection comes back */
+export const LIVE = { refetchOnFocus: true, refetchOnReconnect: true, skipPollingIfUnfocused: true } as const;
+
+/** Cache tag for one record (e.g. one job), so changing it refreshes only what shows it */
+export const one = <T extends TagType>(type: T, id: string) => ({ type, id });
+
+/** Cache tag for the lists of a type (My jobs, homes, nearby jobs), refreshed when any record is added or changes */
+export const list = <T extends TagType>(type: T) => ({ type, id: 'LIST' });
+
+/** Poll every `ms`, but only while the tab is in view */
+export const poll = (ms: number) => ({ pollingInterval: ms, skipPollingIfUnfocused: true }) as const;
+
 /**
  * `onQueryStarted` helper: dispatch an action built from the response once the request succeeds.
  * Failures are left to the calling hook, which shows the error.

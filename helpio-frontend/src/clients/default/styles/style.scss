@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+// The Inter font loads from index.html (a <link> starts sooner than a CSS @import)
 
 // ── 2. SCSS variables (design tokens) ────────────────────────
 
@@ -207,97 +207,83 @@ $breakpoint-xl: 1280px;
   --ease:                #{$ease-in-out};
 }
 
-// Dark mode overrides
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface:           #{$surface-dark};
-    --bg:                #{$bg-dark};
-    --border:            rgba(255, 255, 255, 0.1);
-    --border-subtle:     rgba(255, 255, 255, 0.06);
-    --text:              #{$neutral-200};
-    --text-muted:        #{$neutral-400};
-    --text-disabled:     #{$neutral-600};
-    --text-heading:      #{$neutral-50};
-    --text-inverted:     #{$neutral-900};
-    --shadow-sm:         0 1px 2px 0 rgba(0, 0, 0, 0.4);
-    --shadow-md:         0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-    --shadow-lg:         0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-  }
-}
-
 // ── 5. Global base reset + typography ─────────────────────────
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+// In the base layer, with Tailwind's own reset: a Tailwind class on an element (a link's text-*, a p's
+// margin) now beats these defaults, so no "!" is needed for it.
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
 
-html {
-  font-size: $font-size-base;
-  scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
-  -webkit-tap-highlight-color: transparent;
-}
+  html {
+    font-size: $font-size-base;
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-body {
-  margin: 0;
-  font-family: $font-sans;
-  font-size: $font-size-base;
-  line-height: $line-height-base;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+  body {
+    margin: 0;
+    font-family: $font-sans;
+    font-size: $font-size-base;
+    line-height: $line-height-base;
+    color: var(--text);
+    background: var(--bg);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-// Headings
-h1, h2, h3, h4, h5, h6 {
-  margin: 0;
-  font-family: $font-sans;
-  font-weight: 700;
-  line-height: 1.2;
-  color: var(--text-heading);
-  letter-spacing: -0.02em;
-}
+  // Headings
+  h1, h2, h3, h4, h5, h6 {
+    margin: 0;
+    font-family: $font-sans;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-heading);
+    letter-spacing: -0.02em;
+  }
 
-h1 { font-size: 2.25rem; }
-h2 { font-size: 1.75rem; }
-h3 { font-size: 1.375rem; }
-h4 { font-size: 1.125rem; }
-h5 { font-size: 1rem;     }
-h6 { font-size: 0.875rem; }
+  h1 { font-size: 2.25rem; }
+  h2 { font-size: 1.75rem; }
+  h3 { font-size: 1.375rem; }
+  h4 { font-size: 1.125rem; }
+  h5 { font-size: 1rem;     }
+  h6 { font-size: 0.875rem; }
 
-p {
-  margin: 0 0 $space-4;
-  &:last-child { margin-bottom: 0; }
-}
+  p {
+    margin: 0 0 $space-4;
+    &:last-child { margin-bottom: 0; }
+  }
 
-a {
-  color: $color-primary;
-  text-decoration: none;
-  @include transition(color);
-  &:hover { color: $color-primary-hov; }
-}
+  a {
+    color: $color-primary;
+    text-decoration: none;
+    @include transition(color);
+    &:hover { color: $color-primary-hov; }
+  }
 
-code, pre, kbd, samp {
-  font-family: $font-mono;
-}
+  code, pre, kbd, samp {
+    font-family: $font-mono;
+  }
 
-img, video, svg {
-  display: block;
-  max-width: 100%;
-}
+  img, video, svg {
+    display: block;
+    max-width: 100%;
+  }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-}
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
 
-input, textarea, select {
-  font-family: inherit;
+  input, textarea, select {
+    font-family: inherit;
+  }
 }
 
 // ── 6. Utility classes ────────────────────────────────────────

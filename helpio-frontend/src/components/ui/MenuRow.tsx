@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface Props {
   Icon: LucideIcon;

@@ -1,14 +1,20 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { EarningsTab } from '../client/default/earnings/earnings.layout.types';
-import type { EarningRow, EarningsLayoutProps } from '../client/default/earnings/earnings.layout.types';
-import type { EarningItem } from '../common/CommonDto';
-import { PayoutStatus } from '../common/CommonEnum';
-import { RouterKeys, toPath } from '../config/router/RouterKeys';
-import { apiErrorMessage } from '../lib/apiError';
-import { formatShortDate } from '../lib/utils';
-import { useGetProviderEarningsQuery } from '../pages/earnings/earnings.api';
+import { EarningsLayout } from '@/clients';
+import type { EarningItem } from '@/common/CommonDto';
+import { PayoutStatus } from '@/common/CommonEnum';
+import { paymentMethodLabel } from '@/common/CommonLabels';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { RouterKeys, toPath } from '@/config/router/RouterKeys';
+import { apiErrorMessage } from '@/lib/apiError';
+import { formatShortDate } from '@/lib/utils';
+import { useGetProviderEarningsQuery } from './earnings.api';
+import type { EarningRow, EarningsLayoutProps } from './types/earnings.dto';
+import { EarningsTab } from './types/earnings.enum';
 
-const TABS: { value: EarningsTab; label: string; payout: PayoutStatus | null; empty: string }[] = [
+type Tab = { value: EarningsTab; label: string; payout: PayoutStatus | null; empty: string };
+
+// Never empty: the first tab is the default
+const TABS: [Tab, ...Tab[]] = [
   { value: EarningsTab.ALL, label: 'All', payout: null, empty: 'No earnings yet. Once a customer pays for a finished job, it shows up here.' },
   {
     value: EarningsTab.TO_RECEIVE,
@@ -19,11 +25,9 @@ const TABS: { value: EarningsTab; label: string; payout: PayoutStatus | null; em
   { value: EarningsTab.RECEIVED, label: 'Received', payout: PayoutStatus.PAID, empty: 'No payouts yet. Money Helpio sends you shows here.' },
 ];
 
-const METHOD_LABEL: Record<string, string> = { upi: 'UPI', netbanking: 'Netbanking' };
-
 const toRow = (item: EarningItem, onOpen: () => void): EarningRow => {
   const sent = item.payoutStatus === PayoutStatus.PAID;
-  const method = item.method && (METHOD_LABEL[item.method] ?? item.method);
+  const method = paymentMethodLabel(item.method);
   return {
     id: item.paymentId,
     title: item.jobTitle,
@@ -40,7 +44,7 @@ const toRow = (item: EarningItem, onOpen: () => void): EarningRow => {
 };
 
 /** /pro/earnings: totals and paid jobs by payout state. The tab lives in `?tab=` so Back returns to it. */
-export const useEarnings = (): EarningsLayoutProps => {
+const useEarnings = (): EarningsLayoutProps => {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const { data, error, isLoading, refetch } = useGetProviderEarningsQuery();
@@ -67,3 +71,11 @@ export const useEarnings = (): EarningsLayoutProps => {
     },
   };
 };
+
+const EarningsPage = () => (
+  <SuspenseWrapper>
+    <EarningsLayout {...useEarnings()} />
+  </SuspenseWrapper>
+);
+
+export default EarningsPage;

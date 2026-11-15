@@ -1,14 +1,15 @@
 import { Skeleton } from 'antd';
 import { ClipboardList, Heart, Search, SearchX, Siren } from 'lucide-react';
+import type { JobItem } from '@/common/JobDisplay';
 import {
   ActiveJobCard,
   CategoryGrid,
   JobCard,
   PostJobComposer,
   ProviderCard,
-} from '../../../component/marketplace';
-import { AlertBanner, Chip, EmptyState, HScroll, SectionHeader } from '../../../component/ui';
-import type { CustomerHomeLayoutProps, JobItem } from './home.layout.types';
+} from '@/components/common';
+import { AlertBanner, Chip, EmptyState, HScroll, SectionHeader } from '@/components/ui';
+import type { CustomerHomeLayoutProps } from '@/pages/home/screens/customerHome/types/customerHome.dto';
 
 const JobList = ({ title, items, actionLabel, onAction }: { title: string; items: JobItem[]; actionLabel?: string; onAction?: () => void }) =>
   items.length > 0 && (
@@ -32,7 +33,7 @@ const CustomerHomeLayout = (p: CustomerHomeLayoutProps) => {
     <div className="flex flex-col gap-6">
       {/* ① Greeting and search */}
       <div className="-mx-5 -mt-5 bg-linear-to-b from-indigo-50 to-white px-5 pt-6">
-        <div className="text-xl font-bold text-slate-900">Hi, {p.firstName}</div>
+        <h1 className="text-xl font-bold tracking-normal text-slate-900">Hi, {p.firstName}</h1>
         <div className="mt-1 text-sm text-slate-600">What needs doing today?</div>
       </div>
       <button

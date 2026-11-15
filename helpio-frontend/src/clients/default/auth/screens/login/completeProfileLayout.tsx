@@ -1,7 +1,7 @@
 import { Alert, Button, Form } from 'antd';
 import { UserRoundCheck } from 'lucide-react';
-import { NameField, PhoneField } from './authFields';
-import type { CompleteProfileLayoutProps } from './login.layout.types';
+import { NameField, PhoneField } from '@/clients/default/auth/shared/authFields';
+import type { CompleteProfileLayoutProps } from '@/pages/auth/types/auth.dto';
 
 /** One-time step after Google sign-in when the account has no name or mobile number yet. */
 const CompleteProfileLayout = (p: CompleteProfileLayoutProps) => (

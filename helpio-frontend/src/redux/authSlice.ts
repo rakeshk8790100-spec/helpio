@@ -1,8 +1,8 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { AuthSession, AuthUser, Favorites } from '../common/CommonDto';
-import type { OnboardingStatus } from '../common/CommonEnum';
-import { authStorage } from '../config/base_service/auth.storage';
+import type { AuthSession, AuthUser, Favorites } from '@/common/CommonDto';
+import type { OnboardingStatus } from '@/common/CommonEnum';
+import { authStorage } from '@/config/base_service/auth.storage';
 
 interface AuthState {
   token: string | null;

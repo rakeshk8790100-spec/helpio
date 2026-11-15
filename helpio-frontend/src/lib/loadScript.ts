@@ -1,3 +1,4 @@
+
 const pending = new Map<string, Promise<void>>();
 
 /** Inject an external script once; later calls share the same promise. A failed load can be retried. */

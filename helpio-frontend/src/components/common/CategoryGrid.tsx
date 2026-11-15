@@ -1,6 +1,6 @@
 import { LayoutGrid } from 'lucide-react';
-import type { Category } from '../../common/CommonDto';
-import IconTile from '../ui/IconTile';
+import type { Category } from '@/common/CommonDto';
+import IconTile from '@/components/ui/IconTile';
 import { categoryIcon } from './categoryIcons';
 
 interface Props {

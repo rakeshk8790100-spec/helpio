@@ -1,6 +1,9 @@
+import { lazy } from 'react';
+
 export { default as ActiveJobCard } from './ActiveJobCard';
 export { default as AudienceCard } from './AudienceCard';
 export { default as CategoryGrid } from './CategoryGrid';
+export { default as ComingSoon } from './ComingSoon';
 export { default as ChatThread } from './ChatThread';
 export type { ChatBubble } from './ChatThread';
 export { default as ChecklistCard } from './ChecklistCard';
@@ -9,7 +12,8 @@ export { default as EarningsCalculator } from './EarningsCalculator';
 export { default as HelpioLogo } from './HelpioLogo';
 export { default as HiredJobCard } from './HiredJobCard';
 export { default as JobCard } from './JobCard';
-export { default as JobMap } from './JobMap';
+// Loaded on demand: the map library is large and only a few provider screens show a map
+export const JobMap = lazy(() => import('./JobMap'));
 export type { JobMapItem } from './JobMap';
 export { default as MilestoneTracker } from './MilestoneTracker';
 export type { TrackerStage } from './MilestoneTracker';

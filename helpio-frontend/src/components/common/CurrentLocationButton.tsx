@@ -1,6 +1,6 @@
 import { Alert, Button } from 'antd';
 import { CircleCheck, LocateFixed } from 'lucide-react';
-import type { Coordinates } from '../../common/CommonDto';
+import type { Coordinates } from '@/common/CommonDto';
 
 interface Props {
   coordinates: Coordinates | null;

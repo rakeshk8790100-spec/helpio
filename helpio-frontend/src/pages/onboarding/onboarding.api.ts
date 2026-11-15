@@ -1,6 +1,7 @@
-import type { AvailabilitySlot, ProviderOnboarding, ProviderSkill, ServiceArea } from '../../common/CommonDto';
-import { baseApi, dispatchOnSuccess } from '../../config/base_service/base.api';
-import { onboardingStatusChanged } from '../../redux/authSlice';
+import type { AvailabilitySlot, ProviderOnboarding, ProviderSkill, ServiceArea } from '@/common/CommonDto';
+import { baseApi, dispatchOnSuccess } from '@/config/base_service/base.api';
+import { APIS } from '@/config/base_service/http.config';
+import { onboardingStatusChanged } from '@/redux/authSlice';
 import type { OnboardingApiDto, ProviderSkillApiDto, SaveServiceSetupApiDto } from './types/onboarding.dto';
 
 const toOnboarding = (dto: OnboardingApiDto): ProviderOnboarding => ({
@@ -25,13 +26,13 @@ const syncStatus = dispatchOnSuccess<ProviderOnboarding>((data) => onboardingSta
 export const onboardingApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getOnboarding: builder.query<ProviderOnboarding, void>({
-      query: () => '/providers/me/onboarding',
+      query: () => APIS.PROVIDER.ONBOARDING,
       transformResponse: toOnboarding,
       providesTags: ['Onboarding'],
     }),
     saveSkills: builder.mutation<ProviderOnboarding, ProviderSkill[]>({
       query: (skills) => ({
-        url: '/providers/me/skills',
+        url: APIS.PROVIDER.SKILLS,
         method: 'PUT',
         body: {
           skills: skills.map((s): ProviderSkillApiDto => ({
@@ -45,13 +46,13 @@ export const onboardingApi = baseApi.injectEndpoints({
     }),
     /** The bio on the public profile ('' clears it) */
     updateBio: builder.mutation<ProviderOnboarding, string>({
-      query: (bio) => ({ url: '/providers/me/profile', method: 'PATCH', body: { bio } }),
+      query: (bio) => ({ url: APIS.PROVIDER.PROFILE, method: 'PATCH', body: { bio } }),
       transformResponse: toOnboarding,
       invalidatesTags: ['Onboarding', 'Providers'],
     }),
     saveServiceSetup: builder.mutation<ProviderOnboarding, { availability: AvailabilitySlot[]; serviceArea: ServiceArea }>({
       query: ({ availability, serviceArea }) => ({
-        url: '/providers/me/service-setup',
+        url: APIS.PROVIDER.SERVICE_SETUP,
         method: 'PUT',
         body: {
           availability,

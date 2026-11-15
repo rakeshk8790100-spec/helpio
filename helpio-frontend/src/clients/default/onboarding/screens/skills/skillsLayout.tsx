@@ -1,8 +1,8 @@
 import { Alert, Button } from 'antd';
-import { SkillPicker } from '../../../component/marketplace';
-import { PageSkeleton, StepProgress } from '../../../component/ui';
-import { MAX_SKILLS, MIN_SKILLS, PROVIDER_SIGNUP_STEPS } from './onboarding.layout.types';
-import type { SkillsLayoutProps } from './onboarding.layout.types';
+import { SkillPicker } from '@/components/common';
+import { PageSkeleton, StepProgress } from '@/components/ui';
+import type { SkillsLayoutProps } from '@/pages/onboarding/types/onboarding.dto';
+import { MAX_SKILLS, MIN_SKILLS, PROVIDER_SIGNUP_STEPS } from '@/pages/onboarding/types/onboarding.enum';
 
 /** Provider sign-up step 2: search or browse services, pick at least MIN_SKILLS, and rate each. */
 const SkillsLayout = (p: SkillsLayoutProps) => {

@@ -1,10 +1,10 @@
 import { Alert, Button, Form, Input, Select } from 'antd';
 import { MapPin } from 'lucide-react';
-import { CurrentLocationButton } from '../../../component/marketplace';
-import { ChipMultiSelect, ChipSelect, PageSkeleton, StepProgress } from '../../../component/ui';
-import { WEEKDAY_SHORT, formatDays, formatDistance, formatTime } from '../../../lib/utils';
-import { PROVIDER_SIGNUP_STEPS } from './onboarding.layout.types';
-import type { ServiceAreaLayoutProps, ServiceSetupFormValues } from './onboarding.layout.types';
+import { CurrentLocationButton } from '@/components/common';
+import { ChipMultiSelect, ChipSelect, PageSkeleton, StepProgress } from '@/components/ui';
+import { WEEKDAY_SHORT, formatDays, formatDistance, formatTime } from '@/lib/utils';
+import type { ServiceAreaLayoutProps, ServiceSetupFormValues } from '@/pages/onboarding/types/onboarding.dto';
+import { PROVIDER_SIGNUP_STEPS } from '@/pages/onboarding/types/onboarding.enum';
 
 const DAY_OPTIONS = WEEKDAY_SHORT.map((label, day) => ({ value: day, label }));
 /** Metres, from a few streets away to across the city */

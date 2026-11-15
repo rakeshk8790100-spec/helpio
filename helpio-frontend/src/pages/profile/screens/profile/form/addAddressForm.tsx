@@ -1,17 +1,19 @@
-import { useState } from 'react';
 import { App, Form } from 'antd';
-import type { AddressEditorProps, AddressFormValues } from '../client/default/profile/profile.layout.types';
-import type { Address } from '../common/CommonDto';
-import { AddressLabel } from '../common/CommonEnum';
-import { apiErrorMessage } from '../lib/apiError';
-import { useAddAddressMutation, useUpdateAddressMutation } from '../pages/profile/profile.api';
-import { useCurrentLocation } from './useCurrentLocation';
+import { useState } from 'react';
+import { AddressForm } from '@/clients';
+import type { Address } from '@/common/CommonDto';
+import { AddressLabel } from '@/common/CommonEnum';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import { apiErrorMessage } from '@/lib/apiError';
+import { useAddAddressMutation, useUpdateAddressMutation } from '@/pages/profile/screens/profile/profile.api';
+import type { AddressEditorProps, AddressFormValues } from '@/pages/profile/screens/profile/types/profile.dto';
 
 /**
  * The add/edit address sheet. Mount it keyed by the address so the form and location start fresh each time.
  * `address` null adds a new one; `isFirst` makes a first address the default.
  */
-export const useAddressEditor = (address: Address | null, isFirst: boolean, onClose: () => void): AddressEditorProps => {
+const useAddressEditor = (address: Address | null, isFirst: boolean, onClose: () => void): AddressEditorProps => {
   const { message } = App.useApp();
   const [form] = Form.useForm<AddressFormValues>();
   const location = useCurrentLocation(address?.coordinates ?? null);
@@ -60,3 +62,18 @@ export const useAddressEditor = (address: Address | null, isFirst: boolean, onCl
     onClose,
   };
 };
+
+interface Props {
+  address: Address | null;
+  isFirst: boolean;
+  onClose: () => void;
+}
+
+/** Add or edit a saved address in a bottom sheet. */
+const AddAddressForm = ({ address, isFirst, onClose }: Props) => (
+  <SuspenseWrapper fallback={null}>
+    <AddressForm {...useAddressEditor(address, isFirst, onClose)} />
+  </SuspenseWrapper>
+);
+
+export default AddAddressForm;

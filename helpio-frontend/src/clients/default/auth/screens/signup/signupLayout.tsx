@@ -1,10 +1,10 @@
 import { Alert, Button, Form } from 'antd';
-import AuthHeader from './authHeader';
-import { EmailField, NameField, PasswordField, PhoneField } from './authFields';
-import EmailCodeStep from './emailCodeStep';
-import PendingApproval from './pendingApproval';
-import GoogleSignIn from './googleSignIn';
-import type { SignupLayoutProps } from './signup.layout.types';
+import { EmailField, NameField, PasswordField, PhoneField } from '@/clients/default/auth/shared/authFields';
+import AuthHeader from '@/clients/default/auth/shared/authHeader';
+import EmailCodeStep from '@/clients/default/auth/shared/emailCodeStep';
+import GoogleSignIn from '@/clients/default/auth/shared/googleSignIn';
+import PendingApproval from '@/clients/default/auth/shared/pendingApproval';
+import type { SignupLayoutProps } from '@/pages/auth/types/auth.dto';
 
 /** /signup: customer name, email, mobile and password (Google below the form), then the emailed code. */
 const SignupLayout = (p: SignupLayoutProps) => (

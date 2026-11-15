@@ -16,3 +16,6 @@ sketch
 # Local env overrides (secrets and machine-specific values)
 .env.local
 .env.*.local
+
+# Build output (the host builds it)
+dist

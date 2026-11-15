@@ -1,8 +1,8 @@
 import { MapPinned } from 'lucide-react';
-import { ActiveJobCard, ChecklistCard, NearbyJobCard } from '../../../component/marketplace';
-import { AlertBanner, EmptyState, PageSkeleton, SectionHeader, StatTile } from '../../../component/ui';
-import { formatINR } from '../../../lib/utils';
-import type { ProviderHomeLayoutProps } from './home.layout.types';
+import { ActiveJobCard, ChecklistCard, NearbyJobCard } from '@/components/common';
+import { AlertBanner, EmptyState, PageSkeleton, SectionHeader, StatTile } from '@/components/ui';
+import { formatINR } from '@/lib/utils';
+import type { ProviderHomeLayoutProps } from '@/pages/home/screens/providerHome/types/providerHome.dto';
 
 /** Signed-in provider home: earnings at a glance, unfinished sign-up, the live job, then nearby jobs to quote on. */
 const ProviderHomeLayout = (p: ProviderHomeLayoutProps) => {

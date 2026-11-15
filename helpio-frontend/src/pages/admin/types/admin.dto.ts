@@ -1,14 +1,5 @@
-import type { AdminParty, AppSettings } from '../../../common/CommonDto';
-import type {
-  ApprovalStatus,
-  JobStatus,
-  MilestoneStatus,
-  OnboardingStatus,
-  PaymentStatus,
-  PayoutStatus,
-  QuoteStatus,
-  UserRole,
-} from '../../../common/CommonEnum';
+import type { ApprovalStatus, JobStatus, MilestoneStatus, OnboardingStatus, PaymentStatus, PayoutStatus, QuoteStatus, UserRole } from '@/common/CommonEnum';
+import type { AdminParty, AppSettings } from './admin.models';
 
 /* Wire format (snake_case) of /admin/*. */
 

@@ -1,12 +1,12 @@
-import { Alert, Button, Input, Modal, Segmented, Table, Tabs } from 'antd';
+import { Alert, Input, Modal, Segmented, Table, Tabs } from 'antd';
 import { RefreshCw } from 'lucide-react';
-import type { AdminPaymentRow, AdminPayout } from '../../../common/CommonDto';
-import { PaymentStatus } from '../../../common/CommonEnum';
-import { PageHeader } from '../../../component/admin';
-import { AlertBanner, EmptyState, StatusBadge } from '../../../component/ui';
-import { formatClock, formatINR } from '../../../lib/utils';
-import { PAYMENT_BADGE, PAYOUT_BADGE } from './adminBadges';
-import type { PaymentsLayoutProps } from './admin.layout.types';
+import { PaymentStatus } from '@/common/CommonEnum';
+import { PAYMENT_BADGE } from '@/common/CommonLabels';
+import { PageHeader } from '@/components/admin';
+import { AlertBanner, EmptyState } from '@/components/ui';
+import { formatINR } from '@/lib/utils';
+import type { PaymentsLayoutProps } from '@/pages/admin/screens/payments/types/payments.dto';
+import type { AdminPaymentRow, AdminPayout } from '@/pages/admin/types/admin.models';
 
 /** /admin/payments: every Razorpay payment (re-check a stuck one), and payouts to send to pros. */
 const PaymentsLayout = (p: PaymentsLayoutProps) => (
@@ -51,59 +51,7 @@ const PaymentsLayout = (p: PaymentsLayoutProps) => (
                       onChange: p.payments.onPageChange,
                     }
                   }
-                  columns={[
-                    {
-                      title: 'Job',
-                      render: (_, r) => (
-                        <span>
-                          <span className="block text-sm font-semibold text-slate-900">{r.jobTitle}</span>
-                          <span className="block text-xs text-slate-500">
-                            {r.customer} → {r.pro}
-                          </span>
-                        </span>
-                      ),
-                    },
-                    { title: 'Amount', width: 110, render: (_, r) => <span className="text-sm font-semibold text-slate-900">{formatINR(r.amount)}</span> },
-                    {
-                      title: 'Status',
-                      width: 180,
-                      render: (_, r) => (
-                        <span className="flex flex-wrap gap-1">
-                          <StatusBadge label={PAYMENT_BADGE[r.status].label} tone={PAYMENT_BADGE[r.status].tone} />
-                          {r.status === 'paid' && <StatusBadge label={PAYOUT_BADGE[r.payoutStatus].label} tone={PAYOUT_BADGE[r.payoutStatus].tone} />}
-                        </span>
-                      ),
-                    },
-                    {
-                      title: 'Tries',
-                      width: 220,
-                      render: (_, r) => (
-                        <span className="text-xs text-slate-600">
-                          {r.tries} {r.tries === 1 ? 'try' : 'tries'}
-                          {r.failedTries > 0 && `, ${r.failedTries} failed`}
-                          {r.method && ` · ${r.method}`}
-                          {r.lastError && <span className="block text-red-700">{r.lastError}</span>}
-                        </span>
-                      ),
-                    },
-                    { title: 'Started', width: 150, render: (_, r) => <span className="text-xs text-slate-500">{formatClock(r.createdAt)}</span> },
-                    {
-                      title: '',
-                      width: 120,
-                      align: 'right',
-                      render: (_, r) =>
-                        r.status === 'pending' && p.payments.status === 'ready' ? (
-                          <Button
-                            size="small"
-                            icon={<RefreshCw size={12} />}
-                            loading={p.payments.recheckingId === r.id}
-                            onClick={() => p.payments.status === 'ready' && p.payments.onRecheck(r.id)}
-                          >
-                            Re-check
-                          </Button>
-                        ) : null,
-                    },
-                  ]}
+                  columns={p.paymentColumns}
                 />
               )}
             </div>
@@ -137,35 +85,7 @@ const PaymentsLayout = (p: PaymentsLayoutProps) => (
                   dataSource={p.payouts.status === 'ready' ? p.payouts.rows : []}
                   pagination={false}
                   className="rounded-2xl border border-slate-100 bg-white shadow-sm"
-                  columns={[
-                    {
-                      title: 'Pro',
-                      render: (_, r) => (
-                        <span>
-                          <span className="block text-sm font-semibold text-slate-900">{r.providerName ?? r.providerEmail}</span>
-                          <span className="block text-xs text-slate-500">{[r.providerPhone, r.providerEmail].filter(Boolean).join(' · ')}</span>
-                        </span>
-                      ),
-                    },
-                    { title: 'Job', render: (_, r) => <span className="text-sm text-slate-700">{r.jobTitle}</span> },
-                    { title: 'Amount', width: 110, render: (_, r) => <span className="text-sm font-semibold text-slate-900">{formatINR(r.amount)}</span> },
-                    { title: 'Paid by customer', width: 160, render: (_, r) => <span className="text-xs text-slate-500">{r.paidAt ? formatClock(r.paidAt) : '–'}</span> },
-                    {
-                      title: '',
-                      width: 220,
-                      align: 'right',
-                      render: (_, r) =>
-                        r.payoutStatus === 'pending' ? (
-                          <Button size="small" type="primary" onClick={() => p.payouts.status === 'ready' && p.payouts.onMarkSent(r)}>
-                            Mark as sent
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-slate-500">
-                            Ref {r.payoutReference} · {r.payoutAt ? formatClock(r.payoutAt) : ''}
-                          </span>
-                        ),
-                    },
-                  ]}
+                  columns={p.payoutColumns}
                 />
               )}
             </div>

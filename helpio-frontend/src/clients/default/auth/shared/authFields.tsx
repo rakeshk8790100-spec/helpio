@@ -1,5 +1,5 @@
 import { Form, Input } from 'antd';
-import { OTP_LENGTH } from '../../../common/CommonEnum';
+import { OTP_LENGTH } from '@/common/CommonEnum';
 
 /* Form fields shared by the log-in, sign-up and password layouts. Use inside an antd `Form`. */
 

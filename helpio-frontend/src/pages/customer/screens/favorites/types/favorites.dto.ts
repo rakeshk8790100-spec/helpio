@@ -1,4 +1,4 @@
-import type { WithStatus } from '../layout.types';
+import type { WithStatus } from '@/common/CommonDto';
 
 /* Contract between the favourites popup's hook (behaviour) and its markup. */
 

@@ -1,10 +1,10 @@
 import { Button, Popconfirm } from 'antd';
 import { BadgeCheck, ChevronRight, MapPin } from 'lucide-react';
-import type { CustomerQuote } from '../../common/CommonDto';
-import { QuoteStatus } from '../../common/CommonEnum';
-import { formatINR } from '../../lib/utils';
-import Avatar from '../ui/Avatar';
-import StatusBadge from '../ui/StatusBadge';
+import type { CustomerQuote } from '@/common/CommonDto';
+import { QuoteStatus } from '@/common/CommonEnum';
+import Avatar from '@/components/ui/Avatar';
+import StatusBadge from '@/components/ui/StatusBadge';
+import { formatINR } from '@/lib/utils';
 import { PROFICIENCY_LABEL } from './proficiency';
 
 interface Props {

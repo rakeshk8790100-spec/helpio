@@ -1,10 +1,8 @@
 import { Dropdown } from 'antd';
 import { LogOut } from 'lucide-react';
-import type { AuthUser } from '../../common/CommonDto';
-import { UserRole } from '../../common/CommonEnum';
-import Avatar from '../ui/Avatar';
-
-const ROLE_LABEL = { [UserRole.ADMIN]: 'Admin', [UserRole.CUSTOMER]: 'Customer', [UserRole.PROVIDER]: 'Professional' };
+import type { AuthUser } from '@/common/CommonDto';
+import { ROLE_LABEL } from '@/common/CommonLabels';
+import Avatar from '@/components/ui/Avatar';
 
 interface Props {
   user: AuthUser;

@@ -1,23 +1,25 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { ProviderSearchLayoutProps } from '../client/default/pros/pros.layout.types';
-import { useGetSkillCatalogQuery } from '../common/CommonApi';
-import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
-import { apiErrorMessage } from '../lib/apiError';
-import { useGetAddressesQuery } from '../pages/profile/profile.api';
-import { useSearchProvidersQuery } from '../pages/pros/pros.api';
-import type { ProviderSearchArgs } from '../pages/pros/types/pros.dto';
-import { useCurrentLocation } from './useCurrentLocation';
-import { useDebouncedValue } from './useDebouncedValue';
+import { ProviderSearchLayout } from '@/clients';
+import { useGetSkillCatalogQuery } from '@/common/CommonApi';
+import { useGetAddressesQuery } from '@/common/CommonApi';
+import { ADDRESS_LABEL } from '@/common/CommonLabels';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { RouterKeys, toPath, withQuery } from '@/config/router/RouterKeys';
+import { useCurrentLocation } from '@/hooks/useCurrentLocation';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { apiErrorMessage } from '@/lib/apiError';
+import { useSearchProvidersQuery } from '@/pages/pros/pros.api';
+import type { ProviderSearchArgs } from '@/pages/pros/types/pros.dto';
+import type { ProviderSearchLayoutProps } from './types/providerSearch.dto';
 
 const CURRENT = 'current';
-const LABEL = { home: 'Home', work: 'Work', other: 'Other' };
 
 /**
  * /search?q=&category=: pros who serve the chosen place (default address first, or the device location),
  * filtered by skill text or category. Search text and category live in the URL so Back keeps them.
  */
-export const useProviderSearch = (): ProviderSearchLayoutProps => {
+const useProviderSearch = (): ProviderSearchLayoutProps => {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const catalog = useGetSkillCatalogQuery();
@@ -70,7 +72,7 @@ export const useProviderSearch = (): ProviderSearchLayoutProps => {
       }, { replace: true }),
     ),
     places: [
-      ...saved.map((a) => ({ value: a.id, label: `${LABEL[a.label]} · ${a.areaName}` })),
+      ...saved.map((a) => ({ value: a.id, label: `${ADDRESS_LABEL[a.label]} · ${a.areaName}` })),
       { value: CURRENT, label: location.coordinates ? 'My current location' : 'Use my current location' },
     ],
     place: place ?? '',
@@ -110,3 +112,12 @@ export const useProviderSearch = (): ProviderSearchLayoutProps => {
             },
   };
 };
+
+/** /search: find pros who serve your area. */
+const ProviderSearchPage = () => (
+  <SuspenseWrapper>
+    <ProviderSearchLayout {...useProviderSearch()} />
+  </SuspenseWrapper>
+);
+
+export default ProviderSearchPage;

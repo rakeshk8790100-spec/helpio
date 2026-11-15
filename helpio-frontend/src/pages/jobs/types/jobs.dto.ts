@@ -1,16 +1,10 @@
-import type { JobApiDto, MapCircleApiDto, NearbyJobApiDto, QuoteApiDto } from '../../../common/CommonApi';
-import type { Coordinates, RatingSummary } from '../../../common/CommonDto';
-import type {
-  InviteStatus,
-  JobEventType,
-  JobStatus,
-  MilestoneStatus,
-  PaymentAttemptStatus,
-  PaymentStatus,
-  PayoutStatus,
-  Proficiency,
-  UserRole,
-} from '../../../common/CommonEnum';
+import type { ComponentProps } from 'react';
+import type { JobApiDto, QuoteApiDto } from '@/common/CommonApi';
+import type { JobAttachment } from '@/common/CommonDto';
+import type { WithStatus } from '@/common/CommonDto';
+import type { InviteStatus, JobEventType, JobStatus, MilestoneStatus, PaymentAttemptStatus, PaymentStatus, PayoutStatus, Proficiency, UserRole } from '@/common/CommonEnum';
+import type { PhotoPicker, TrackerStage } from '@/components/common';
+import type { BadgeTone, ChipOption } from '@/components/ui';
 
 /* Wire format (snake_case, money in paise) of /jobs/*. App-side inputs are in ₹ and camelCase. */
 
@@ -45,23 +39,6 @@ export interface JobDetailApiDto extends JobApiDto {
   pin_locked: boolean;
   started_at: string | null;
   unread_messages: number;
-}
-
-export interface NearbyJobDetailApiDto extends NearbyJobApiDto {
-  attachments: AttachmentApiDto[];
-  can_quote: boolean;
-  hired: boolean;
-  exact_location: {
-    latitude: number | null;
-    longitude: number | null;
-    pincode: string | null;
-    area_name: string | null;
-    address_line: string | null;
-  } | null;
-  customer_name: string | null;
-  started_at: string | null;
-  unread_messages: number;
-  customer_rating: RatingSummary;
 }
 
 export interface MilestoneSubmissionApiDto {
@@ -102,70 +79,6 @@ export interface MilestonesApiDto {
     data: { stage?: number; reason?: string; amount_paise?: number; rating?: number };
     created_at: string;
   }[];
-}
-
-export interface ProviderJobApiDto extends NearbyJobApiDto {
-  customer_name: string | null;
-  started_at: string | null;
-  amount_paise: number;
-  earned_paise: number;
-  milestone_stage: number | null;
-  milestone_status: MilestoneStatus | null;
-  next_due_at: string | null;
-  unread_messages: number;
-}
-
-export interface NearbyJobsApiDto {
-  area: MapCircleApiDto | null;
-  categories: { id: string; name: string }[];
-  jobs: NearbyJobApiDto[];
-}
-
-/** Everything the customer fills in; drafts may leave fields empty */
-export interface JobInput {
-  title?: string;
-  description?: string | null;
-  categoryId?: string | null;
-  coordinates?: Coordinates | null;
-  pincode?: string | null;
-  areaName?: string | null;
-  /** Flat, building and street; only the hired pro sees it */
-  addressLine?: string | null;
-  /** ₹ */
-  budget?: number | null;
-  /** ISO date-time with timezone */
-  scheduledAt?: string | null;
-  durationMins?: number | null;
-  isEmergency?: boolean;
-  /** true posts the job to nearby providers */
-  submit: boolean;
-}
-
-/** A first draft of the post form from the customer's own words */
-export interface AssistJobApiDto {
-  title: string;
-  category_id: string | null;
-  description: string;
-  duration_mins: number | null;
-  is_emergency: boolean;
-  source: 'ai' | 'keywords';
-}
-
-export interface JobDraftSuggestion {
-  title: string;
-  categoryId: string | null;
-  description: string;
-  durationMins: number | null;
-  isEmergency: boolean;
-  /** "ai" when Claude wrote it */
-  source: 'ai' | 'keywords';
-}
-
-export interface NearbyFilters {
-  categoryId?: string;
-  maxKm?: number;
-  hasBudget?: boolean;
-  urgentOnly?: boolean;
 }
 
 export interface JobPaymentApiDto {
@@ -214,10 +127,171 @@ export interface JobReviewsApiDto {
   theirs: JobReviewApiDto | null;
 }
 
-export interface ChatApiDto {
-  job_id: string;
-  job_title: string;
-  other_name: string;
-  other_avatar_url: string | null;
-  messages: { id: string; body: string; mine: boolean; sender_name: string; created_at: string }[];
+/* Contract between pages/jobs (behaviour) and client/default/jobs (markup): posting, My jobs, job hub, provider search and quoting. */
+
+// ----- Progress: four 25% stages (customer and hired pro) -----
+
+/** How long the whole job should take; each 25% stage gets a quarter of it */
+export interface EstimatePickerProps {
+  options: ChipOption<number>[];
+  value: number | null;
+  onChange: (minutes: number) => void;
+}
+
+export interface StageAttempt {
+  id: string;
+  note: string;
+  photos: JobAttachment[];
+  /** e.g. "Sent 4:05 PM" */
+  submittedLabel: string;
+  review: { label: string; tone: BadgeTone; note: string | null };
+}
+
+export interface StageItem {
+  stage: number;
+  percent: number;
+  /** e.g. "Half way (50%)" */
+  title: string;
+  /** This stage's share of the quote, ₹ */
+  amount: number;
+  badge: { label: string; tone: BadgeTone };
+  /** e.g. "Target 4:45 PM", "Approved 4:40 PM · 5 min early"; red when late */
+  timing: { text: string; late: boolean } | null;
+  /** e.g. "+20 min fixing (not charged)" */
+  fixingLabel: string | null;
+  /** Oldest first */
+  attempts: StageAttempt[];
+  /** The first stage not yet approved */
+  current: boolean;
+}
+
+export interface StageSubmitProps {
+  stage: number;
+  percent: number;
+  /** The customer's reason, when they sent the last update back */
+  changesNote: string | null;
+  photos: ComponentProps<typeof PhotoPicker>;
+  note: string;
+  onNoteChange: (value: string) => void;
+  submitting: boolean;
+  error?: string;
+  onSubmit: () => void;
+}
+
+export interface StageReviewProps {
+  stage: number;
+  percent: number;
+  /** ₹ this approval releases */
+  amount: number;
+  proName: string;
+  attempt: StageAttempt;
+  approving: boolean;
+  onApprove: () => void;
+  changes: {
+    open: boolean;
+    onOpen: () => void;
+    onCancel: () => void;
+    reason: string;
+    onReasonChange: (value: string) => void;
+    sending: boolean;
+    error?: string;
+    onSend: () => void;
+  };
+}
+
+export type JobProgressProps = WithStatus<{
+  progressPct: number;
+  tracker: TrackerStage[];
+  /** e.g. "₹250 of ₹1,000 approved" */
+  earnedLabel: string;
+  /** What happens next, in plain words */
+  headline: string;
+  /** e.g. "Estimate 3 hr · started 4:00 PM · finish by 7:00 PM" */
+  scheduleLabel: string | null;
+  /** The open stage's countdown, e.g. "25% due by 4:45 PM · in 20 min"; red when overdue */
+  currentTiming: { text: string; late: boolean } | null;
+  /** e.g. "+20 min fixing so far (not charged)" */
+  fixingLabel: string | null;
+  /** Hired pro, job started before estimates existed: set it once */
+  setEstimate: { picker: EstimatePickerProps; saving: boolean; onSave: () => void } | null;
+  /** Hired pro: the open stage's update form */
+  submit: StageSubmitProps | null;
+  /** Customer: an update waiting for approval */
+  review: StageReviewProps | null;
+  stages: StageItem[];
+  /** Newest first */
+  timeline: { id: string; text: string; detail: string | null; time: string }[];
+}>;
+
+// ----- After 100%: paying on Razorpay, and one review each way -----
+
+export interface PaymentTry {
+  id: string;
+  /** e.g. "Failed", "Paid" */
+  badge: { label: string; tone: BadgeTone };
+  /** e.g. "UPI · 4:05 PM" */
+  meta: string;
+  /** Razorpay's reason when it failed */
+  reason: string | null;
+}
+
+export type JobPaymentProps = WithStatus<{
+  /** due: the customer's turn; waiting: the pro waits for the customer; done: paid */
+  tone: 'due' | 'waiting' | 'done';
+  /** e.g. "Pay ₹1,500 to finish" */
+  title: string;
+  badge: { label: string; tone: BadgeTone };
+  /** What happens next, in plain words */
+  text: string;
+  /** Customer: Razorpay's reason the last try failed, while the payment is still open */
+  lastError: string | null;
+  /** Customer, while the job waits for payment: off to Razorpay's page */
+  pay: { label: string; starting: boolean; onPay: () => void } | null;
+  /** Back from Razorpay: the payment is being checked */
+  confirming: boolean;
+  /** Customer, after a failed try: every try, oldest first */
+  tries: PaymentTry[];
+}>;
+
+export interface ReviewView {
+  rating: number;
+  comment: string | null;
+  /** e.g. "Your review · 28 Oct" or "Ravi S. rated you · 28 Oct" */
+  caption: string;
+}
+
+export type JobReviewProps = WithStatus<{
+  /** e.g. "How did Ravi S. do?" */
+  title: string;
+  /** Until I've reviewed: pick stars, add a comment, send once */
+  form: {
+    hint: string;
+    rating: number;
+    onRatingChange: (value: number) => void;
+    comment: string;
+    onCommentChange: (value: string) => void;
+    maxLength: number;
+    sending: boolean;
+    error?: string;
+    onSend: () => void;
+  } | null;
+  mine: ReviewView | null;
+  /** The other side's review of me */
+  theirs: ReviewView | null;
+  /** e.g. "Ravi S. hasn't reviewed you yet." */
+  waitingText: string | null;
+}>;
+
+// ----- A job's header (customer and hired pro) -----
+
+export interface JobSummary {
+  title: string;
+  badge: { label: string; tone: BadgeTone };
+  isEmergency: boolean;
+  /** Changed after posting (for a provider: after their quote) */
+  edited: boolean;
+  /** Plain facts, e.g. ["Plumbing", "Indiranagar 560038", "Tue 28 Oct, 4:00 PM", "2 hr", "Budget ₹800"] */
+  facts: string[];
+  description: string | null;
+  photos: JobAttachment[];
 }

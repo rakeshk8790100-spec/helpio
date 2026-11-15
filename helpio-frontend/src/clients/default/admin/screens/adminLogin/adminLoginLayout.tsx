@@ -1,9 +1,9 @@
 import { Alert, Button, Form } from 'antd';
 import { ShieldCheck } from 'lucide-react';
-import { EmailField, PasswordField } from '../auth/authFields';
-import EmailCodeStep from '../auth/emailCodeStep';
-import AdminAuthCard from './adminAuthCard';
-import type { AdminLoginLayoutProps } from './admin.layout.types';
+import AdminAuthCard from '@/clients/default/admin/shared/adminAuthCard';
+import { EmailField, PasswordField } from '@/clients/default/auth/shared/authFields';
+import EmailCodeStep from '@/clients/default/auth/shared/emailCodeStep';
+import type { AdminLoginLayoutProps } from '@/pages/admin/screens/adminLogin/types/adminLogin.dto';
 
 /** /admin/login: email and password, then the code emailed to the admin. */
 const AdminLoginLayout = (p: AdminLoginLayoutProps) => (
@@ -17,7 +17,7 @@ const AdminLoginLayout = (p: AdminLoginLayoutProps) => (
             <ShieldCheck size={22} />
           </span>
           <div>
-            <div className="text-xl font-bold text-slate-900">Admin console</div>
+            <h1 className="text-xl font-bold tracking-normal text-slate-900">Admin console</h1>
             <div className="mt-1 text-sm text-slate-600">After your password we'll email you a code to finish logging in.</div>
           </div>
         </div>

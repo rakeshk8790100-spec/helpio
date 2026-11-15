@@ -1,126 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
 import { App } from 'antd';
-import type { JobProgressProps, StageAttempt } from '../client/default/jobs/jobs.layout.types';
-import type { JobEvent, Milestone, MilestoneSubmission } from '../common/CommonDto';
-import { JobEventType, JobStatus, MilestoneStatus } from '../common/CommonEnum';
-import type { BadgeTone } from '../component/ui';
-import { apiErrorMessage } from '../lib/apiError';
-import { estimateOptions, formatClock, formatDuration, formatINR } from '../lib/utils';
-import {
-  useApproveMilestoneMutation,
-  useGetJobProgressQuery,
-  useRequestMilestoneChangesMutation,
-  useSetJobEstimateMutation,
-  useSubmitMilestoneMutation,
-} from '../pages/jobs/jobs.api';
+import { useEffect, useRef, useState } from 'react';
+import type { Milestone } from '@/common/CommonDto';
+import { JobStatus, MilestoneStatus } from '@/common/CommonEnum';
+import { STAGE_TITLE, eventText, fixingLabel, formatSpan, stageBadge, stageTiming, toAttempt } from '@/common/JobProgressDisplay';
+import type { ProgressRole } from '@/common/JobProgressDisplay';
+import { poll } from '@/config/base_service/base.api';
+import { apiErrorMessage } from '@/lib/apiError';
+import { JOB_MEDIA, pickMedia } from '@/lib/media';
+import { estimateOptions, formatClock, formatDuration, formatINR } from '@/lib/utils';
+import { useApproveMilestoneMutation, useGetJobProgressQuery, useRequestMilestoneChangesMutation, useSetJobEstimateMutation, useSubmitMilestoneMutation } from '@/pages/jobs/jobs.api';
+import type { JobProgressProps } from '@/pages/jobs/types/jobs.dto';
 import { useNow } from './useNow';
 
-type Role = 'customer' | 'provider';
-
-const MAX_PHOTOS = 6;
-const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'video/mp4'];
 // The customer sees new updates without reloading
 const POLL_MS = 30_000;
-
-const STAGE_TITLE: Record<number, string> = {
-  1: 'First quarter (25%)',
-  2: 'Half way (50%)',
-  3: 'Three quarters (75%)',
-  4: 'Finished (100%)',
-};
-
-const stageBadge = (m: Milestone, current: boolean, role: Role): { label: string; tone: BadgeTone } => {
-  switch (m.status) {
-    case MilestoneStatus.APPROVED:
-      return { label: 'Approved', tone: 'success' };
-    case MilestoneStatus.SUBMITTED:
-      return role === 'customer' ? { label: 'Needs your approval', tone: 'warning' } : { label: 'Waiting for approval', tone: 'warning' };
-    case MilestoneStatus.CHANGES_REQUESTED:
-      return role === 'customer' ? { label: 'Sent back', tone: 'error' } : { label: 'Changes requested', tone: 'error' };
-    default:
-      return current ? { label: role === 'provider' ? 'Your turn' : 'In progress', tone: 'brand' } : { label: 'Not started', tone: 'neutral' };
-  }
-};
-
-/** 20 → "20 min", 135 → "2 hr 15 min" */
-const formatSpan = (mins: number) => {
-  const hours = Math.floor(mins / 60);
-  const rest = mins % 60;
-  return [hours && `${hours} hr`, (rest || !hours) && `${rest} min`].filter(Boolean).join(' ');
-};
-
-const minutesBetween = (from: string | number, to: string | number) =>
-  Math.round((new Date(to).getTime() - new Date(from).getTime()) / 60_000);
-
-/** "early"/"late" against the target, for a stage that's been sent or approved */
-const versusTarget = (at: string, dueAt: string) => {
-  const diff = minutesBetween(dueAt, at);
-  if (Math.abs(diff) < 1) return { text: 'on time', late: false };
-  return diff > 0 ? { text: `${formatSpan(diff)} late`, late: true } : { text: `${formatSpan(-diff)} early`, late: false };
-};
-
-const stageTiming = (m: Milestone, now: number, open: boolean): { text: string; late: boolean } | null => {
-  if (!m.dueAt) return null;
-  const last = m.submissions.at(-1);
-  if (m.status === MilestoneStatus.APPROVED && m.approvedAt) {
-    // Measured by the first time the work was sent: fixing after that is the pro's own time
-    const firstSent = m.submissions[0]?.submittedAt ?? m.approvedAt;
-    const vs = versusTarget(firstSent, m.dueAt);
-    return { text: `Approved ${formatClock(m.approvedAt)} · sent ${vs.text}`, late: vs.late };
-  }
-  if (m.status === MilestoneStatus.SUBMITTED && last) {
-    const vs = versusTarget(m.submissions[0].submittedAt, m.dueAt);
-    return { text: `Sent ${formatClock(last.submittedAt)} · ${vs.text}`, late: vs.late };
-  }
-  const left = minutesBetween(now, m.dueAt);
-  if (!open) return { text: `Target ${formatClock(m.dueAt)}`, late: false };
-  return left >= 0
-    ? { text: `Due by ${formatClock(m.dueAt)} · in ${formatSpan(left)}`, late: false }
-    : { text: `Overdue by ${formatSpan(-left)} (target ${formatClock(m.dueAt)})`, late: true };
-};
-
-const fixingLabel = (mins: number) => (mins > 0 ? `+${formatSpan(mins)} fixing (not charged)` : null);
-
-const toAttempt = (s: MilestoneSubmission): StageAttempt => ({
-  id: s.id,
-  note: s.note,
-  photos: s.photos,
-  submittedLabel: `Sent ${formatClock(s.submittedAt)}`,
-  review:
-    s.reviewStatus === MilestoneStatus.APPROVED
-      ? { label: `Approved${s.reviewedAt ? ` ${formatClock(s.reviewedAt)}` : ''}`, tone: 'success', note: null }
-      : s.reviewStatus === MilestoneStatus.CHANGES_REQUESTED
-        ? { label: 'Changes requested', tone: 'error', note: s.reviewNote }
-        : { label: 'Waiting for approval', tone: 'warning', note: null },
-});
-
-const eventText = (e: JobEvent) => {
-  const who = e.actorLabel ?? 'Someone';
-  const pct = e.stage ? `${e.stage * 25}%` : '';
-  switch (e.type) {
-    case JobEventType.HIRED:
-      return `${who} accepted the quote`;
-    case JobEventType.STARTED:
-      return `${who} started work with the PIN`;
-    case JobEventType.MILESTONE_SUBMITTED:
-      return `${who} sent the ${pct} update`;
-    case JobEventType.MILESTONE_APPROVED:
-      return `${who} approved ${pct}`;
-    case JobEventType.CHANGES_REQUESTED:
-      return `${who} asked for changes on ${pct}`;
-    case JobEventType.STAGE_OVERDUE:
-      return `The ${pct} update is overdue`;
-    case JobEventType.PAYMENT_FAILED:
-      return "A payment didn't go through";
-    case JobEventType.PAID:
-      return `${who} paid ${e.amount !== null ? formatINR(e.amount) : 'for the job'}`;
-    case JobEventType.REVIEWED:
-      return `${who} left a ${e.rating ?? ''}/5 review`;
-    default:
-      return 'Job completed';
-  }
-};
 
 interface Options {
   /** Before hire there are no stages */
@@ -130,9 +23,9 @@ interface Options {
 }
 
 /** The four 25% stages of a hired job: the pro sends photos and a note, the customer approves or sends it back. */
-export const useJobProgress = (jobId: string, role: Role, { skip, otherName }: Options): JobProgressProps | null => {
+export const useJobProgress = (jobId: string, role: ProgressRole, { skip, otherName }: Options): JobProgressProps | null => {
   const { message } = App.useApp();
-  const { data, error, isLoading, refetch } = useGetJobProgressQuery(jobId, { skip, pollingInterval: skip ? 0 : POLL_MS });
+  const { data, error, isLoading, refetch } = useGetJobProgressQuery(jobId, { skip, ...poll(skip ? 0 : POLL_MS) });
   const [submitMilestone, { isLoading: submitting }] = useSubmitMilestoneMutation();
   const [approveMilestone, { isLoading: approving }] = useApproveMilestoneMutation();
   const [requestChanges, { isLoading: sendingChanges }] = useRequestMilestoneChangesMutation();
@@ -199,14 +92,9 @@ export const useJobProgress = (jobId: string, role: Role, { skip, otherName }: O
 
   const addPhotos = (files: File[]) => {
     setSubmitError(undefined);
-    const valid = files.filter((f) => PHOTO_TYPES.includes(f.type) && f.size <= MAX_PHOTO_BYTES);
-    if (valid.length < files.length) message.warning('Use JPG, PNG or WebP photos, or MP4 videos, up to 10 MB each.');
-    const room = MAX_PHOTOS - photos.length;
-    if (valid.length > room) message.warning(`Up to ${MAX_PHOTOS} photos per update.`);
-    setPhotos((prev) => [
-      ...prev,
-      ...valid.slice(0, room).map((file) => ({ id: crypto.randomUUID(), file, url: URL.createObjectURL(file) })),
-    ]);
+    const { accepted, warnings } = pickMedia(files, JOB_MEDIA, photos.length);
+    warnings.forEach((text) => message.warning(text));
+    setPhotos((prev) => [...prev, ...accepted.map((file) => ({ id: crypto.randomUUID(), file, url: URL.createObjectURL(file) }))]);
   };
   const removePhoto = (id: string) =>
     setPhotos((prev) => {
@@ -271,7 +159,7 @@ export const useJobProgress = (jobId: string, role: Role, { skip, otherName }: O
             changesNote: current.status === MilestoneStatus.CHANGES_REQUESTED ? (latest?.reviewNote ?? null) : null,
             photos: {
               items: photos.map((p) => ({ id: p.id, url: p.url, isVideo: p.file.type.startsWith('video/'), uploading: false })),
-              max: MAX_PHOTOS,
+              max: JOB_MEDIA.maxCount,
               onAdd: addPhotos,
               onRemove: removePhoto,
               disabled: submitting,

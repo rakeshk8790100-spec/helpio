@@ -1,17 +1,23 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { App } from 'antd';
-import type { ProviderProfileLayoutProps } from '../client/default/pros/pros.layout.types';
-import type { AuthUser } from '../common/CommonDto';
-import { JobStatus, UserRole } from '../common/CommonEnum';
-import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
-import { apiErrorMessage } from '../lib/apiError';
-import { formatDays, formatShortDate, formatTime } from '../lib/utils';
-import { useGetMyJobsQuery, useInviteProviderMutation } from '../pages/jobs/jobs.api';
-import { useGetProviderQuery } from '../pages/pros/pros.api';
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { ProviderProfileLayout } from '@/clients';
+import type { AuthUser } from '@/common/CommonDto';
+import { JobStatus, UserRole } from '@/common/CommonEnum';
+import { PageSkeleton } from '@/components/ui';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { RouterKeys, toPath, withQuery } from '@/config/router/RouterKeys';
+import { apiErrorMessage } from '@/lib/apiError';
+import { formatDays, formatShortDate, formatTime } from '@/lib/utils';
+import { useGetMyJobsQuery, useInviteProviderMutation } from '@/pages/jobs/jobs.api';
+import { useGetProviderQuery } from '@/pages/pros/pros.api';
+import { useAppSelector } from '@/redux';
+import { selectCurrentUser } from '@/redux/authSlice';
+import type { ProviderProfileLayoutProps } from './types/providerProfile.dto';
 
 /** /pros/:id: a pro's public profile. Customers can send them one of their open jobs, or post a new one for them. */
-export const useProviderProfile = (id: string, user: AuthUser): ProviderProfileLayoutProps => {
+const useProviderProfile = (id: string, user: AuthUser): ProviderProfileLayoutProps => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const isCustomer = user.role === UserRole.CUSTOMER;
@@ -71,7 +77,7 @@ export const useProviderProfile = (id: string, user: AuthUser): ProviderProfileL
               await invite({ jobId: selectedJobId, providerId: pro.id, message: note.trim() || null }).unwrap();
               message.success(`Request sent. ${name} will reply with a quote.`);
               setSheetOpen(false);
-              navigate(toPath(RouterKeys.JOB_DETAIL, { id: selectedJobId }));
+              void navigate(toPath(RouterKeys.JOB_DETAIL, { id: selectedJobId }));
             } catch (e) {
               setSendError(apiErrorMessage(e));
             }
@@ -81,10 +87,25 @@ export const useProviderProfile = (id: string, user: AuthUser): ProviderProfileL
             navigate(
               withQuery(RouterKeys.POST_JOB, {
                 invite: pro.id,
-                ...(pro.categories.length === 1 && { category: pro.categories[0].id }),
+                ...(pro.categories.length === 1 && pro.categories[0] && { category: pro.categories[0].id }),
               }),
             ),
         }
       : null,
   };
 };
+
+const ProviderProfile = ({ id, user }: { id: string; user: AuthUser }) => (
+  <SuspenseWrapper>
+    <ProviderProfileLayout {...useProviderProfile(id, user)} />
+  </SuspenseWrapper>
+);
+
+/** /pros/:id: a pro's public profile. Keyed by id so the request sheet starts fresh per pro. */
+const ProviderProfilePage = () => {
+  const { id = '' } = useParams();
+  const user = useAppSelector(selectCurrentUser);
+  return user ? <ProviderProfile key={id} id={id} user={user} /> : <PageSkeleton />;
+};
+
+export default ProviderProfilePage;

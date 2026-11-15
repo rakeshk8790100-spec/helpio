@@ -1,5 +1,7 @@
-import type { ProviderCard, ProviderProfile, ProviderSearchResult, PublicSkill } from '../../common/CommonDto';
-import { baseApi } from '../../config/base_service/base.api';
+import type { ProviderCard, ProviderProfile, ProviderSearchResult, PublicSkill } from '@/common/CommonDto';
+import { baseApi } from '@/config/base_service/base.api';
+import { APIS } from '@/config/base_service/http.config';
+import { replaceUrlPlaceholders } from '@/lib/utils';
 import type {
   ProviderCardApiDto,
   ProviderProfileApiDto,
@@ -40,8 +42,8 @@ export const prosApi = baseApi.injectEndpoints({
       query: (a) => ({
         // Repeated `skill_id=` params: `params` would join an array with commas
         url: a.skillIds?.length
-          ? `/providers/search?${a.skillIds.map((id) => `skill_id=${encodeURIComponent(id)}`).join('&')}`
-          : '/providers/search',
+          ? `${APIS.PROVIDER.SEARCH}?${a.skillIds.map((id) => `skill_id=${encodeURIComponent(id)}`).join('&')}`
+          : APIS.PROVIDER.SEARCH,
         params: {
           ...(a.q && { q: a.q }),
           ...(a.categoryId && { category_id: a.categoryId }),
@@ -64,7 +66,7 @@ export const prosApi = baseApi.injectEndpoints({
       providesTags: ['Providers'],
     }),
     getProvider: builder.query<ProviderProfile, { id: string; addressId?: string }>({
-      query: ({ id, addressId }) => ({ url: `/providers/${id}`, params: addressId ? { address_id: addressId } : {} }),
+      query: ({ id, addressId }) => ({ url: replaceUrlPlaceholders(APIS.PROVIDER.PUBLIC_PROFILE, { id }), params: addressId ? { address_id: addressId } : {} }),
       transformResponse: (dto: ProviderProfileApiDto): ProviderProfile => ({
         ...toCard(dto),
         bio: dto.bio,

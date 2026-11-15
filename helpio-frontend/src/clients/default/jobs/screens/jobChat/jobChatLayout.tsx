@@ -1,8 +1,8 @@
 import { Alert, Button, Input } from 'antd';
 import { ArrowLeft, SendHorizontal } from 'lucide-react';
-import { ChatThread } from '../../../component/marketplace';
-import { AlertBanner, Avatar, PageSkeleton } from '../../../component/ui';
-import type { JobChatLayoutProps } from './jobs.layout.types';
+import { ChatThread } from '@/components/common';
+import { AlertBanner, Avatar, PageSkeleton } from '@/components/ui';
+import type { JobChatLayoutProps } from '@/pages/jobs/screens/jobChat/types/jobChat.dto';
 
 /** /jobs/:id/chat and /pro/jobs/:id/chat: chat about one job, with a sticky composer. */
 const JobChatLayout = (p: JobChatLayoutProps) => {

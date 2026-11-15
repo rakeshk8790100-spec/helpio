@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react';
-import { StatusBadge } from '../../../component/ui';
-import type { JobSummary } from './jobs.layout.types';
+import { StatusBadge } from '@/components/ui';
+import type { JobSummary } from '@/pages/jobs/types/jobs.dto';
 
 /** Job header shared by the customer's job hub and the provider's job page: status, title, facts, notes, photos. */
 const JobSummaryBlock = ({ summary, onBack, backLabel }: { summary: JobSummary; onBack: () => void; backLabel: string }) => (

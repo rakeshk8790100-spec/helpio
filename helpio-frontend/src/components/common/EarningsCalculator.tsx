@@ -1,7 +1,7 @@
 import { CircleCheck } from 'lucide-react';
-import type { EarningRate } from '../../common/CommonDto';
-import { formatINR } from '../../lib/utils';
-import Chip from '../ui/Chip';
+import type { EarningRate } from '@/common/CommonDto';
+import Chip from '@/components/ui/Chip';
+import { formatINR } from '@/lib/utils';
 
 interface Props {
   rates: EarningRate[];

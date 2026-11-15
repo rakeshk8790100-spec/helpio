@@ -1,13 +1,14 @@
-import { toRupees } from '../../common/CommonApi';
-import type { ProviderEarnings } from '../../common/CommonDto';
-import { baseApi } from '../../config/base_service/base.api';
+import { toRupees } from '@/common/CommonApi';
+import type { ProviderEarnings } from '@/common/CommonDto';
+import { baseApi, list } from '@/config/base_service/base.api';
+import { APIS } from '@/config/base_service/http.config';
 import type { ProviderEarningsApiDto } from './types/earnings.dto';
 
 /** The provider's paid jobs and Helpio's payouts to them. */
 export const earningsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getProviderEarnings: builder.query<ProviderEarnings, void>({
-      query: () => '/providers/me/earnings',
+      query: () => APIS.PROVIDER.EARNINGS,
       transformResponse: (dto: ProviderEarningsApiDto): ProviderEarnings => ({
         total: toRupees(dto.total_paise),
         week: toRupees(dto.week_paise),
@@ -25,7 +26,7 @@ export const earningsApi = baseApi.injectEndpoints({
           payoutAt: item.payout_at,
         })),
       }),
-      providesTags: ['Payment', 'Jobs'],
+      providesTags: [list('Payment'), list('Jobs')],
     }),
   }),
   overrideExisting: false,

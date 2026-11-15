@@ -2,9 +2,9 @@ import { App as AntApp, ConfigProvider } from 'antd'
 import { Provider } from 'react-redux'
 import { RouterProvider } from 'react-router-dom'
 
-import { lightTheme } from './client/default/styles/themeConfig'
-import myRouter from './config/router/MyRouter'
-import { store } from './redux'
+import { lightTheme } from '@/clients/default/styles/themeConfig'
+import myRouter from '@/config/router/MyRouter'
+import { store } from '@/redux'
 
 export default function App() {
   return (

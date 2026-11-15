@@ -1,8 +1,8 @@
 import { BadgeCheck, CalendarDays, MapPin } from 'lucide-react';
-import type { ProviderCard as ProviderCardData } from '../../common/CommonDto';
-import { formatDays } from '../../lib/utils';
-import Avatar from '../ui/Avatar';
-import RatingStars from '../ui/RatingStars';
+import type { ProviderCard as ProviderCardData } from '@/common/CommonDto';
+import Avatar from '@/components/ui/Avatar';
+import RatingStars from '@/components/ui/RatingStars';
+import { formatDays } from '@/lib/utils';
 import { PROFICIENCY_LABEL } from './proficiency';
 
 interface Props {

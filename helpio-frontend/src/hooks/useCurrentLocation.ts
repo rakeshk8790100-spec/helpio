@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ComponentProps } from 'react';
-import type { Coordinates } from '../common/CommonDto';
-import type { CurrentLocationButton } from '../component/marketplace';
+import type { Coordinates } from '@/common/CommonDto';
+import type { CurrentLocationButton } from '@/components/common';
 
 const GEO_ERRORS: Record<number, string> = {
   1: 'Location permission is off. You can still continue with your pincode.',

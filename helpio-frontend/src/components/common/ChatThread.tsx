@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
 import { MessagesSquare } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 
 export interface ChatBubble {
   id: string;

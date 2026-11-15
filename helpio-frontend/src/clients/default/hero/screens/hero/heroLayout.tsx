@@ -21,12 +21,12 @@ import {
   ServiceCard,
   TestimonialCard,
   TrustStrip,
-} from '../../../component/marketplace';
-import { Chip, FaqList, HScroll, PageSkeleton, SectionHeader, StatTile, StepList } from '../../../component/ui';
-import type { StepListItem } from '../../../component/ui';
-import { formatINR } from '../../../lib/utils';
-import { EARN_SECTION_ID } from './hero.layout.types';
-import type { LandingLayoutProps } from './hero.layout.types';
+} from '@/components/common';
+import { Chip, FaqList, HScroll, PageSkeleton, SectionHeader, StatTile, StepList } from '@/components/ui';
+import type { StepListItem } from '@/components/ui';
+import { formatINR } from '@/lib/utils';
+import type { LandingLayoutProps } from '@/pages/hero/screens/hero/types/hero.dto';
+import { EARN_SECTION_ID } from '@/pages/hero/screens/hero/types/hero.enum';
 
 const CUSTOMER_STEPS: StepListItem[] = [
   { Icon: FilePlus, title: 'Book or post a job', text: 'Pick a service, or describe anything custom in a few words.' },

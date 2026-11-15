@@ -1,6 +1,6 @@
 import { Spin } from 'antd';
-import { GoogleButton } from '../../../component/ui';
-import type { GoogleOption } from './login.layout.types';
+import { GoogleButton } from '@/components/ui';
+import type { GoogleOption } from '@/pages/auth/types/auth.dto';
 
 /**
  * "or" divider plus Continue with Google, placed under a log-in or sign-up form. Shows a busy overlay while

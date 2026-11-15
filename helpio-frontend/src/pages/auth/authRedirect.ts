@@ -1,6 +1,6 @@
-import type { AuthUser } from '../../common/CommonDto';
-import { OnboardingStatus, UserRole } from '../../common/CommonEnum';
-import { RouterKeys, withQuery } from '../../config/router/RouterKeys';
+import type { AuthUser } from '@/common/CommonDto';
+import { OnboardingStatus, UserRole } from '@/common/CommonEnum';
+import { RouterKeys, withQuery } from '@/config/router/RouterKeys';
 
 /* Where a signed-in user belongs. The backend owns role and onboarding status; these only route on them. */
 
@@ -28,7 +28,9 @@ export const loginPathFor = (roles?: UserRole[]) => {
 };
 
 /** Only same-app paths are accepted as a post-login target (prevents open redirects). */
-export const safeNext = (next: string | null) => (next && next.startsWith('/') && !next.startsWith('//') ? next : null);
+export const safeNext = (next: string | null) =>
+  // "/\evil.com" also leaves the site in browsers: only plain same-site paths are accepted
+  next && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\') ? next : null;
 
 /**
  * Unfinished sign-up comes first: returns where to send the user instead of `pathname`, or null if allowed.

@@ -1,5 +1,5 @@
-import type { RatingSummary } from '../../../common/CommonDto';
-import type { Proficiency } from '../../../common/CommonEnum';
+import type { RatingSummary } from '@/common/CommonDto';
+import type { Proficiency } from '@/common/CommonEnum';
 
 /* Wire format (snake_case) of /providers/search and /providers/{id}. */
 

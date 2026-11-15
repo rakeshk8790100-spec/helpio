@@ -1,3 +1,4 @@
+
 export type BadgeTone = 'success' | 'warning' | 'error' | 'neutral' | 'brand';
 
 const TONES: Record<BadgeTone, string> = {

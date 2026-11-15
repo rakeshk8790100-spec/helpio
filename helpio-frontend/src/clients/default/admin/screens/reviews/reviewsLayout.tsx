@@ -1,10 +1,9 @@
-import { Button, Segmented, Select, Table } from 'antd';
-import type { AdminReviewRow } from '../../../common/CommonDto';
-import { PageHeader } from '../../../component/admin';
-import { AlertBanner, RatingStars, StatusBadge } from '../../../component/ui';
-import { formatClock } from '../../../lib/utils';
-import type { ReviewsAdminLayoutProps } from './admin.layout.types';
-import ReasonDialog from './reasonDialog';
+import { Segmented, Select, Table } from 'antd';
+import ReasonDialog from '@/clients/default/admin/shared/reasonDialog';
+import { PageHeader } from '@/components/admin';
+import { AlertBanner } from '@/components/ui';
+import type { ReviewsAdminLayoutProps } from '@/pages/admin/screens/reviews/types/reviews.dto';
+import type { AdminReviewRow } from '@/pages/admin/types/admin.models';
 
 /** /admin/reviews: every review; hide abusive ones (kept for the record, left out of ratings and profiles). */
 const ReviewsAdminLayout = (p: ReviewsAdminLayoutProps) => (
@@ -52,49 +51,7 @@ const ReviewsAdminLayout = (p: ReviewsAdminLayoutProps) => (
             onChange: p.list.onPageChange,
           }
         }
-        columns={[
-          { title: 'Rating', width: 120, render: (_, r) => <RatingStars value={r.stars} /> },
-          {
-            title: 'Review',
-            render: (_, r) => (
-              <span>
-                <span className="block text-sm text-slate-800">{r.comment ?? <span className="text-slate-400">No comment</span>}</span>
-                {r.hidden && r.hiddenReason && <span className="block text-xs text-slate-500">Hidden: {r.hiddenReason}</span>}
-              </span>
-            ),
-          },
-          {
-            title: 'Who',
-            width: 240,
-            render: (_, r) => (
-              <span className="text-xs text-slate-600">
-                {r.author} ({r.authorRole === 'customer' ? 'customer' : 'pro'}) about {r.subject}
-                <span className="block text-slate-500">{r.jobTitle}</span>
-              </span>
-            ),
-          },
-          { title: 'When', width: 150, render: (_, r) => <span className="text-xs text-slate-500">{formatClock(r.createdAt)}</span> },
-          {
-            title: '',
-            width: 160,
-            align: 'right',
-            render: (_, r) =>
-              p.list.status === 'ready' && (
-                <span className="flex items-center justify-end gap-2">
-                  {r.hidden && <StatusBadge label="Hidden" tone="neutral" />}
-                  {r.hidden ? (
-                    <Button size="small" loading={p.list.busyId === r.id} onClick={() => p.list.status === 'ready' && p.list.onShow(r)}>
-                      Show
-                    </Button>
-                  ) : (
-                    <Button size="small" danger disabled={p.list.busyId === r.id} onClick={() => p.list.status === 'ready' && p.list.onHide(r)}>
-                      Hide
-                    </Button>
-                  )}
-                </span>
-              ),
-          },
-        ]}
+        columns={p.columns}
       />
     )}
     {p.dialog && <ReasonDialog {...p.dialog} />}

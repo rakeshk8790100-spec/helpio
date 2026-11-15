@@ -1,6 +1,6 @@
 import { Circle, CircleCheck, Clock, Lock } from 'lucide-react';
-import type { ChecklistItem } from '../../common/CommonDto';
-import { ChecklistState } from '../../common/CommonEnum';
+import type { ChecklistItem } from '@/common/CommonDto';
+import { ChecklistState } from '@/common/CommonEnum';
 
 const ICONS = {
   [ChecklistState.DONE]: <CircleCheck size={18} className="text-emerald-400" />,

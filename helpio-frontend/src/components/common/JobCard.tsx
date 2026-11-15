@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
-import { formatINR } from '../../lib/utils';
-import StatusBadge from '../ui/StatusBadge';
-import type { BadgeTone } from '../ui/StatusBadge';
+import StatusBadge from '@/components/ui/StatusBadge';
+import type { BadgeTone } from '@/components/ui/StatusBadge';
+import { formatINR } from '@/lib/utils';
 
 interface Props {
   title: string;

@@ -1,9 +1,9 @@
 import { Alert, Button, Drawer, Input, Skeleton } from 'antd';
 import { ArrowLeft, BadgeCheck, CalendarDays, CircleCheck, Circle, FilePlus, MapPin, Send, Star } from 'lucide-react';
-import { PROFICIENCY_LABEL } from '../../../component/marketplace';
-import { AlertBanner, Avatar, PageSkeleton, RatingStars, SectionHeader } from '../../../component/ui';
-import { formatShortDate } from '../../../lib/utils';
-import type { ProviderProfileLayoutProps, RequestSheetProps } from './pros.layout.types';
+import { PROFICIENCY_LABEL } from '@/components/common';
+import { AlertBanner, Avatar, PageSkeleton, RatingStars, SectionHeader } from '@/components/ui';
+import { formatShortDate } from '@/lib/utils';
+import type { ProviderProfileLayoutProps, RequestSheetProps } from '@/pages/pros/screens/providerProfile/types/providerProfile.dto';
 
 const RequestSheet = (r: RequestSheetProps) => (
   <Drawer open={r.open} onClose={r.onClose} placement="bottom" height="auto" title={`Ask ${r.providerName} for a quote`} destroyOnHidden>

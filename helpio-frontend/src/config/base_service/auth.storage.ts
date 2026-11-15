@@ -1,4 +1,4 @@
-import type { AuthSession, AuthUser } from '../../common/CommonDto';
+import type { AuthSession, AuthUser } from '@/common/CommonDto';
 
 const KEYS = {
   TOKEN: 'access_token',

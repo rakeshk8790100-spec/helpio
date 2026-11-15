@@ -1,7 +1,7 @@
 import { Button, Skeleton } from 'antd';
 import { CircleCheck, Hourglass, RotateCcw, ShieldCheck, Wallet } from 'lucide-react';
-import { AlertBanner, StatusBadge } from '../../../component/ui';
-import type { JobPaymentProps } from './jobs.layout.types';
+import { AlertBanner, StatusBadge } from '@/components/ui';
+import type { JobPaymentProps } from '@/pages/jobs/types/jobs.dto';
 
 const TONE = {
   due: { box: 'border-indigo-100 bg-indigo-50/50', divider: 'border-indigo-100', Icon: Wallet, icon: 'text-indigo-600' },

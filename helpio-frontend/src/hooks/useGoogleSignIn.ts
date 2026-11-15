@@ -1,9 +1,9 @@
 import { App } from 'antd';
-import type { GoogleOption } from '../client/default/auth/login.layout.types';
-import { envConfig } from '../config/env.config';
-import { apiErrorMessage } from '../lib/apiError';
-import { useGetPublicConfigQuery } from '../common/CommonApi';
-import { useGoogleLoginMutation } from '../pages/auth/auth.api';
+import { useGetPublicConfigQuery } from '@/common/CommonApi';
+import { envConfig } from '@/config/env.config';
+import { apiErrorMessage } from '@/lib/apiError';
+import { useGoogleLoginMutation } from '@/pages/auth/auth.api';
+import type { GoogleOption } from '@/pages/auth/types/auth.dto';
 
 /**
  * Continue with Google for customers. A successful sign-in stores the session (auth.api) and the page

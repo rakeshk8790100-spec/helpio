@@ -1,9 +1,9 @@
 import { Alert, Button, Form } from 'antd';
 import { Hourglass, MailCheck, UserPlus } from 'lucide-react';
-import { EmailField, NameField, PasswordField, PhoneField } from '../auth/authFields';
-import EmailCodeStep from '../auth/emailCodeStep';
-import AdminAuthCard from './adminAuthCard';
-import type { AdminRequestAccessLayoutProps } from './admin.layout.types';
+import AdminAuthCard from '@/clients/default/admin/shared/adminAuthCard';
+import { EmailField, NameField, PasswordField, PhoneField } from '@/clients/default/auth/shared/authFields';
+import EmailCodeStep from '@/clients/default/auth/shared/emailCodeStep';
+import type { AdminRequestAccessLayoutProps } from '@/pages/admin/screens/adminRequestAccess/types/adminRequestAccess.dto';
 
 /** /admin/request-access: details, the emailed code, then "waiting for the owner" (or "log in" for the owner). */
 const AdminRequestAccessLayout = (p: AdminRequestAccessLayoutProps) => (
@@ -17,7 +17,7 @@ const AdminRequestAccessLayout = (p: AdminRequestAccessLayoutProps) => (
         >
           {p.result.approved ? <MailCheck size={22} /> : <Hourglass size={22} />}
         </span>
-        <div className="text-xl font-bold text-slate-900">{p.result.approved ? "You're the owner" : 'Request sent'}</div>
+        <h1 className="text-xl font-bold tracking-normal text-slate-900">{p.result.approved ? "You're the owner" : 'Request sent'}</h1>
         <div role="status" className="text-sm text-slate-600">
           {p.result.approved
             ? 'Your access is ready. Log in with your email and password.'
@@ -36,7 +36,7 @@ const AdminRequestAccessLayout = (p: AdminRequestAccessLayoutProps) => (
             <UserPlus size={22} />
           </span>
           <div>
-            <div className="text-xl font-bold text-slate-900">Ask for admin access</div>
+            <h1 className="text-xl font-bold tracking-normal text-slate-900">Ask for admin access</h1>
             <div className="mt-1 text-sm text-slate-600">
               The owner approves every new admin. You'll log in with this email and password once they do.
             </div>

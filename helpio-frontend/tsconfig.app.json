@@ -16,7 +16,15 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Aliases (also in vite.config.ts); @client type-checks against the default client */
+    "paths": {
+      "@/*": ["./src/*"],
+      "@client/*": ["./src/clients/default/*"]
+    },
+
     /* Linting */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,

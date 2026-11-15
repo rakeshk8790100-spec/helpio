@@ -1,3 +1,4 @@
+
 const FALLBACK = 'Something went wrong. Please try again.';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

@@ -1,14 +1,14 @@
-import type { ReactNode } from 'react';
 import { Button, Descriptions, Drawer, Input, Popconfirm, Segmented, Select, Skeleton, Table } from 'antd';
 import { LogOut } from 'lucide-react';
-import type { AdminUserRow } from '../../../common/CommonDto';
-import { ApprovalStatus } from '../../../common/CommonEnum';
-import { PageHeader } from '../../../component/admin';
-import { AlertBanner, Avatar, RatingStars, StatusBadge } from '../../../component/ui';
-import { formatClock, formatDays, formatINR } from '../../../lib/utils';
-import { APPROVAL_BADGE, JOB_BADGE, PAYMENT_BADGE, PAYOUT_BADGE } from './adminBadges';
-import type { UsersLayoutProps } from './admin.layout.types';
-import ReasonDialog from './reasonDialog';
+import type { ReactNode } from 'react';
+import ReasonDialog from '@/clients/default/admin/shared/reasonDialog';
+import { ApprovalStatus } from '@/common/CommonEnum';
+import { APPROVAL_BADGE, JOB_STATUS_BADGE, PAYMENT_BADGE, PAYOUT_BADGE } from '@/common/CommonLabels';
+import { PageHeader } from '@/components/admin';
+import { AlertBanner, Avatar, RatingStars, StatusBadge } from '@/components/ui';
+import { formatClock, formatDays, formatINR } from '@/lib/utils';
+import type { UsersLayoutProps } from '@/pages/admin/screens/users/types/users.dto';
+import type { AdminUserRow } from '@/pages/admin/types/admin.models';
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="mt-6">
@@ -75,7 +75,12 @@ const UsersLayout = (p: UsersLayoutProps) => (
         loading={p.list.status === 'loading' || p.list.fetching}
         dataSource={p.list.status === 'ready' ? p.list.rows : []}
         className="rounded-2xl border border-slate-100 bg-white shadow-sm"
-        onRow={(row) => ({ onClick: () => p.list.status === 'ready' && p.list.onOpen(row.id), className: 'cursor-pointer' })}
+        onRow={(row) => ({
+          onClick: () => p.list.status === 'ready' && p.list.onOpen(row.id),
+          onKeyDown: (e) => e.key === 'Enter' && p.list.status === 'ready' && p.list.onOpen(row.id),
+          tabIndex: 0,
+          className: 'cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500',
+        })}
         pagination={
           p.list.status === 'ready' && {
             current: p.list.page,
@@ -85,43 +90,7 @@ const UsersLayout = (p: UsersLayoutProps) => (
             onChange: p.list.onPageChange,
           }
         }
-        columns={[
-          {
-            title: 'Person',
-            render: (_, u) => (
-              <span className="flex items-center gap-3">
-                <Avatar name={u.name ?? u.email} size="sm" />
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-slate-900">{u.name ?? u.email}</span>
-                  <span className="block text-xs text-slate-500">{u.email}</span>
-                </span>
-              </span>
-            ),
-          },
-          { title: 'Role', width: 110, render: (_, u) => <span className="text-sm text-slate-700">{u.role === 'provider' ? 'Provider' : 'Customer'}</span> },
-          {
-            title: 'Status',
-            width: 200,
-            render: (_, u) => (
-              <span className="flex flex-wrap gap-1">
-                <StatusBadge label={APPROVAL_BADGE[u.approvalStatus].label} tone={APPROVAL_BADGE[u.approvalStatus].tone} />
-                {!u.isActive && <StatusBadge label="Deactivated" tone="error" />}
-              </span>
-            ),
-          },
-          { title: 'Jobs', width: 70, render: (_, u) => <span className="text-sm text-slate-800">{u.jobs}</span> },
-          {
-            title: 'Rating',
-            width: 110,
-            render: (_, u) =>
-              u.ratingCount && u.ratingAverage !== null ? (
-                <RatingStars variant="compact" value={u.ratingAverage} count={u.ratingCount} />
-              ) : (
-                <span className="text-xs text-slate-400">–</span>
-              ),
-          },
-          { title: 'Joined', width: 160, render: (_, u) => <span className="text-xs text-slate-500">{formatClock(u.createdAt)}</span> },
-        ]}
+        columns={p.columns}
       />
     )}
 
@@ -204,7 +173,7 @@ const UsersLayout = (p: UsersLayoutProps) => (
                       <span className="min-w-0 truncate text-slate-800">{job.title}</span>
                       <span className="flex shrink-0 items-center gap-2">
                         {job.amount !== null && <span className="text-xs text-slate-500">{formatINR(job.amount)}</span>}
-                        <StatusBadge label={JOB_BADGE[job.status].label} tone={JOB_BADGE[job.status].tone} />
+                        <StatusBadge label={JOB_STATUS_BADGE[job.status].label} tone={JOB_STATUS_BADGE[job.status].tone} />
                       </span>
                     </li>
                   ))}

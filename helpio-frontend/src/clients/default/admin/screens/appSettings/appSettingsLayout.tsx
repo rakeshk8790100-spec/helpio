@@ -1,8 +1,8 @@
 import { Alert, Button, Input, InputNumber, Switch } from 'antd';
 import { FlaskConical, Lock, Save } from 'lucide-react';
-import { PageHeader } from '../../../component/admin';
-import { AlertBanner, PageSkeleton, StatusBadge } from '../../../component/ui';
-import type { SettingFieldView, SettingGroupView, SettingsLayoutProps } from './admin.layout.types';
+import { PageHeader } from '@/components/admin';
+import { AlertBanner, PageSkeleton, StatusBadge } from '@/components/ui';
+import type { SettingFieldView, SettingGroupView, SettingsLayoutProps } from '@/pages/admin/screens/appSettings/types/appSettings.dto';
 
 const FieldInput = ({ field }: { field: SettingFieldView }) => {
   switch (field.kind) {

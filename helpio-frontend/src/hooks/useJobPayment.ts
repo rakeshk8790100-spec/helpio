@@ -1,15 +1,16 @@
+import { App } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { App } from 'antd';
-import type { JobPaymentProps, PaymentTry } from '../client/default/jobs/jobs.layout.types';
-import type { PaymentAttempt } from '../common/CommonDto';
-import { JobStatus, PaymentAttemptStatus, PaymentStatus, PayoutStatus } from '../common/CommonEnum';
-import type { BadgeTone } from '../component/ui';
-import { apiErrorMessage } from '../lib/apiError';
-import { formatClock, formatINR } from '../lib/utils';
-import { jobsApi, useConfirmJobPaymentMutation, useGetJobPaymentQuery, useStartJobPaymentMutation } from '../pages/jobs/jobs.api';
-import type { PaymentReturn } from '../pages/jobs/types/jobs.dto';
-import { useAppDispatch } from '../redux';
+import type { PaymentAttempt } from '@/common/CommonDto';
+import { JobStatus, PaymentAttemptStatus, PaymentStatus, PayoutStatus } from '@/common/CommonEnum';
+import { paymentMethodLabel } from '@/common/CommonLabels';
+import type { BadgeTone } from '@/components/ui';
+import { poll, list, one } from '@/config/base_service/base.api';
+import { apiErrorMessage } from '@/lib/apiError';
+import { formatClock, formatINR } from '@/lib/utils';
+import { jobsApi, useConfirmJobPaymentMutation, useGetJobPaymentQuery, useStartJobPaymentMutation } from '@/pages/jobs/jobs.api';
+import type { JobPaymentProps, PaymentTry, PaymentReturn } from '@/pages/jobs/types/jobs.dto';
+import { useAppDispatch } from '@/redux';
 
 type Role = 'customer' | 'provider';
 
@@ -24,8 +25,6 @@ const RETURN_KEYS = [
   'razorpay_signature',
 ] as const;
 
-const METHOD_LABEL: Record<string, string> = { upi: 'UPI', netbanking: 'netbanking', card: 'card', wallet: 'wallet' };
-const methodLabel = (method: string | null) => (method ? (METHOD_LABEL[method] ?? method) : null);
 
 const TRY_BADGE: Record<PaymentAttemptStatus, { label: string; tone: BadgeTone }> = {
   [PaymentAttemptStatus.CREATED]: { label: 'Started', tone: 'neutral' },
@@ -38,7 +37,7 @@ const TRY_BADGE: Record<PaymentAttemptStatus, { label: string; tone: BadgeTone }
 const toTry = (a: PaymentAttempt): PaymentTry => ({
   id: a.id,
   badge: TRY_BADGE[a.status],
-  meta: [methodLabel(a.method)?.replace(/^\w/, (c) => c.toUpperCase()), formatClock(a.attemptedAt)].filter(Boolean).join(' · '),
+  meta: [paymentMethodLabel(a.method)?.replace(/^\w/, (c) => c.toUpperCase()), formatClock(a.attemptedAt)].filter(Boolean).join(' · '),
   reason: a.status === PaymentAttemptStatus.FAILED ? a.errorDescription : null,
 });
 
@@ -60,7 +59,7 @@ export const useJobPayment = (jobId: string, role: Role, { skip, otherName }: Op
   const { message } = App.useApp();
   const dispatch = useAppDispatch();
   const [params, setParams] = useSearchParams();
-  const { data, error, isLoading, refetch } = useGetJobPaymentQuery(jobId, { skip, pollingInterval: skip ? 0 : POLL_MS });
+  const { data, error, isLoading, refetch } = useGetJobPaymentQuery(jobId, { skip, ...poll(skip ? 0 : POLL_MS) });
   const [startPayment, { isLoading: starting }] = useStartJobPaymentMutation();
   const [confirmPayment, { isLoading: confirming }] = useConfirmJobPaymentMutation();
   // Razorpay's page is loading: keep the button busy until the browser leaves
@@ -94,9 +93,9 @@ export const useJobPayment = (jobId: string, role: Role, { skip, otherName }: Op
   const seenPaid = useRef<boolean | null>(null);
   useEffect(() => {
     if (!data) return;
-    if (seenPaid.current === false && paid) dispatch(jobsApi.util.invalidateTags(['Jobs', 'Milestones']));
+    if (seenPaid.current === false && paid) dispatch(jobsApi.util.invalidateTags([one('Jobs', jobId), list('Jobs'), one('Milestones', jobId)]));
     seenPaid.current = paid;
-  }, [data, paid, dispatch]);
+  }, [data, paid, dispatch, jobId]);
 
   if (skip) return null;
   if (isLoading) return { status: 'loading' };
@@ -105,7 +104,7 @@ export const useJobPayment = (jobId: string, role: Role, { skip, otherName }: Op
   if (!paid && data.jobStatus !== JobStatus.PAYMENT_DUE) return null;
 
   const amount = formatINR(data.amount);
-  const via = methodLabel(data.method);
+  const via = paymentMethodLabel(data.method);
   const paidLine = `Paid${via ? ` by ${via}` : ''}${data.paidAt ? ` on ${formatClock(data.paidAt)}` : ''}.`;
   const base = { status: 'ready' as const, lastError: null, pay: null, confirming: false, tries: [] };
 

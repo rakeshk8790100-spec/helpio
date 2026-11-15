@@ -1,6 +1,6 @@
 import { Clock, Star } from 'lucide-react';
-import type { Service } from '../../common/CommonDto';
-import { formatDuration, formatINR } from '../../lib/utils';
+import type { Service } from '@/common/CommonDto';
+import { formatDuration, formatINR } from '@/lib/utils';
 
 interface Props {
   service: Service;

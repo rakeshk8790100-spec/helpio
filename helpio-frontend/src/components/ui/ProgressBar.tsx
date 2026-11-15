@@ -1,3 +1,4 @@
+
 interface Props {
   /** 0–100 */
   value: number;

@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { App, Form } from 'antd';
-import type { EmailCodeFormValues, EmailCodeStepProps } from '../client/default/auth/emailCodeStep.types';
-import type { SelfServiceRole } from '../common/CommonEnum';
-import { apiErrorMessage } from '../lib/apiError';
-import { useRegisterMutation, useVerifySignupMutation } from '../pages/auth/auth.api';
-import type { RegisterDto } from '../pages/auth/types/auth.dto';
+import { useState } from 'react';
+import type { SelfServiceRole } from '@/common/CommonEnum';
+import { apiErrorMessage } from '@/lib/apiError';
+import { useRegisterMutation, useVerifySignupMutation } from '@/pages/auth/auth.api';
+import type { EmailCodeFormValues, EmailCodeStepProps } from '@/pages/auth/types/auth.dto';
+import type { RegisterDto } from '@/pages/auth/types/auth.dto';
 import { useCountdown } from './useCountdown';
 
 type SignupDetails = Omit<RegisterDto, 'role'>;

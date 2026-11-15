@@ -1,7 +1,7 @@
 import { Alert, Button, Modal, Skeleton } from 'antd';
 import { Check, Heart, Lock } from 'lucide-react';
-import { AlertBanner, Chip } from '../../../component/ui';
-import type { FavoritesModalLayoutProps } from './favoritesModal.layout.types';
+import { AlertBanner, Chip } from '@/components/ui';
+import type { FavoritesModalLayoutProps } from '@/pages/customer/screens/favorites/types/favorites.dto';
 
 /** "Choose your favourite services": the catalog by category; your home then shows pros who offer them. */
 const FavoritesModalLayout = (p: FavoritesModalLayoutProps) => (

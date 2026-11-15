@@ -1,9 +1,10 @@
-import { startSessionOnSuccess, toAuthSession } from '../../common/CommonApi';
-import type { SessionApiDto } from '../../common/CommonApi';
-import type { AuthSession, SignInResult } from '../../common/CommonDto';
-import { baseApi } from '../../config/base_service/base.api';
 import type { Dispatch } from '@reduxjs/toolkit';
-import { sessionStarted } from '../../redux/authSlice';
+import { startSessionOnSuccess, toAuthSession } from '@/common/CommonApi';
+import type { SessionApiDto } from '@/common/CommonApi';
+import type { AuthSession, SignInResult } from '@/common/CommonDto';
+import { baseApi } from '@/config/base_service/base.api';
+import { APIS } from '@/config/base_service/http.config';
+import { sessionStarted } from '@/redux/authSlice';
 
 /** A sign-up code or Google sign-in: a session, or (a customer waiting for an admin) no session yet */
 const toSignInResult = (dto: SessionApiDto | { email: string; approval_status: 'pending' }): SignInResult =>
@@ -29,7 +30,7 @@ import type {
   ResetPasswordDto,
   SignupCodeSent,
   VerifySignupDto,
-} from './types/auth.dto';
+} from '@/pages/auth/types/auth.dto';
 
 /**
  * Sign-in endpoints. Customers and providers sign up (proving the email with a code) and log in with
@@ -39,7 +40,7 @@ export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     /** Sign-up step 1: emails a code. Sending the same details again resends it. */
     register: builder.mutation<SignupCodeSent, RegisterDto>({
-      query: (body) => ({ url: '/auth/register', method: 'POST', body }),
+      query: (body) => ({ url: APIS.AUTH.REGISTER, method: 'POST', body }),
       transformResponse: (dto: { email: string; resend_in: number; expires_in_minutes: number }) => ({
         email: dto.email,
         resendIn: dto.resend_in,
@@ -48,27 +49,27 @@ export const authApi = baseApi.injectEndpoints({
     }),
     /** Sign-up step 2: the code creates the account and signs in (a customer waiting for approval gets no session). */
     verifySignup: builder.mutation<SignInResult, VerifySignupDto>({
-      query: (body) => ({ url: '/auth/register/verify', method: 'POST', body }),
+      query: (body) => ({ url: APIS.AUTH.REGISTER_VERIFY, method: 'POST', body }),
       transformResponse: toSignInResult,
       onQueryStarted: startSessionIfSignedIn,
     }),
     login: builder.mutation<AuthSession, LoginDto>({
-      query: (body) => ({ url: '/auth/login', method: 'POST', body }),
+      query: (body) => ({ url: APIS.AUTH.LOGIN, method: 'POST', body }),
       transformResponse: toAuthSession,
       onQueryStarted: startSessionOnSuccess,
     }),
     googleLogin: builder.mutation<SignInResult, GoogleLoginDto>({
-      query: (body) => ({ url: '/auth/google', method: 'POST', body }),
+      query: (body) => ({ url: APIS.AUTH.GOOGLE, method: 'POST', body }),
       transformResponse: toSignInResult,
       onQueryStarted: startSessionIfSignedIn,
     }),
     /** Emails a reset code. Answers the same whether or not the account exists. */
     forgotPassword: builder.mutation<void, ForgotPasswordDto>({
-      query: (body) => ({ url: '/auth/forgot-password', method: 'POST', body }),
+      query: (body) => ({ url: APIS.AUTH.FORGOT_PASSWORD, method: 'POST', body }),
     }),
     /** Sets the new password and signs the account out everywhere; the user then logs in again. */
     resetPassword: builder.mutation<void, ResetPasswordDto>({
-      query: (body) => ({ url: '/auth/reset-password', method: 'POST', body }),
+      query: (body) => ({ url: APIS.AUTH.RESET_PASSWORD, method: 'POST', body }),
     }),
   }),
   overrideExisting: false,

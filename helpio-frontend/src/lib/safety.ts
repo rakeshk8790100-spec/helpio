@@ -1,3 +1,4 @@
+
 /** India's single emergency number (police, fire, ambulance) */
 const EMERGENCY_NUMBER = '112';
 

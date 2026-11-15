@@ -1,7 +1,12 @@
-import SkillsLayout from '../../../../client/default/onboarding/skills.layout';
-import { useOnboardingSkills } from '../../../../hooks/useOnboardingSkills';
+import { SkillsLayout } from '@/clients';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { useOnboardingSkills } from '@/hooks/useOnboardingSkills';
 
-/** Provider sign-up step 2. Markup lives in client/default/onboarding. */
-const SkillsPage = () => <SkillsLayout {...useOnboardingSkills()} />;
+/** Provider sign-up step 2: skills. */
+const SkillsPage = () => (
+  <SuspenseWrapper>
+    <SkillsLayout {...useOnboardingSkills()} />
+  </SuspenseWrapper>
+);
 
 export default SkillsPage;

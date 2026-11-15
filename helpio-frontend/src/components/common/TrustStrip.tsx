@@ -1,5 +1,5 @@
 import { Camera, KeyRound, MessageCircle, ShieldCheck } from 'lucide-react';
-import SectionHeader from '../ui/SectionHeader';
+import SectionHeader from '@/components/ui/SectionHeader';
 
 // Copy is written for both sides: customers are protected, providers are guaranteed payment.
 const ITEMS = [

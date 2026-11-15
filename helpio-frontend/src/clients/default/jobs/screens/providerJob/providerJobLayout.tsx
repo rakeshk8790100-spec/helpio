@@ -1,15 +1,15 @@
 import { Alert, Button, Form, Input, InputNumber, Popconfirm } from 'antd';
 import { CircleCheck, CirclePlay, Lock, MapPin, MessageCircle, MessageCircleQuestion, Send, UserRound } from 'lucide-react';
-import { QuoteStatus } from '../../../common/CommonEnum';
-import { JobMap } from '../../../component/marketplace';
-import { AlertBanner, Chip, ChipSelect, PageSkeleton, RatingStars, StatusBadge } from '../../../component/ui';
-import { formatINR } from '../../../lib/utils';
-import JobPaymentBlock from './jobPayment';
-import JobProgressBlock from './jobProgress';
-import JobReviewBlock from './jobReview';
-import JobSummaryBlock from './jobSummary';
-import type { ProviderQuoteProps } from './jobs.layout.types';
-import type { ProviderJobLayoutProps } from './jobs.layout.types';
+import JobPaymentBlock from '@/clients/default/jobs/shared/jobPayment';
+import JobProgressBlock from '@/clients/default/jobs/shared/jobProgress';
+import JobReviewBlock from '@/clients/default/jobs/shared/jobReview';
+import JobSummaryBlock from '@/clients/default/jobs/shared/jobSummary';
+import { QuoteStatus } from '@/common/CommonEnum';
+import { JobMap } from '@/components/common';
+import { AlertBanner, Chip, ChipSelect, PageSkeleton, RatingStars, StatusBadge } from '@/components/ui';
+import { formatINR } from '@/lib/utils';
+import type { ProviderQuoteProps } from '@/pages/jobs/screens/providerJob/types/providerJob.dto';
+import type { ProviderJobLayoutProps } from '@/pages/jobs/screens/providerJob/types/providerJob.dto';
 
 const SENT_BADGE = {
   [QuoteStatus.PENDING]: { label: 'Waiting for the customer', tone: 'warning' as const },

@@ -8,7 +8,7 @@ interface Props {
 
 const SectionHeader = ({ title, actionLabel, onAction }: Props) => (
   <div className="mb-3 flex items-center justify-between">
-    <span className="text-base font-semibold text-slate-900">{title}</span>
+    <h2 className="text-base font-semibold tracking-normal text-slate-900">{title}</h2>
     {actionLabel && (
       <button
         type="button"

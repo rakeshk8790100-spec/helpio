@@ -1,6 +1,7 @@
-import type { Favorites } from '../../common/CommonDto';
-import { baseApi, dispatchOnSuccess } from '../../config/base_service/base.api';
-import { favoritesChanged } from '../../redux/authSlice';
+import type { Favorites } from '@/common/CommonDto';
+import { baseApi, dispatchOnSuccess } from '@/config/base_service/base.api';
+import { APIS } from '@/config/base_service/http.config';
+import { favoritesChanged } from '@/redux/authSlice';
 
 /* Wire format of /customers/me/favorites */
 interface FavoritesApiDto {
@@ -17,27 +18,27 @@ const updateUser = dispatchOnSuccess<Favorites>(favoritesChanged);
 export const favoritesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getFavorites: builder.query<Favorites, void>({
-      query: () => '/customers/me/favorites',
+      query: () => APIS.CUSTOMER.FAVORITES,
       transformResponse: toFavorites,
       providesTags: ['Favorites'],
     }),
     /** Popup: up to 4 new services, on top of the saved ones (8 at most) */
     addFavorites: builder.mutation<Favorites, string[]>({
-      query: (skillIds) => ({ url: '/customers/me/favorites', method: 'POST', body: { skill_ids: skillIds } }),
+      query: (skillIds) => ({ url: APIS.CUSTOMER.FAVORITES, method: 'POST', body: { skill_ids: skillIds } }),
       transformResponse: toFavorites,
       invalidatesTags: ['Favorites', 'Providers'],
       onQueryStarted: updateUser,
     }),
     /** Popup closed without saving; 3 in a row stop it */
     skipFavorites: builder.mutation<Favorites, void>({
-      query: () => ({ url: '/customers/me/favorites/skip', method: 'POST' }),
+      query: () => ({ url: APIS.CUSTOMER.FAVORITES_SKIP, method: 'POST' }),
       transformResponse: toFavorites,
       invalidatesTags: ['Favorites'],
       onQueryStarted: updateUser,
     }),
     /** Profile: the whole set */
     replaceFavorites: builder.mutation<Favorites, string[]>({
-      query: (skillIds) => ({ url: '/customers/me/favorites', method: 'PUT', body: { skill_ids: skillIds } }),
+      query: (skillIds) => ({ url: APIS.CUSTOMER.FAVORITES, method: 'PUT', body: { skill_ids: skillIds } }),
       transformResponse: toFavorites,
       invalidatesTags: ['Favorites', 'Providers'],
       onQueryStarted: updateUser,

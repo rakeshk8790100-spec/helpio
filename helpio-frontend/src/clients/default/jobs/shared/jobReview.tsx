@@ -1,7 +1,7 @@
 import { Alert, Button, Input, Rate, Skeleton } from 'antd';
 import { Star } from 'lucide-react';
-import { AlertBanner, RatingStars } from '../../../component/ui';
-import type { JobReviewProps, ReviewView } from './jobs.layout.types';
+import { AlertBanner, RatingStars } from '@/components/ui';
+import type { JobReviewProps, ReviewView } from '@/pages/jobs/types/jobs.dto';
 
 const ReviewItem = ({ review }: { review: ReviewView }) => (
   <div className="flex flex-col gap-1.5">

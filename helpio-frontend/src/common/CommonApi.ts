@@ -1,8 +1,33 @@
-import { baseApi, dispatchOnSuccess } from '../config/base_service/base.api';
-import { sessionRenewed, sessionStarted, signedOut, userUpdated } from '../redux/authSlice';
-import type { AuthSession, AuthUser, Job, JobQuote, MapCircle, NearbyJob, Service, SkillCategory } from './CommonDto';
-import type { ApprovalStatus, InviteStatus, JobStatus, MilestoneStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
+import { baseApi, dispatchOnSuccess } from '@/config/base_service/base.api';
+import { APIS } from '@/config/base_service/http.config';
+import { sessionRenewed, sessionStarted, signedOut, userUpdated } from '@/redux/authSlice';
+import type { Address, AuthSession, AuthUser, Job, JobQuote, MapCircle, NearbyJob, Service, SkillCategory } from './CommonDto';
+import type { AddressLabel, ApprovalStatus, InviteStatus, JobStatus, MilestoneStatus, OnboardingStatus, QuoteStatus, UserRole } from './CommonEnum';
 import { MOCK_SERVICES } from './CommonMock';
+
+/* ── Saved addresses: listed by home, posting, search and the profile ── */
+
+export interface AddressApiDto {
+  id: string;
+  label: AddressLabel;
+  address_line: string | null;
+  area_name: string;
+  pincode: string;
+  latitude: number | null;
+  longitude: number | null;
+  is_default: boolean;
+}
+
+export const toAddresses = (dto: AddressApiDto[]): Address[] =>
+  dto.map((a) => ({
+    id: a.id,
+    label: a.label,
+    addressLine: a.address_line,
+    areaName: a.area_name,
+    pincode: a.pincode,
+    coordinates: a.latitude !== null && a.longitude !== null ? { latitude: a.latitude, longitude: a.longitude } : null,
+    isDefault: a.is_default,
+  }));
 
 /* ── Wire format (snake_case) of the session endpoints, mapped once here ── */
 
@@ -177,13 +202,19 @@ export const startSessionOnSuccess = dispatchOnSuccess<AuthSession>(sessionStart
 /** Endpoints shared by several screens (landing, search, app shell, sign-in flows). */
 export const commonApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    /** The customer's saved addresses, default first */
+    getAddresses: builder.query<Address[], void>({
+      query: () => APIS.CUSTOMER.ADDRESSES,
+      transformResponse: toAddresses,
+      providesTags: ['Addresses'],
+    }),
     /** Values set in the admin console that the app needs before sign-in (e.g. the Google client ID) */
     getPublicConfig: builder.query<{ googleClientId: string }, void>({
-      query: () => '/public-config',
+      query: () => APIS.PUBLIC.CONFIG,
       transformResponse: (dto: { google_client_id: string }) => ({ googleClientId: dto.google_client_id }),
       providesTags: ['Settings'],
     }),
-    // Mocked until the backend is ready; replace with `query: (q) => ({ url: '/services', params: { q } })`
+    // Mocked until the backend is ready; replace with `query: (q) => ({ url: APIS.PUBLIC.SERVICES, params: { q } })`
     searchServices: builder.query<Service[], string>({
       queryFn: (q) => {
         const term = q.trim().toLowerCase();
@@ -195,13 +226,13 @@ export const commonApi = baseApi.injectEndpoints({
 
     /** Public skills catalogue grouped by category (provider skills, job categories) */
     getSkillCatalog: builder.query<SkillCategory[], void>({
-      query: () => '/catalog/skills',
+      query: () => APIS.CATALOG.SKILLS,
       providesTags: ['Catalog'],
     }),
 
     /** Refreshes the stored user (role, profile, onboarding progress) from the server. */
     getMe: builder.query<AuthUser, void>({
-      query: () => '/auth/me',
+      query: () => APIS.AUTH.ME,
       transformResponse: toAuthUser,
       providesTags: ['Session'],
       // A 401 ends the session in baseQuery; other failures keep the stored user.
@@ -209,7 +240,7 @@ export const commonApi = baseApi.injectEndpoints({
     }),
 
     updateMe: builder.mutation<AuthUser, { name?: string; phone?: string }>({
-      query: (body) => ({ url: '/auth/me', method: 'PATCH', body }),
+      query: (body) => ({ url: APIS.AUTH.ME, method: 'PATCH', body }),
       transformResponse: toAuthUser,
       onQueryStarted: dispatchOnSuccess<AuthUser>(userUpdated),
     }),
@@ -217,7 +248,7 @@ export const commonApi = baseApi.injectEndpoints({
     /** Signs out other devices; this one continues with the returned session. */
     changePassword: builder.mutation<AuthSession, { currentPassword: string; newPassword: string }>({
       query: ({ currentPassword, newPassword }) => ({
-        url: '/auth/change-password',
+        url: APIS.AUTH.CHANGE_PASSWORD,
         method: 'POST',
         body: { current_password: currentPassword, new_password: newPassword },
       }),
@@ -229,21 +260,21 @@ export const commonApi = baseApi.injectEndpoints({
       query: (file) => {
         const body = new FormData();
         body.append('file', file);
-        return { url: '/auth/me/avatar', method: 'POST', body, timeout: 60_000 };
+        return { url: APIS.AUTH.AVATAR, method: 'POST', body, timeout: 60_000 };
       },
       transformResponse: toAuthUser,
       onQueryStarted: dispatchOnSuccess<AuthUser>(userUpdated),
     }),
 
     removeAvatar: builder.mutation<AuthUser, void>({
-      query: () => ({ url: '/auth/me/avatar', method: 'DELETE' }),
+      query: () => ({ url: APIS.AUTH.AVATAR, method: 'DELETE' }),
       transformResponse: toAuthUser,
       onQueryStarted: dispatchOnSuccess<AuthUser>(userUpdated),
     }),
 
     /** Revokes the token on the server. The local session ends even if that call fails. */
     logout: builder.mutation<void, void>({
-      query: () => ({ url: '/auth/logout', method: 'POST' }),
+      query: () => ({ url: APIS.AUTH.LOGOUT, method: 'POST' }),
       onQueryStarted: async (_, { dispatch, queryFulfilled }) => {
         await queryFulfilled.catch(() => undefined);
         dispatch(signedOut());
@@ -254,6 +285,7 @@ export const commonApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetAddressesQuery,
   useGetPublicConfigQuery,
   useSearchServicesQuery,
   useGetSkillCatalogQuery,

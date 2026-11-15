@@ -1,9 +1,9 @@
 import { Alert, Button, Form } from 'antd';
-import { UserRole } from '../../../common/CommonEnum';
-import AuthHeader from './authHeader';
-import { EmailField, PasswordField } from './authFields';
-import GoogleSignIn from './googleSignIn';
-import type { LoginLayoutProps } from './login.layout.types';
+import { EmailField, PasswordField } from '@/clients/default/auth/shared/authFields';
+import AuthHeader from '@/clients/default/auth/shared/authHeader';
+import GoogleSignIn from '@/clients/default/auth/shared/googleSignIn';
+import { UserRole } from '@/common/CommonEnum';
+import type { LoginLayoutProps } from '@/pages/auth/types/auth.dto';
 
 const COPY = {
   [UserRole.CUSTOMER]: {

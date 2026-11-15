@@ -1,10 +1,10 @@
 import { Alert, Button, Form } from 'antd';
 import { MailCheck } from 'lucide-react';
-import { OTP_LENGTH, UserRole } from '../../../common/CommonEnum';
-import AuthHeader from './authHeader';
-import { EmailField, OtpField, PasswordField } from './authFields';
-import { ResetStep } from './forgotPassword.layout.types';
-import type { ForgotPasswordLayoutProps } from './forgotPassword.layout.types';
+import { EmailField, OtpField, PasswordField } from '@/clients/default/auth/shared/authFields';
+import AuthHeader from '@/clients/default/auth/shared/authHeader';
+import { OTP_LENGTH, UserRole } from '@/common/CommonEnum';
+import type { ForgotPasswordLayoutProps } from '@/pages/auth/types/auth.dto';
+import { ResetStep } from '@/pages/auth/types/auth.enum';
 
 /** /forgot-password and /pro/forgot-password: email, then the emailed code and a new password. */
 const ForgotPasswordLayout = (p: ForgotPasswordLayoutProps) => (

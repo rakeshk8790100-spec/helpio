@@ -1,14 +1,14 @@
 import { Button, Select, Skeleton } from 'antd';
 import { LocateFixed, MapPin, MapPinned, Search, UsersRound } from 'lucide-react';
-import { ProviderCard } from '../../../component/marketplace';
-import { AlertBanner, Chip, EmptyState } from '../../../component/ui';
-import type { ProviderSearchLayoutProps } from './pros.layout.types';
+import { ProviderCard } from '@/components/common';
+import { AlertBanner, Chip, EmptyState } from '@/components/ui';
+import type { ProviderSearchLayoutProps } from '@/pages/pros/screens/providerSearch/types/providerSearch.dto';
 
 /** /search: find pros who serve your address by skill or category, then open a profile. */
 const ProviderSearchLayout = (p: ProviderSearchLayoutProps) => (
   <div className="flex flex-col gap-4">
     <div>
-      <div className="text-xl font-bold text-slate-900">Find a pro</div>
+      <h1 className="text-xl font-bold tracking-normal text-slate-900">Find a pro</h1>
       <div className="mt-1 text-sm text-slate-600">Verified pros who work in your area. Open one to see their skills and ask for a quote.</div>
     </div>
 

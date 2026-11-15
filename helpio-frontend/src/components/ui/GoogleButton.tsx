@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { loadScript } from '../../lib/loadScript';
+import { loadScript } from '@/lib/loadScript';
 
 const GSI_SRC = 'https://accounts.google.com/gsi/client';
 

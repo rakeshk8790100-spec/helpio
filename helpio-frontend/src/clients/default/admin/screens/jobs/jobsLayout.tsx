@@ -1,14 +1,14 @@
-import type { ReactNode } from 'react';
 import { Button, Descriptions, Drawer, Image, Input, Modal, Select, Skeleton, Table } from 'antd';
 import { MessagesSquare } from 'lucide-react';
-import type { AdminJobRow } from '../../../common/CommonDto';
-import { JobStatus } from '../../../common/CommonEnum';
-import { PageHeader } from '../../../component/admin';
-import { AlertBanner, RatingStars, StatusBadge } from '../../../component/ui';
-import { formatClock, formatINR } from '../../../lib/utils';
-import { JOB_BADGE, PAYMENT_BADGE, PAYOUT_BADGE, QUOTE_BADGE, STAGE_BADGE } from './adminBadges';
-import type { JobsAdminLayoutProps } from './admin.layout.types';
-import ReasonDialog from './reasonDialog';
+import type { ReactNode } from 'react';
+import ReasonDialog from '@/clients/default/admin/shared/reasonDialog';
+import { JobStatus } from '@/common/CommonEnum';
+import { JOB_STATUS_BADGE, PAYMENT_BADGE, PAYOUT_BADGE, QUOTE_BADGE, STAGE_BADGE } from '@/common/CommonLabels';
+import { PageHeader } from '@/components/admin';
+import { AlertBanner, RatingStars, StatusBadge } from '@/components/ui';
+import { formatClock, formatINR } from '@/lib/utils';
+import type { JobsAdminLayoutProps } from '@/pages/admin/screens/jobs/types/jobs.dto';
+import type { AdminJobRow } from '@/pages/admin/types/admin.models';
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="mt-6">
@@ -30,7 +30,7 @@ const JobsAdminLayout = (p: JobsAdminLayoutProps) => (
             placeholder="Any stage"
             value={p.status.value}
             onChange={(value) => p.status.onChange(value ?? null)}
-            options={Object.values(JobStatus).map((value) => ({ value, label: JOB_BADGE[value].label }))}
+            options={Object.values(JobStatus).map((value) => ({ value, label: JOB_STATUS_BADGE[value].label }))}
             className="w-48"
             aria-label="Stage"
           />
@@ -54,7 +54,12 @@ const JobsAdminLayout = (p: JobsAdminLayoutProps) => (
         loading={p.list.status === 'loading' || p.list.fetching}
         dataSource={p.list.status === 'ready' ? p.list.rows : []}
         className="rounded-2xl border border-slate-100 bg-white shadow-sm"
-        onRow={(row) => ({ onClick: () => p.list.status === 'ready' && p.list.onOpen(row.id), className: 'cursor-pointer' })}
+        onRow={(row) => ({
+          onClick: () => p.list.status === 'ready' && p.list.onOpen(row.id),
+          onKeyDown: (e) => e.key === 'Enter' && p.list.status === 'ready' && p.list.onOpen(row.id),
+          tabIndex: 0,
+          className: 'cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500',
+        })}
         pagination={
           p.list.status === 'ready' && {
             current: p.list.page,
@@ -64,23 +69,7 @@ const JobsAdminLayout = (p: JobsAdminLayoutProps) => (
             onChange: p.list.onPageChange,
           }
         }
-        columns={[
-          {
-            title: 'Job',
-            render: (_, j) => (
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-slate-900">{j.title}</span>
-                <span className="block text-xs text-slate-500">{[j.category, j.area].filter(Boolean).join(' · ') || '–'}</span>
-              </span>
-            ),
-          },
-          { title: 'Stage', width: 170, render: (_, j) => <StatusBadge label={JOB_BADGE[j.status].label} tone={JOB_BADGE[j.status].tone} /> },
-          { title: 'Customer', width: 160, render: (_, j) => <span className="text-sm text-slate-700">{j.customer}</span> },
-          { title: 'Pro', width: 160, render: (_, j) => <span className="text-sm text-slate-700">{j.pro ?? '–'}</span> },
-          { title: 'Amount', width: 110, render: (_, j) => <span className="text-sm text-slate-800">{j.amount !== null ? formatINR(j.amount) : '–'}</span> },
-          { title: 'Done', width: 70, render: (_, j) => <span className="text-sm text-slate-700">{j.progressPct}%</span> },
-          { title: 'Updated', width: 160, render: (_, j) => <span className="text-xs text-slate-500">{formatClock(j.updatedAt)}</span> },
-        ]}
+        columns={p.columns}
       />
     )}
 
@@ -95,7 +84,7 @@ const JobsAdminLayout = (p: JobsAdminLayoutProps) => (
               <div className="min-w-0">
                 <div className="text-lg font-semibold text-slate-900">{job.title}</div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <StatusBadge label={JOB_BADGE[job.status].label} tone={JOB_BADGE[job.status].tone} />
+                  <StatusBadge label={JOB_STATUS_BADGE[job.status].label} tone={JOB_STATUS_BADGE[job.status].tone} />
                   {job.isEmergency && <StatusBadge label="Emergency" tone="error" />}
                   <span className="text-xs text-slate-500">Posted {formatClock(job.createdAt)}</span>
                 </div>
@@ -136,8 +125,8 @@ const JobsAdminLayout = (p: JobsAdminLayoutProps) => (
             <Section title={`Quotes (${job.quotes.length})`}>
               {job.quotes.length ? (
                 <ul className="flex flex-col divide-y divide-slate-100">
-                  {job.quotes.map((q, i) => (
-                    <li key={i} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  {job.quotes.map((q) => (
+                    <li key={`${q.pro}-${q.createdAt}`} className="flex items-center justify-between gap-3 py-2 text-sm">
                       <span className="min-w-0">
                         <span className="text-slate-800">{q.pro}</span>
                         {q.message && <span className="block truncate text-xs text-slate-500">"{q.message}"</span>}
@@ -230,8 +219,8 @@ const JobsAdminLayout = (p: JobsAdminLayoutProps) => (
 
             <Section title="Timeline">
               <ol className="flex flex-col gap-1">
-                {job.events.map((e, i) => (
-                  <li key={i} className="flex justify-between gap-3 text-xs">
+                {job.events.map((e) => (
+                  <li key={`${e.type}-${e.at}`} className="flex justify-between gap-3 text-xs">
                     <span className="text-slate-700">
                       {e.actor ? `${e.actor}: ` : ''}
                       {e.type.replace(/_/g, ' ')}

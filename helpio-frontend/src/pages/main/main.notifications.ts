@@ -1,16 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ComponentProps } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { NotificationBell } from '../component/marketplace';
-import { baseApi } from '../config/base_service/base.api';
-import { formatClock } from '../lib/utils';
-import {
-  useGetNotificationsQuery,
-  useGetUnreadCountQuery,
-  useMarkAllNotificationsReadMutation,
-  useMarkNotificationReadMutation,
-} from '../pages/notifications/notifications.api';
-import { useAppDispatch } from '../redux';
+import type { NotificationBell } from '@/components/common';
+import { baseApi, poll } from '@/config/base_service/base.api';
+import { formatClock } from '@/lib/utils';
+import { useGetNotificationsQuery, useGetUnreadCountQuery, useMarkAllNotificationsReadMutation, useMarkNotificationReadMutation } from '@/pages/notifications/notifications.api';
+import { useAppDispatch } from '@/redux';
 
 // How often the bell checks for news; chat polls faster on its own screen
 const POLL_MS = 30_000;
@@ -20,7 +15,7 @@ export const useNotifications = (): ComponentProps<typeof NotificationBell> => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const [open, setOpen] = useState(false);
-  const { data: unread = 0 } = useGetUnreadCountQuery(undefined, { pollingInterval: POLL_MS });
+  const { data: unread = 0 } = useGetUnreadCountQuery(undefined, poll(POLL_MS));
   const { data: items = [], isLoading } = useGetNotificationsQuery(undefined, { skip: !open });
   const [markRead] = useMarkNotificationReadMutation();
   const [markAllRead] = useMarkAllNotificationsReadMutation();
@@ -45,8 +40,8 @@ export const useNotifications = (): ComponentProps<typeof NotificationBell> => {
       read: n.read,
       onOpen: () => {
         setOpen(false);
-        if (!n.read) markRead(n.id);
-        if (n.link) navigate(n.link);
+        if (!n.read) void markRead(n.id);
+        if (n.link) void navigate(n.link);
       },
     })),
     onMarkAllRead: () => markAllRead(),

@@ -1,7 +1,7 @@
 import { configureStore, createListenerMiddleware } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
-import { baseApi } from '../config/base_service/base.api';
-import { authStorage } from '../config/base_service/auth.storage';
+import { authStorage } from '@/config/base_service/auth.storage';
+import { baseApi } from '@/config/base_service/base.api';
 import authSlice, { signedOut } from './authSlice';
 
 // When a session ends (logout or a rejected token), drop all cached API data so the next user starts clean.

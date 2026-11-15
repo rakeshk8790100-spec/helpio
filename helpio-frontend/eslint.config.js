@@ -17,6 +17,14 @@ export default defineConfig([
     ],
     languageOptions: {
       globals: globals.browser,
+      // Type information for the promise rules below
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
+    rules: {
+      // A promise nobody awaits hides its failure; mark fire-and-forget calls with `void`
+      '@typescript-eslint/no-floating-promises': 'error',
+      // Async handlers (onClick, onSave) catch their own errors; a promise used as a condition is still a bug
+      '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
     },
   },
 ])

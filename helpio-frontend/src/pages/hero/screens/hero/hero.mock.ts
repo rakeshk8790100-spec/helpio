@@ -1,5 +1,5 @@
-import { MOCK_CATEGORIES, MOCK_SERVICES } from '../../common/CommonMock';
-import { UserRole } from '../../common/CommonEnum';
+import { UserRole } from '@/common/CommonEnum';
+import { MOCK_CATEGORIES, MOCK_SERVICES } from '@/common/CommonMock';
 import type { LandingDto } from './types/hero.dto';
 
 export const MOCK_LANDING: LandingDto = {

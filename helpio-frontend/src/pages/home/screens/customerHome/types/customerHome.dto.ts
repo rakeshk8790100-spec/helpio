@@ -1,15 +1,19 @@
 import type { ComponentProps } from 'react';
-import type { Category, ChecklistItem, NearbyJob, ProviderCard } from '../../../common/CommonDto';
-import type { ActiveJobCard, JobCard, PostJobComposer } from '../../../component/marketplace';
-import type { ChipOption } from '../../../component/ui';
-import type { WithStatus } from '../layout.types';
+import type { JobApiDto } from '@/common/CommonApi';
+import type { Category, ProviderCard } from '@/common/CommonDto';
+import type { WithStatus } from '@/common/CommonDto';
+import type { JobItem } from '@/common/JobDisplay';
+import type { ActiveJobCard, PostJobComposer } from '@/components/common';
+import type { ChipOption } from '@/components/ui';
 
-/*
- * Contract between pages/home (behaviour) and client/default/home (markup) for the signed-in home screens.
- * Sections are ordered by urgency: live job, decisions, in progress, then discovery.
- */
+/* The customer home: its API's wire format and its layout's props. Sections are ordered by urgency. */
 
-export type JobItem = ComponentProps<typeof JobCard> & { id: string };
+export interface CustomerHomeApiDto {
+  active_job: JobApiDto | null;
+  awaiting_decision: JobApiDto[];
+  waiting_for_quotes: JobApiDto[];
+  drafts: JobApiDto[];
+}
 
 export interface CustomerHomeLayoutProps {
   firstName: string;
@@ -48,26 +52,3 @@ export interface CustomerHomeLayoutProps {
       }
     | null;
 }
-
-export interface ProviderHomeSections {
-  firstName: string;
-  earnings: { week: number; wallet: number };
-  pendingQuotes: number;
-  /** Shown while any step isn't done */
-  checklist: {
-    items: ChecklistItem[];
-    lockedNote?: string;
-    actionLabel?: string;
-    onAction?: () => void;
-  } | null;
-  active: ComponentProps<typeof ActiveJobCard> | null;
-  /** Customers who asked this pro directly */
-  invites: { job: NearbyJob; onOpen: () => void }[];
-  nearby: {
-    items: { job: NearbyJob; onOpen: () => void }[];
-    total: number;
-    onSeeAll: () => void;
-  };
-}
-
-export type ProviderHomeLayoutProps = WithStatus<ProviderHomeSections>;

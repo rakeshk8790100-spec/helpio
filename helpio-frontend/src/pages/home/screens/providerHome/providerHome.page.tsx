@@ -1,14 +1,16 @@
 import { useNavigate } from 'react-router-dom';
-import type { ProviderHomeLayoutProps } from '../client/default/home/home.layout.types';
-import type { AuthUser, NearbyJob } from '../common/CommonDto';
-import { ChecklistState, JobStatus } from '../common/CommonEnum';
-import { RouterKeys, toPath } from '../config/router/RouterKeys';
-import { apiErrorMessage } from '../lib/apiError';
-import { firstName } from '../lib/utils';
-import { pendingOnboardingPath } from '../pages/auth/authRedirect';
-import { useGetProviderHomeQuery } from '../pages/home/home.api';
-import { callEmergency } from '../lib/safety';
-import { LIVE } from './jobItems';
+import { ProviderHomeLayout } from '@/clients';
+import type { AuthUser, NearbyJob } from '@/common/CommonDto';
+import { ChecklistState, JobStatus } from '@/common/CommonEnum';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { LIVE } from '@/config/base_service/base.api';
+import { RouterKeys, toPath } from '@/config/router/RouterKeys';
+import { apiErrorMessage } from '@/lib/apiError';
+import { callEmergency } from '@/lib/safety';
+import { firstName } from '@/lib/utils';
+import { pendingOnboardingPath } from '@/pages/auth/authRedirect';
+import { useGetProviderHomeQuery } from './providerHome.api';
+import type { ProviderHomeLayoutProps } from './types/providerHome.dto';
 
 /** What the active-job card says for each hired stage. Work starts with the customer's PIN. */
 const ACTIVE_COPY: Partial<Record<JobStatus, (job: NearbyJob) => { statusLabel: string; nextStep: string; actionLabel: string }>> = {
@@ -35,7 +37,7 @@ const ACTIVE_COPY: Partial<Record<JobStatus, (job: NearbyJob) => { statusLabel: 
 };
 
 /** Signed-in provider home: earnings, sign-up checklist, live job and nearby jobs to quote on. */
-export const useProviderHome = (user: AuthUser): ProviderHomeLayoutProps => {
+const useProviderHome = (user: AuthUser): ProviderHomeLayoutProps => {
   const navigate = useNavigate();
   const { data, error, isLoading, refetch } = useGetProviderHomeQuery(undefined, LIVE);
 
@@ -75,3 +77,11 @@ export const useProviderHome = (user: AuthUser): ProviderHomeLayoutProps => {
     },
   };
 };
+
+const ProviderHomePage = ({ user }: { user: AuthUser }) => (
+  <SuspenseWrapper>
+    <ProviderHomeLayout {...useProviderHome(user)} />
+  </SuspenseWrapper>
+);
+
+export default ProviderHomePage;

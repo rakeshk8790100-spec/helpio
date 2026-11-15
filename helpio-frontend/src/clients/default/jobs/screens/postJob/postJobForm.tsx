@@ -1,8 +1,8 @@
 import { Alert, Button, Form, Input, InputNumber, Popconfirm, Switch } from 'antd';
 import { ArrowRight, MapPin, Send, Siren, Sparkles } from 'lucide-react';
-import { CurrentLocationButton, PhotoPicker } from '../../../component/marketplace';
-import { Chip, ChipSelect, PageSkeleton } from '../../../component/ui';
-import type { PostJobLayoutProps } from './jobs.layout.types';
+import { CurrentLocationButton, PhotoPicker } from '@/components/common';
+import { AlertBanner, Chip, ChipSelect, PageSkeleton } from '@/components/ui';
+import type { PostJobLayoutProps } from '@/pages/jobs/screens/postJob/types/postJob.dto';
 
 const DURATIONS = [
   { value: 60, label: '1 hr' },
@@ -32,15 +32,16 @@ const InviteeNote = ({ name }: { name: string }) => (
 );
 
 /** /jobs/new: describe the job in a few words, then check what was filled in (what, where, when) and post. */
-const PostJobLayout = (p: PostJobLayoutProps) => {
-  if (p.loading) return <PageSkeleton />;
+const PostJobForm = (p: PostJobLayoutProps) => {
+  if (p.status === 'loading') return <PageSkeleton />;
+  if (p.status === 'error') return <AlertBanner message={p.message} onRetry={p.onRetry} />;
 
   return (
     <>
       {p.step === 'describe' && (
         <div className="flex flex-col gap-5">
           <div>
-            <div className="text-xl font-bold text-slate-900">What do you need help with?</div>
+            <h1 className="text-xl font-bold tracking-normal text-slate-900">What do you need help with?</h1>
             <div className="mt-1 text-sm text-slate-600">
               Describe it in your own words. We fill in the job for you to check, then pros nearby send quotes.
             </div>
@@ -86,7 +87,7 @@ const PostJobLayout = (p: PostJobLayoutProps) => {
 
       <div className={p.step === 'describe' ? 'hidden' : 'flex flex-col gap-5'}>
         <div>
-          <div className="text-xl font-bold text-slate-900">{TITLES[p.mode]}</div>
+          <h1 className="text-xl font-bold tracking-normal text-slate-900">{TITLES[p.mode]}</h1>
           <div className="mt-1 text-sm text-slate-600">
             {p.mode === 'edit'
               ? 'Pros who already quoted will see the job was changed, so they can update their quote.'
@@ -266,4 +267,4 @@ const PostJobLayout = (p: PostJobLayoutProps) => {
   );
 };
 
-export default PostJobLayout;
+export default PostJobForm;

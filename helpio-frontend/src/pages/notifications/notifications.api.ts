@@ -1,5 +1,7 @@
-import type { AppNotification } from '../../common/CommonDto';
-import { baseApi } from '../../config/base_service/base.api';
+import type { AppNotification } from '@/common/CommonDto';
+import { baseApi } from '@/config/base_service/base.api';
+import { APIS } from '@/config/base_service/http.config';
+import { replaceUrlPlaceholders } from '@/lib/utils';
 
 /* Wire format of /notifications */
 interface NotificationApiDto {
@@ -32,22 +34,22 @@ const toNotification = (dto: NotificationApiDto): AppNotification => ({
 export const notificationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getNotifications: builder.query<AppNotification[], void>({
-      query: () => ({ url: '/notifications', params: { limit: 30 } }),
+      query: () => ({ url: APIS.NOTIFICATIONS.LIST, params: { limit: 30 } }),
       transformResponse: (dto: { notifications: NotificationApiDto[] }) => dto.notifications.map(toNotification),
       providesTags: ['Notifications'],
     }),
     getUnreadCount: builder.query<number, void>({
-      query: () => '/notifications/unread-count',
+      query: () => APIS.NOTIFICATIONS.UNREAD_COUNT,
       transformResponse: (dto: UnreadCountApiDto) => dto.unread_count,
       providesTags: ['Notifications'],
     }),
     markNotificationRead: builder.mutation<number, string>({
-      query: (id) => ({ url: `/notifications/${id}/read`, method: 'POST' }),
+      query: (id) => ({ url: replaceUrlPlaceholders(APIS.NOTIFICATIONS.READ, { id }), method: 'POST' }),
       transformResponse: (dto: UnreadCountApiDto) => dto.unread_count,
       invalidatesTags: ['Notifications'],
     }),
     markAllNotificationsRead: builder.mutation<number, void>({
-      query: () => ({ url: '/notifications/read-all', method: 'POST' }),
+      query: () => ({ url: APIS.NOTIFICATIONS.READ_ALL, method: 'POST' }),
       transformResponse: (dto: UnreadCountApiDto) => dto.unread_count,
       invalidatesTags: ['Notifications'],
     }),

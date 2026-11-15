@@ -1,14 +1,14 @@
+import { App } from 'antd';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { App } from 'antd';
-import { MAX_SKILLS, MIN_SKILLS } from '../client/default/onboarding/onboarding.layout.types';
-import type { SkillsLayoutProps } from '../client/default/onboarding/onboarding.layout.types';
-import type { ProviderSkill } from '../common/CommonDto';
-import { Proficiency } from '../common/CommonEnum';
-import { RouterKeys } from '../config/router/RouterKeys';
-import { apiErrorMessage } from '../lib/apiError';
-import { useGetSkillCatalogQuery } from '../common/CommonApi';
-import { useGetOnboardingQuery, useSaveSkillsMutation } from '../pages/onboarding/onboarding.api';
+import { useGetSkillCatalogQuery } from '@/common/CommonApi';
+import type { ProviderSkill } from '@/common/CommonDto';
+import { Proficiency } from '@/common/CommonEnum';
+import { RouterKeys } from '@/config/router/RouterKeys';
+import { apiErrorMessage } from '@/lib/apiError';
+import { useGetOnboardingQuery, useSaveSkillsMutation } from '@/pages/onboarding/onboarding.api';
+import type { SkillsLayoutProps } from '@/pages/onboarding/types/onboarding.dto';
+import { MAX_SKILLS, MIN_SKILLS } from '@/pages/onboarding/types/onboarding.enum';
 
 /**
  * /onboarding/skills?category= behaviour: search or browse, pick 4–20 skills with a level, then continue to step 3.
@@ -78,9 +78,9 @@ export const useOnboardingSkills = ({ editing = false }: { editing?: boolean } =
         await saveSkills(selected).unwrap();
         if (editing) {
           message.success('Skills saved. Jobs near you now match them.');
-          navigate(RouterKeys.PROFILE);
+          void navigate(RouterKeys.PROFILE);
         } else {
-          navigate(RouterKeys.ONBOARDING_AREA);
+          void navigate(RouterKeys.ONBOARDING_AREA);
         }
       } catch (e) {
         setError(apiErrorMessage(e));

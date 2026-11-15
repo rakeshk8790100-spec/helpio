@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import type { ComponentProps } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSearchServicesQuery } from '../common/CommonApi';
-import type { SearchBox } from '../component/marketplace';
-import { RouterKeys, withQuery } from '../config/router/RouterKeys';
-import { useDebouncedValue } from './useDebouncedValue';
+import { useSearchServicesQuery } from '@/common/CommonApi';
+import type { SearchBox } from '@/components/common';
+import { RouterKeys, withQuery } from '@/config/router/RouterKeys';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 
-/** Service search box behaviour (landing and customer home): debounced lookup, open a service or post a custom job. */
+/** The landing page's service search box: debounced lookup, open a service or post a custom job. */
 export const useServiceSearch = (): ComponentProps<typeof SearchBox> => {
   const navigate = useNavigate();
   const [value, setValue] = useState('');

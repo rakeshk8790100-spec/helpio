@@ -1,5 +1,5 @@
 import { Check, Clock3, RotateCcw } from 'lucide-react';
-import { MilestoneStatus } from '../../common/CommonEnum';
+import { MilestoneStatus } from '@/common/CommonEnum';
 
 export interface TrackerStage {
   stage: number;

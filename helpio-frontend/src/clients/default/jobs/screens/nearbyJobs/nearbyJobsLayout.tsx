@@ -1,9 +1,9 @@
 import { Segmented, Skeleton } from 'antd';
 import { BriefcaseBusiness, List, Map as MapIcon, MapPinOff, SearchX, Siren, Wallet } from 'lucide-react';
-import { HiredJobCard, JobMap, NearbyJobCard } from '../../../component/marketplace';
-import { AlertBanner, Chip, EmptyState } from '../../../component/ui';
-import { JobsView, ProJobsTab } from './jobs.layout.types';
-import type { NearbyJobsLayoutProps } from './jobs.layout.types';
+import { HiredJobCard, JobMap, NearbyJobCard } from '@/components/common';
+import { AlertBanner, Chip, EmptyState } from '@/components/ui';
+import type { NearbyJobsLayoutProps } from '@/pages/jobs/screens/nearbyJobs/types/nearbyJobs.dto';
+import { JobsView, ProJobsTab } from '@/pages/jobs/screens/nearbyJobs/types/nearbyJobs.enum';
 
 const VIEW_OPTIONS = [
   { value: JobsView.LIST, label: <span className="flex items-center justify-center gap-1"><List size={14} />List</span> },
@@ -34,7 +34,7 @@ const NearbyJobsLayout = (p: NearbyJobsLayoutProps) => {
     <div className="flex flex-col gap-4">
       <div>
         <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-600">For professionals</div>
-        <div className="text-xl font-bold text-slate-900">{p.tab === ProJobsTab.NEW ? 'Jobs near you' : 'My jobs'}</div>
+        <h1 className="text-xl font-bold tracking-normal text-slate-900">{p.tab === ProJobsTab.NEW ? 'Jobs near you' : 'My jobs'}</h1>
       </div>
 
       <Segmented block value={p.tab} options={p.tabs} onChange={p.onTabChange} />

@@ -1,15 +1,15 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import type { UserRole } from '../../common/CommonEnum';
-import { RouterKeys, withQuery } from '../../config/router/RouterKeys';
-import { useAppSelector } from '../../redux';
-import { selectCurrentUser } from '../../redux/authSlice';
-import { loginPathFor, signUpRedirect } from './authRedirect';
+import type { UserRole } from '@/common/CommonEnum';
+import { RouterKeys, withQuery } from '@/config/router/RouterKeys';
+import { loginPathFor, signUpRedirect } from '@/pages/auth/authRedirect';
+import { useAppSelector } from '@/redux';
+import { selectCurrentUser } from '@/redux/authSlice';
 
 /**
  * Layout route for signed-in screens: asks for login (customer or provider page, by `roles`), finishes
  * any pending sign-up step first, then checks the role. Real authorization happens on the backend.
  */
-const RequireAuth = ({ roles }: { roles?: UserRole[] }) => {
+const AuthWrapper = ({ roles }: { roles?: UserRole[] }) => {
   const user = useAppSelector(selectCurrentUser);
   const { pathname, search } = useLocation();
 
@@ -20,4 +20,4 @@ const RequireAuth = ({ roles }: { roles?: UserRole[] }) => {
   return <Outlet />;
 };
 
-export default RequireAuth;
+export default AuthWrapper;

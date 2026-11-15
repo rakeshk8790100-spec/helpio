@@ -1,9 +1,9 @@
 import { Alert, Button, Collapse, Image, Input, Modal, Skeleton } from 'antd';
 import { Camera, CircleCheck, History, RotateCcw, ShieldCheck, Timer } from 'lucide-react';
-import { MilestoneTracker, PhotoPicker } from '../../../component/marketplace';
-import { AlertBanner, ChipSelect, SectionHeader, StatusBadge } from '../../../component/ui';
-import { formatINR } from '../../../lib/utils';
-import type { JobProgressProps, StageAttempt, StageReviewProps, StageSubmitProps } from './jobs.layout.types';
+import { MilestoneTracker, PhotoPicker } from '@/components/common';
+import { AlertBanner, ChipSelect, SectionHeader, StatusBadge } from '@/components/ui';
+import { formatINR } from '@/lib/utils';
+import type { JobProgressProps, StageAttempt, StageReviewProps, StageSubmitProps } from '@/pages/jobs/types/jobs.dto';
 
 const AttemptPhotos = ({ attempt }: { attempt: StageAttempt }) => (
   <Image.PreviewGroup>

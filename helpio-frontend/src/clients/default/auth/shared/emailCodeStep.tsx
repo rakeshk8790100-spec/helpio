@@ -1,8 +1,8 @@
 import { Alert, Button, Form } from 'antd';
 import { MailCheck } from 'lucide-react';
-import { OTP_LENGTH } from '../../../common/CommonEnum';
+import { OTP_LENGTH } from '@/common/CommonEnum';
+import type { EmailCodeStepProps } from '@/pages/auth/types/auth.dto';
 import { OtpField } from './authFields';
-import type { EmailCodeStepProps } from './emailCodeStep.types';
 
 /** Sign-up, after the details: enter the code emailed to prove the address (also the admin console's log-in code). */
 const EmailCodeStep = ({
@@ -17,7 +17,7 @@ const EmailCodeStep = ({
         <MailCheck size={22} />
       </span>
       <div>
-        <div className="text-xl font-bold text-slate-900">{title}</div>
+        <h1 className="text-xl font-bold tracking-normal text-slate-900">{title}</h1>
         <div className="mt-1 text-sm text-slate-600">
           We sent a {OTP_LENGTH}-digit code to <span className="font-medium text-slate-900">{p.email}</span>.{' '}
           <button type="button" onClick={p.onChangeEmail} className="font-medium text-indigo-600">

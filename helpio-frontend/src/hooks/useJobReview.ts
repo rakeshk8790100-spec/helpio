@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { App } from 'antd';
-import type { JobReviewProps, ReviewView } from '../client/default/jobs/jobs.layout.types';
-import type { JobReview } from '../common/CommonDto';
-import { apiErrorMessage } from '../lib/apiError';
-import { formatShortDate } from '../lib/utils';
-import { useGetJobReviewsQuery, useSubmitJobReviewMutation } from '../pages/jobs/jobs.api';
+import { useState } from 'react';
+import type { JobReview } from '@/common/CommonDto';
+import { apiErrorMessage } from '@/lib/apiError';
+import { formatShortDate } from '@/lib/utils';
+import { useGetJobReviewsQuery, useSubmitJobReviewMutation } from '@/pages/jobs/jobs.api';
+import type { JobReviewProps, ReviewView } from '@/pages/jobs/types/jobs.dto';
 
 type Role = 'customer' | 'provider';
 

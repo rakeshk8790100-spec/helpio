@@ -1,9 +1,9 @@
-import type { ComponentProps } from 'react';
 import type { FormInstance } from 'antd';
-import type { Address } from '../../../common/CommonDto';
-import type { AddressLabel } from '../../../common/CommonEnum';
-import type { CurrentLocationButton } from '../../../component/marketplace';
-import type { WithStatus } from '../layout.types';
+import type { ComponentProps } from 'react';
+import type { Address } from '@/common/CommonDto';
+import type { WithStatus } from '@/common/CommonDto';
+import type { AddressLabel } from '@/common/CommonEnum';
+import type { CurrentLocationButton } from '@/components/common';
 
 /* Contract between pages/profile (behaviour) and client/default/profile (markup). */
 

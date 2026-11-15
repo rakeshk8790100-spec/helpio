@@ -1,91 +1,89 @@
-# Architecture: page → layout → component
+# Architecture: pages (logic) → clients (UI) → components
 
-## Layers and dependency direction
+Every screen is split into two files in two folders, so the same logic can be shown with a different UI per client:
 
+| Folder | Holds | Example |
+|---|---|---|
+| `src/pages/<module>/screens/<feature>/` | **Logic**: queries, state, handlers, navigation, table columns, types | `pages/jobs/screens/jobDetail/jobDetail.page.tsx` |
+| `src/clients/<client>/<module>/screens/<feature>/` | **UI only**: JSX that receives one props object | `clients/default/jobs/screens/jobDetail/jobDetailLayout.tsx` |
+
+The `@client` alias points at `src/clients/<VITE_ORG_NAME>` (default `default`; see `vite.config.ts`). A client folder needs only the layouts it changes; everything in `clients/index.ts` must exist in the active client.
+
+## How a page finds its layout
+1. The layout is registered lazily in `src/clients/index.ts`:
+   `export const JobDetailLayout = lazy(() => import('@client/jobs/screens/jobDetail/jobDetailLayout'));`
+2. The page imports it from `@/clients` and renders it inside `<SuspenseWrapper>` with one props object:
+   ```tsx
+   const JobDetail = ({ id }: { id: string }) => (
+     <SuspenseWrapper>
+       <JobDetailLayout {...useJobDetail(id)} />
+     </SuspenseWrapper>
+   );
+   ```
+3. The page's logic lives in the same file (`useJobDetail` above is a local function, not in `src/hooks`). It returns the layout's props.
+
+The two app shells are imported directly (not lazily), since they wrap every page: `pages/main/MainPage.tsx` with `@client/main/mainLayout`, and `pages/admin/AdminPage.tsx` with `@client/admin/adminShellLayout`.
+
+## Dependency direction
 ```
-src/pages/<feature>/ + src/hooks/   behaviour   (data, state, handlers, navigation)
-        │  builds props
-        ▼
-src/client/default/<feature>/ markup      (JSX composition only; "default" is the client theme/skin)
-        │  composes
-        ▼
-src/component/                reusable UI (pure, props in / callbacks out)
-        │  uses
-        ▼
-src/common/  src/lib/         shared types, enums, formatters
+src/pages/      logic           → may import clients (registry), components, hooks, common, config, lib, redux
+src/clients/    UI only         → may import components, common, lib, and types/enums from pages
+src/components/ reusable UI     → may import common, lib (wrapper/ may also use router and redux)
+src/common/ src/lib/ src/config/  shared types, labels, helpers, API setup
+```
+- **Layouts** (`clients/`) never use hooks, state, effects, queries, or the router; navigation and outlets come in as props (`onSelect`, `content`).
+- **Components** (`components/ui`, `components/common`, `components/admin`) never import `react-router-dom`, redux, `*.api.ts` or `pages/`. Only `components/wrapper` (SuspenseWrapper, AuthWrapper) may.
+
+## A module (`src/pages/<module>/`)
+```
+<module>/
+├── index.ts                 # lazy() exports of the module's pages
+├── route.tsx                # the module's routes (composed by config/router/MyRouter.tsx)
+├── <Module>Page.tsx         # only when the module has its own shell (admin: AdminPage)
+├── <module>.api.ts          # endpoints used by 2+ screens of the module (or by other modules)
+├── <module>.helpers.ts      # pure helpers shared by the module's screens (optional)
+├── types/<module>.dto.ts    # types shared by 2+ screens: API wire shapes and shared layout props
+└── screens/<feature>/
+    ├── <feature>.page.tsx       # logic + the page component
+    ├── <feature>.api.ts         # endpoints only this screen uses
+    ├── <feature>.colDef.tsx     # table columns (admin), passed to the layout as props
+    ├── <feature>.helpers.ts     # pure helpers for a big screen (e.g. postJob's date maths)
+    ├── form/add<Entity>Form.tsx # a form's logic when it's a part of the screen (e.g. the address sheet)
+    └── types/
+        ├── <feature>.dto.ts     # the screen's API wire shapes and layout props
+        └── <feature>.enum.ts    # fixed values as `as const` objects (TS `enum` is blocked by tsconfig)
 ```
 
-Imports only point **down** this list. A component importing from `pages/` or `client/` is a bug. So is a layout importing from `pages/`.
+## Where does my new code go?
+| I need to add… | Put it in |
+|---|---|
+| A new screen | `pages/<module>/screens/<feature>/` + `clients/default/<module>/screens/<feature>/<feature>Layout.tsx`; register the layout in `clients/index.ts`; export the page from the module's `index.ts`; add the route in the module's `route.tsx` |
+| A backend URL | `APIS` in `config/base_service/http.config.ts`; fill `{{params}}` with `replaceUrlPlaceholders` |
+| An API call | The screen's `<feature>.api.ts` if only it uses it; the module's `<module>.api.ts` if several screens do; `common/CommonApi.ts` for app-wide basics (session, catalog, saved addresses). Always `baseApi.injectEndpoints`, with cache tags from `TAG_TYPES` (`one('Jobs', id)` / `list('Jobs')`) |
+| A type or enum for one screen | `screens/<feature>/types/` |
+| A type used across modules | `common/CommonDto.ts` / `common/CommonEnum.ts` |
+| A label, badge or status text | `common/CommonLabels.ts` (so every screen says it the same way) |
+| A hook used by 2+ screens | `src/hooks/`. A hook used once lives in its page file or beside it (`<feature>.<kind>.ts`) |
+| A reusable component | `components/ui` (no Helpio concepts) or `components/common` (Helpio domain); export it from the folder's `index.ts` and add it to `components.md` |
+| Photo or file rules | `lib/media.ts` |
+| A polling or live query | `poll(ms)` / `LIVE` from `config/base_service/base.api.ts`, so hidden tabs don't poll |
 
-## Layer rules
-
-### `src/component/` (reusable)
-- `ui/`: generic primitives with no Helpio concepts (Chip, StatTile, StepList, FaqList…).
-- `marketplace/`: Helpio-domain components that work on any screen (SearchBox, ServiceCard, EarningsCalculator…).
-- `layout/`: the app shell (`appLayout.tsx`) and route placeholders. This is the one place allowed to use router and redux, because it *is* the shell.
-- Every value is a prop and every action is an `onX` prop.
-- **No** `useNavigate`, `useAppSelector`/`useAppDispatch`, RTK Query hooks or API calls.
-- Local `useState` is allowed **only** for purely visual state such as expand/collapse or tooltip open. Anything with business meaning (search text, selected skill, slider value, filters, form values, modals that trigger actions) is lifted to the page.
-- Props are typed with the shared DTOs from `src/common/CommonDto.ts`.
-- Export each component from its folder's `index.ts`.
-
-### `src/client/default/<feature>/` (layout)
-- `<feature>.layout.tsx` is the root layout. A big or role-based screen can split into sub-layouts it picks between.
-- `<name>.layout.tsx` holds the markup for one view: section order, spacing, headers, and composition of components.
-- `<feature>.layout.types.ts` is the contract. Reuse component props with `ComponentProps<typeof X>` so the page and layout can't drift. Wrap with `WithLoading<T>` from `client/default/layout.types.ts` (`{ loading: true } | ({ loading: false } & T)`) so the page doesn't invent placeholder data.
-- Static marketing copy and its icons (step lists, benefit bullets, headlines) belong in the layout. Data, values and handlers come from the page.
-- No data fetching and no `useState`/`useEffect`.
-
-### `src/pages/<feature>/` (behaviour)
-- `<feature>.page.tsx` reads any global state, calls the hooks and renders the layout.
-- `src/hooks/use<View>.ts` holds one hook per view. It owns queries, state, debounce, derived values, navigation and handlers, and **returns the layout props**.
-- `<feature>.api.ts` injects RTK Query endpoints into `baseApi` (never `createApi` again). Use `queryFn` with mocks until the backend exists.
-- `<feature>.mock.ts` holds typed mock data.
-- `types/<feature>.dto.ts` holds only feature-specific payloads, composed from `common/CommonDto` entities.
-- Navigation always goes through `RouterKeys`, `toPath()` and `withQuery()` from `src/config/router/RouterKeys.ts`.
-
-### Shared (not owned by one page)
-- `src/common/CommonApi.ts` holds endpoints used by several screens (e.g. `searchServices`). Pages never import another page's `*.api.ts`.
-- `src/common/CommonMock.ts` holds shared catalogue mocks (categories, services).
-- `src/lib/` holds framework-free helpers: `formatINR`, `draftJobDescription`. Every custom hook (page hooks and generic ones such as `useDebouncedValue`) lives in `src/hooks/`.
-
-### Public vs post-login screens
-- **Landing (`pages/hero`, `/`)** is public. **No role toggle**: one scroll serves customers (search, post a job) and providers (earnings, join).
-- Post-login screens (bookings, profile, a future provider area) don't exist yet. When they arrive, role comes from auth state, never from a UI toggle.
+Check `common/`, `components/` and `lib/` before creating anything new.
 
 ## Naming
-| Kind | Pattern | Example |
+| Thing | Pattern | Example |
 |---|---|---|
-| Page | `<feature>.page.tsx` | `hero.page.tsx` |
-| Page hook | `src/hooks/use<View>.ts` | `useLanding.ts` |
-| Root layout | `<feature>.layout.tsx` | `hero.layout.tsx` |
-| Sub-layout (optional) | `<view>.layout.tsx` (camelCase) | `bookingList.layout.tsx` |
-| Layout contract | `<feature>.layout.types.ts` | `hero.layout.types.ts` |
-| Component | `PascalCase.tsx` | `ServiceCard.tsx` |
+| Module / feature folder | camelCase | `jobs`, `jobDetail` |
+| Logic files | `<feature>.<kind>.ts(x)` | `jobDetail.page.tsx`, `jobDetail.api.ts`, `users.colDef.tsx` |
+| Layout / form UI | `<feature>Layout.tsx`, `<feature>Form.tsx` | `jobDetailLayout.tsx`, `postJobForm.tsx` |
+| UI parts shared by a module's screens | `clients/default/<module>/shared/` | `shared/jobProgress.tsx` |
+| Components | `PascalCase.tsx` | `QuoteCard.tsx` |
+| Props types | `<Feature>LayoutProps`; with table columns, `<Feature>Props` (built by the page) + `<Feature>LayoutProps` (adds `columns`) | `UsersProps`, `UsersLayoutProps` |
 
-## Adding a new screen (step by step)
-1. Add the path to `RouterKeys` and a route in `src/config/router/MyRouter.tsx` (child of `AppLayout`).
-2. Add entities to `common/CommonDto.ts` and enums to `common/CommonEnum.ts` if they're shared.
-3. Add API endpoints in `pages/<feature>/<feature>.api.ts` (mock with `queryFn` if needed).
-4. Write `client/default/<feature>/<feature>.layout.types.ts`: one prop group per section.
-5. Write the layout(s) by composing catalogue components. If something is missing, build it in `component/ui` or `component/marketplace`, export it, and document it in `components.md`.
-6. Write `src/hooks/use<View>.ts` returning the layout props, then a thin `<feature>.page.tsx`.
-7. Run the checklist.
+Interfaces have no `I` prefix; enums are `as const` objects with a type of the same name.
 
-## Worked example: landing page
-```tsx
-// pages/hero/hero.page.tsx: behaviour only
-const HeroPage = () => <HeroLayout {...useLanding()} />;
-
-// hooks/useLanding.ts: returns layout props
-const monthlyEstimate = Math.round((rate.hourlyAvg * hours * WEEKS_PER_MONTH) / 100) * 100;
-earnings: { rates: data.earningRates, skillId: rate.skillId, onSkillChange: setSkillId, hours, onHoursChange: setHours, monthlyEstimate },
-onExploreEarning: () => document.getElementById(EARN_SECTION_ID)?.scrollIntoView({ behavior: 'smooth' }),
-
-// client/default/hero/hero.layout.tsx: markup + static copy only
-<section id={EARN_SECTION_ID} className="-mx-5 bg-slate-900 px-5 py-6 text-white">
-  <EarningsCalculator {...p.earnings} benefits={PROVIDER_BENEFITS} />
-  <StepList steps={PROVIDER_STEPS} tone="dark" />
-</section>
-```
-
+## Shared conventions
+- Imports use `@/…` (and `@client/…` in the registry); only files inside the importer's own folder use `./…`.
+- Screen states use `WithStatus<T>` (`loading` / `error` with Retry / `ready`) from `CommonDto`; `toStatus(query, build)` in `lib/utils.ts` builds it from a query.
+- Navigation goes through `RouterKeys`, `toPath()` and `withQuery()`.
+- Fire-and-forget promises are marked `void` (lint enforces it).

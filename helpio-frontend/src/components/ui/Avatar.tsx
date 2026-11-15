@@ -1,4 +1,4 @@
-import { initials } from '../../lib/utils';
+import { initials } from '@/lib/utils';
 
 const SIZES = {
   sm: 'h-9 w-9 text-xs',

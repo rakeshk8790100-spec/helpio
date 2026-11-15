@@ -8,7 +8,7 @@ const PendingApproval = ({ email, onHome }: { email: string; onHome: () => void 
       <Hourglass size={22} />
     </span>
     <div role="status">
-      <div className="text-xl font-bold text-slate-900">Thanks! Your account is waiting for approval</div>
+      <h1 className="text-xl font-bold tracking-normal text-slate-900">Thanks! Your account is waiting for approval</h1>
       <div className="mt-1 text-sm text-slate-600">
         Helpio checks every new account. We'll email <span className="font-medium text-slate-900">{email}</span> as soon as
         yours is approved, then you can log in with your email and password.

@@ -1,9 +1,9 @@
 import { InputNumber, Segmented } from 'antd';
 import { Check, Search, X } from 'lucide-react';
-import type { ProviderSkill, SkillCategory, SkillOption } from '../../common/CommonDto';
-import { Proficiency } from '../../common/CommonEnum';
-import Chip from '../ui/Chip';
-import HScroll from '../ui/HScroll';
+import type { ProviderSkill, SkillCategory, SkillOption } from '@/common/CommonDto';
+import { Proficiency } from '@/common/CommonEnum';
+import Chip from '@/components/ui/Chip';
+import HScroll from '@/components/ui/HScroll';
 import { categoryIcon } from './categoryIcons';
 
 const PROFICIENCY_OPTIONS = [
@@ -40,6 +40,8 @@ const SkillPicker = ({
   onProficiencyChange, onYearsChange, max,
 }: Props) => {
   const active = categories.find((c) => c.id === activeCategoryId) ?? categories[0];
+  // Nothing to pick from (the catalog is empty)
+  if (!active) return null;
   const categoryOf = new Map(categories.flatMap((c) => c.skills.map((s) => [s.id, c] as const)));
   const selectedIds = new Set(selected.map((s) => s.skillId));
   const full = selected.length >= max;

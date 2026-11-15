@@ -1,6 +1,6 @@
 import { Circle, MapContainer, Popup, TileLayer } from 'react-leaflet';
+import type { MapCircle } from '@/common/CommonDto';
 import 'leaflet/dist/leaflet.css';
-import type { MapCircle } from '../../common/CommonDto';
 
 /* Leaflet draws SVG paths; Tailwind stroke/fill classes override its default colour attributes */
 const AREA_STYLE = { className: 'stroke-indigo-500 fill-indigo-500', weight: 1, fillOpacity: 0.05, dashArray: '4 4' };

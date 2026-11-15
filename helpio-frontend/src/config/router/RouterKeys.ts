@@ -1,3 +1,4 @@
+
 export const RouterKeys = {
   HOME: '/',
   SEARCH: '/search',
@@ -31,7 +32,6 @@ export const RouterKeys = {
   PRO_JOB_CHAT: '/pro/jobs/:id/chat',
   PRO_WORK: '/pro/work/:id',
   PRO_EARNINGS: '/pro/earnings',
-  SERVICE_DETAIL: '/services/:id',
   CATEGORY: '/categories/:id',
   /** Admin console (desktop): log-in with an emailed code, access requests, then the console */
   ADMIN: '/admin',
@@ -49,7 +49,7 @@ export const RouterKeys = {
   ADMIN_AUDIT: '/admin/audit',
 } as const;
 
-/** Fill `:param` segments, e.g. toPath(RouterKeys.SERVICE_DETAIL, { id: 's1' }). */
+/** Fill `:param` segments, e.g. toPath(RouterKeys.JOB_DETAIL, { id: 'j1' }). */
 export const toPath = (path: string, params: Record<string, string> = {}) =>
   path.replace(/:(\w+)/g, (_, key: string) => params[key] ?? key);
 

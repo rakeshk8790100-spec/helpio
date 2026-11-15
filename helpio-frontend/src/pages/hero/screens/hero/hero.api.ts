@@ -1,8 +1,8 @@
-import { baseApi } from '../../config/base_service/base.api';
+import { baseApi } from '@/config/base_service/base.api';
 import { MOCK_LANDING } from './hero.mock';
 import type { LandingDto } from './types/hero.dto';
 
-/** Landing endpoints. Mocked via `queryFn` until the backend is ready (then `query: () => '/landing'`). */
+/** Landing endpoints. Mocked via `queryFn` until the backend is ready (then `query: () => APIS.PUBLIC.LANDING`). */
 export const heroApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getLanding: builder.query<LandingDto, void>({

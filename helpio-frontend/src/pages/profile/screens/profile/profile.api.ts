@@ -1,7 +1,9 @@
-import type { Address, Coordinates } from '../../common/CommonDto';
-import type { AddressLabel } from '../../common/CommonEnum';
-import { baseApi } from '../../config/base_service/base.api';
-import type { AddressApiDto } from './types/profile.dto';
+import { toAddresses } from '@/common/CommonApi';
+import type { Address, Coordinates } from '@/common/CommonDto';
+import type { AddressLabel } from '@/common/CommonEnum';
+import { baseApi } from '@/config/base_service/base.api';
+import { APIS } from '@/config/base_service/http.config';
+import { replaceUrlPlaceholders } from '@/lib/utils';
 
 export interface AddressInput {
   label: AddressLabel;
@@ -11,17 +13,6 @@ export interface AddressInput {
   coordinates: Coordinates | null;
   isDefault?: boolean;
 }
-
-const toAddresses = (dto: AddressApiDto[]): Address[] =>
-  dto.map((a) => ({
-    id: a.id,
-    label: a.label,
-    addressLine: a.address_line,
-    areaName: a.area_name,
-    pincode: a.pincode,
-    coordinates: a.latitude !== null && a.longitude !== null ? { latitude: a.latitude, longitude: a.longitude } : null,
-    isDefault: a.is_default,
-  }));
 
 const toBody = (input: Partial<AddressInput>) => ({
   ...(input.label !== undefined && { label: input.label }),
@@ -35,27 +26,22 @@ const toBody = (input: Partial<AddressInput>) => ({
   ...(input.isDefault !== undefined && { is_default: input.isDefault }),
 });
 
-/** Customer saved addresses. Every change returns the whole list (default first). */
+/** Changing saved addresses (listing them is in CommonApi). Every change returns the whole list (default first). */
 export const profileApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getAddresses: builder.query<Address[], void>({
-      query: () => '/customers/me/addresses',
-      transformResponse: toAddresses,
-      providesTags: ['Addresses'],
-    }),
     addAddress: builder.mutation<Address[], AddressInput>({
-      query: (input) => ({ url: '/customers/me/addresses', method: 'POST', body: toBody(input) }),
+      query: (input) => ({ url: APIS.CUSTOMER.ADDRESSES, method: 'POST', body: toBody(input) }),
       transformResponse: toAddresses,
       // Search defaults to the default address
       invalidatesTags: ['Addresses', 'Providers'],
     }),
     updateAddress: builder.mutation<Address[], Partial<AddressInput> & { id: string }>({
-      query: ({ id, ...input }) => ({ url: `/customers/me/addresses/${id}`, method: 'PATCH', body: toBody(input) }),
+      query: ({ id, ...input }) => ({ url: replaceUrlPlaceholders(APIS.CUSTOMER.ADDRESS, { id }), method: 'PATCH', body: toBody(input) }),
       transformResponse: toAddresses,
       invalidatesTags: ['Addresses', 'Providers'],
     }),
     deleteAddress: builder.mutation<Address[], string>({
-      query: (id) => ({ url: `/customers/me/addresses/${id}`, method: 'DELETE' }),
+      query: (id) => ({ url: replaceUrlPlaceholders(APIS.CUSTOMER.ADDRESS, { id }), method: 'DELETE' }),
       transformResponse: toAddresses,
       invalidatesTags: ['Addresses', 'Providers'],
     }),
@@ -63,5 +49,4 @@ export const profileApi = baseApi.injectEndpoints({
   overrideExisting: false,
 });
 
-export const { useGetAddressesQuery, useAddAddressMutation, useUpdateAddressMutation, useDeleteAddressMutation } =
-  profileApi;
+export const { useAddAddressMutation, useUpdateAddressMutation, useDeleteAddressMutation } = profileApi;

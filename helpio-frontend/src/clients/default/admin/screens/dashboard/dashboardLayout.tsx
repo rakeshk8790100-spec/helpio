@@ -1,7 +1,7 @@
 import { CircleAlert, CircleCheck, History } from 'lucide-react';
-import { KpiCard, PageHeader } from '../../../component/admin';
-import { AlertBanner, EmptyState, PageSkeleton } from '../../../component/ui';
-import type { DashboardLayoutProps } from './admin.layout.types';
+import { KpiCard, PageHeader } from '@/components/admin';
+import { AlertBanner, EmptyState, PageSkeleton } from '@/components/ui';
+import type { DashboardLayoutProps } from '@/pages/admin/screens/dashboard/types/dashboard.dto';
 
 /** /admin: Helpio today (India time), whether everything is running, and the latest activity. */
 const DashboardLayout = (p: DashboardLayoutProps) => {

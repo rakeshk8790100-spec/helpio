@@ -1,5 +1,5 @@
 import { Alert, Input, Modal } from 'antd';
-import type { ReasonDialogProps } from './admin.layout.types';
+import type { ReasonDialogProps } from '@/pages/admin/types/admin.models';
 
 /** Confirm a rejection or deactivation, with the reason the person (or the audit log) gets. */
 const ReasonDialog = (p: ReasonDialogProps) => (

@@ -1,10 +1,10 @@
 import { Alert, Button, Checkbox, Form } from 'antd';
-import { StepProgress } from '../../../component/ui';
-import { PROVIDER_SIGNUP_STEPS } from '../onboarding/onboarding.layout.types';
-import AuthHeader from './authHeader';
-import { EmailField, NameField, PasswordField, PhoneField } from './authFields';
-import EmailCodeStep from './emailCodeStep';
-import type { RegisterLayoutProps } from './register.layout.types';
+import { EmailField, NameField, PasswordField, PhoneField } from '@/clients/default/auth/shared/authFields';
+import AuthHeader from '@/clients/default/auth/shared/authHeader';
+import EmailCodeStep from '@/clients/default/auth/shared/emailCodeStep';
+import { StepProgress } from '@/components/ui';
+import type { RegisterLayoutProps } from '@/pages/auth/types/auth.dto';
+import { PROVIDER_SIGNUP_STEPS } from '@/pages/onboarding/types/onboarding.enum';
 
 /** /pro/signup: provider sign-up step 1 (details + password, then the emailed code). Skills and service area follow. */
 const RegisterLayout = (p: RegisterLayoutProps) => (

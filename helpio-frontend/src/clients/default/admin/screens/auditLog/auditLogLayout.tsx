@@ -1,9 +1,7 @@
 import { Select, Table } from 'antd';
-import { PageHeader } from '../../../component/admin';
-import { AlertBanner, StatusBadge } from '../../../component/ui';
-import type { AuditLogLayoutProps } from './admin.layout.types';
-
-type Row = Extract<AuditLogLayoutProps['entries'], { status: 'ready' }>['rows'][number];
+import { PageHeader } from '@/components/admin';
+import { AlertBanner } from '@/components/ui';
+import type { AuditLogLayoutProps, AuditRow } from '@/pages/admin/screens/auditLog/types/auditLog.dto';
 
 /** /admin/audit: every admin action and console log-in, newest first. */
 const AuditLogLayout = (p: AuditLogLayoutProps) => (
@@ -26,7 +24,7 @@ const AuditLogLayout = (p: AuditLogLayoutProps) => (
     {p.entries.status === 'error' ? (
       <AlertBanner message={p.entries.message} onRetry={p.entries.onRetry} />
     ) : (
-      <Table<Row>
+      <Table<AuditRow>
         rowKey="id"
         loading={p.entries.status === 'loading' || p.entries.fetching}
         dataSource={p.entries.status === 'ready' ? p.entries.rows : []}
@@ -40,13 +38,7 @@ const AuditLogLayout = (p: AuditLogLayoutProps) => (
             onChange: p.entries.onPageChange,
           }
         }
-        columns={[
-          { title: 'When', width: 160, render: (_, row) => <span className="text-xs text-slate-500">{row.when}</span> },
-          { title: 'Who', width: 200, render: (_, row) => <span className="text-sm text-slate-800">{row.actor ?? 'System'}</span> },
-          { title: 'Action', width: 170, render: (_, row) => <StatusBadge label={row.actionLabel} tone={row.tone} /> },
-          { title: 'What happened', render: (_, row) => <span className="text-sm text-slate-700">{row.summary}</span> },
-          { title: 'IP', width: 130, render: (_, row) => <span className="font-mono text-xs text-slate-500">{row.ip ?? '–'}</span> },
-        ]}
+        columns={p.columns}
       />
     )}
   </div>

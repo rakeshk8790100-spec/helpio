@@ -1,26 +1,20 @@
-import { createBrowserRouter } from "react-router-dom";
-import type { RouteObject } from "react-router-dom";
-import AdminLayout from "../../component/layout/adminLayout";
-import AppLayout from "../../component/layout/appLayout";
-import ComingSoon from "../../component/layout/comingSoon";
-import { UserRole } from "../../common/CommonEnum";
-import RequireAuth from "../../pages/auth/RequireAuth";
-import { adminPublicRoutes, adminRoutes } from "../../pages/admin/routes";
-import { authRoutes } from "../../pages/auth/routes";
-import EarningsPage from "../../pages/earnings/earnings.page";
-import HomePage from "../../pages/home/home.page";
-import { customerJobRoutes, providerJobRoutes } from "../../pages/jobs/routes";
-import { onboardingRoutes } from "../../pages/onboarding/routes";
-import ProfilePage from "../../pages/profile/profile.page";
-import { providerProfileRoutes } from "../../pages/profile/routes";
-import CategoryRedirectPage from "../../pages/pros/screens/categoryRedirect.page";
-import ProviderProfilePage from "../../pages/pros/screens/providerProfile.page";
-import ProviderSearchPage from "../../pages/pros/screens/providerSearch.page";
-import { RouterKeys } from "./RouterKeys";
+import { createBrowserRouter } from 'react-router-dom';
+import { UserRole } from '@/common/CommonEnum';
+import AuthWrapper from '@/components/wrapper/AuthWrapper';
+import AdminPage from '@/pages/admin/AdminPage';
+import { adminPublicRoutes, adminRoutes } from '@/pages/admin/route';
+import { authRoutes } from '@/pages/auth/route';
+import { earningsRoutes } from '@/pages/earnings/route';
+import { homeRoutes } from '@/pages/home/route';
+import { customerJobRoutes, providerJobRoutes } from '@/pages/jobs/route';
+import MainPage from '@/pages/main/MainPage';
+import { comingSoonRoutes, notFoundRoutes } from '@/pages/main/route';
+import { onboardingRoutes } from '@/pages/onboarding/route';
+import { profileRoutes, providerProfileRoutes } from '@/pages/profile/route';
+import { prosProfileRoutes, prosSearchRoutes } from '@/pages/pros/route';
+import { RouterKeys } from './RouterKeys';
 
-/** Screens planned but not built yet; listed so each sits behind the right role. */
-const comingSoon = (paths: string[]): RouteObject[] => paths.map((path) => ({ path, element: <ComingSoon /> }));
-
+/** The app's routes: each module lists its own (pages/<module>/route.tsx); this file places them by role. */
 const myRouter = createBrowserRouter([
   // Admin console (desktop, its own shell): log-in and access requests, then admin screens
   {
@@ -28,49 +22,31 @@ const myRouter = createBrowserRouter([
     children: [
       ...adminPublicRoutes,
       {
-        element: <RequireAuth roles={[UserRole.ADMIN]} />,
-        children: [{ element: <AdminLayout />, children: adminRoutes }],
+        element: <AuthWrapper roles={[UserRole.ADMIN]} />,
+        children: [{ element: <AdminPage />, children: adminRoutes }],
       },
     ],
   },
   {
-    path: "/",
-    element: <AppLayout />,
+    path: '/',
+    element: <MainPage />,
     children: [
       // Landing page when signed out, customer or provider home when signed in
-      { index: true, element: <HomePage /> },
+      ...homeRoutes,
       // Public: customer and provider log-in, sign-up and password reset
       ...authRoutes,
       // Provider sign-up steps 2 and 3
-      { element: <RequireAuth roles={[UserRole.PROVIDER]} />, children: onboardingRoutes },
-      // Customer jobs: post, list, job hub and chat
+      { element: <AuthWrapper roles={[UserRole.PROVIDER]} />, children: onboardingRoutes },
+      // Customers: post and follow jobs, find pros
+      { element: <AuthWrapper roles={[UserRole.CUSTOMER]} />, children: [...customerJobRoutes, ...prosSearchRoutes] },
+      // Providers: nearby jobs, hired jobs, their profile and earnings
       {
-        element: <RequireAuth roles={[UserRole.CUSTOMER]} />,
-        children: [
-          ...customerJobRoutes,
-          { path: RouterKeys.SEARCH, element: <ProviderSearchPage /> },
-          { path: RouterKeys.CATEGORY, element: <CategoryRedirectPage /> },
-        ],
+        element: <AuthWrapper roles={[UserRole.PROVIDER]} />,
+        children: [...providerJobRoutes, ...providerProfileRoutes, ...earningsRoutes, ...comingSoonRoutes],
       },
-      // Provider work: verification, nearby jobs, active job and earnings
-      {
-        element: <RequireAuth roles={[UserRole.PROVIDER]} />,
-        children: [
-          ...providerJobRoutes,
-          ...providerProfileRoutes,
-          { path: RouterKeys.PRO_EARNINGS, element: <EarningsPage /> },
-          ...comingSoon([RouterKeys.PRO_VERIFICATION, RouterKeys.PRO_WORK]),
-        ],
-      },
-      // Both roles: own profile and pros' public profiles; anything else not built yet shows ComingSoon
-      {
-        element: <RequireAuth />,
-        children: [
-          { path: RouterKeys.PROFILE, element: <ProfilePage /> },
-          { path: RouterKeys.PRO_PROFILE, element: <ProviderProfilePage /> },
-          { path: "*", element: <ComingSoon /> },
-        ],
-      },
+      // Both roles: own profile and pros' public profiles
+      { element: <AuthWrapper />, children: [...profileRoutes, ...prosProfileRoutes] },
+      ...notFoundRoutes,
     ],
   },
 ]);

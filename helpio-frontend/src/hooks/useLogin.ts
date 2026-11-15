@@ -1,13 +1,13 @@
+import { Form } from 'antd';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Form } from 'antd';
-import type { LoginFormValues, LoginLayoutProps } from '../client/default/auth/login.layout.types';
-import { UserRole } from '../common/CommonEnum';
-import type { SelfServiceRole } from '../common/CommonEnum';
-import { RouterKeys, withQuery } from '../config/router/RouterKeys';
-import { apiErrorMessage } from '../lib/apiError';
-import { useLoginMutation } from '../pages/auth/auth.api';
-import { safeNext } from '../pages/auth/authRedirect';
+import { UserRole } from '@/common/CommonEnum';
+import type { SelfServiceRole } from '@/common/CommonEnum';
+import { RouterKeys, withQuery } from '@/config/router/RouterKeys';
+import { apiErrorMessage } from '@/lib/apiError';
+import { useLoginMutation } from '@/pages/auth/auth.api';
+import { safeNext } from '@/pages/auth/authRedirect';
+import type { LoginFormValues, LoginLayoutProps } from '@/pages/auth/types/auth.dto';
 import { useGoogleSignIn } from './useGoogleSignIn';
 
 const PAGES = {
@@ -52,12 +52,12 @@ export const useLogin = (audience: SelfServiceRole, { onNavigate, onSwitchAudien
     onForgotPassword: () => {
       const email = form.getFieldValue('email');
       onNavigate?.();
-      navigate(typeof email === 'string' && email.trim() ? withQuery(pages.forgot, { email: email.trim() }) : pages.forgot);
+      void navigate(typeof email === 'string' && email.trim() ? withQuery(pages.forgot, { email: email.trim() }) : pages.forgot);
     },
     // Customers come back to what they were opening; providers always continue into onboarding
     onSignup: () => {
       onNavigate?.();
-      navigate(next && audience === UserRole.CUSTOMER ? withQuery(pages.signup, { next }) : pages.signup);
+      void navigate(next && audience === UserRole.CUSTOMER ? withQuery(pages.signup, { next }) : pages.signup);
     },
     onSwitchAudience: onSwitchAudience ?? (() => navigate(pages.other)),
   };

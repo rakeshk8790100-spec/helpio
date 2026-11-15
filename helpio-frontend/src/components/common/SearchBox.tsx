@@ -1,6 +1,6 @@
 import { Plus, Search, Star } from 'lucide-react';
-import type { Service } from '../../common/CommonDto';
-import { formatINR } from '../../lib/utils';
+import type { Service } from '@/common/CommonDto';
+import { formatINR } from '@/lib/utils';
 
 interface Props {
   value: string;

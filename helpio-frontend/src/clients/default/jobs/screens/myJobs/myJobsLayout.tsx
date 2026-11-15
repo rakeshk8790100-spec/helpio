@@ -1,14 +1,14 @@
 import { Segmented, Skeleton } from 'antd';
 import { ClipboardList, Plus } from 'lucide-react';
-import { JobCard } from '../../../component/marketplace';
-import { AlertBanner, EmptyState } from '../../../component/ui';
-import type { MyJobsLayoutProps } from './jobs.layout.types';
+import { JobCard } from '@/components/common';
+import { AlertBanner, EmptyState } from '@/components/ui';
+import type { MyJobsLayoutProps } from '@/pages/jobs/screens/myJobs/types/myJobs.dto';
 
 /** /jobs: the customer's jobs by stage, newest activity first. */
 const MyJobsLayout = (p: MyJobsLayoutProps) => (
   <div className="flex flex-col gap-4">
     <div className="flex items-center justify-between">
-      <div className="text-xl font-bold text-slate-900">My jobs</div>
+      <h1 className="text-xl font-bold tracking-normal text-slate-900">My jobs</h1>
       <button
         type="button"
         onClick={p.onPostJob}

@@ -1,6 +1,6 @@
 # Helpio design system
 
-Source of truth: `src/client/default/styles/ThemeConfig.tsx` (antd tokens, `BRAND`) and `src/client/default/styles/style.scss` (CSS variables, mixins). Use Tailwind utilities that map onto these values. Never introduce new hex colours.
+Source of truth: `src/clients/default/styles/themeConfig.tsx` (antd tokens, `BRAND`) and `src/clients/default/styles/style.scss` (CSS variables, mixins). Use Tailwind utilities that map onto these values. Never introduce new hex colours.
 
 ## Personality
 Trustworthy, calm, fast. One clear primary action per card. Money, safety and progress are always visible and explained in plain words.
@@ -21,7 +21,7 @@ Trustworthy, calm, fast. One clear primary action per card. Money, safety and pr
 Status always pairs colour with a text label (`StatusBadge`), never colour alone.
 
 ## Layout (mobile shell)
-- The app shell (`component/layout/appLayout.tsx`) is a column at most 430px wide, with a 64px header, 64px bottom tabs and a scrolling content area that has `px-5 py-5`.
+- The app shell (`clients/default/main/mainLayout.tsx`) is a column at most 430px wide, with a 64px header, 64px bottom tabs and a scrolling content area that has `px-5 py-5`.
 - Page root: `flex flex-col gap-6` between sections.
 - Section: `SectionHeader` and then content (`mb-3` is built in).
 - Carousels: `HScroll` (bleeds edge-to-edge with `-mx-5 px-5`, snap). Card widths: `w-32` (provider), `w-44` (service), `w-56` (draft).
@@ -72,7 +72,7 @@ Status always pairs colour with a text label (`StatusBadge`), never colour alone
 
 ## Marketplace rules
 - **Privacy before hire:** distances use `~`, map areas are fuzzed circles, and customers show as "Customer A.". Exact address and phone are never shown before hire.
-- **Trust visibility:** escrow, start PIN, 25/50/75/100% proof and masked chat are explained where they matter (`TrustStrip` on the landing page).
+- **Trust visibility:** pay-after-approval, start PIN, 25/50/75/100% proof and masked chat are explained where they matter (`TrustStrip` on the landing page).
 - **Gated actions:** quoting stays locked until verification is approved, and the provider can't start until escrow is funded. Always show why something is locked.
 - **Safety:** an active-job surface always offers Safety (red).
 
@@ -92,7 +92,7 @@ The admin console (`/admin/*`) is the one desktop surface. It keeps the palette,
 - Text contrast must meet AA. Don't put `slate-400` text on `slate-50` for anything important.
 
 ## Gotchas (this codebase)
-- `style.scss` is **unlayered** CSS, so it beats Tailwind's layered utilities. It sets margins, sizes and colours on `p`, `h1`–`h6` and `a`. Use `div`/`span` with utilities for styled text.
+- `style.scss` puts its element defaults (`p`, `h1`–`h6`, `a`, `button`…) in `@layer base`, so Tailwind utilities on those elements win. antd's own styles are still unlayered: overriding an antd component's look still needs `!` utilities.
 - Tailwind v4 syntax: `bg-linear-to-br` (not `bg-gradient-to-br`), and important is written `!` (the codebase uses the prefix form `!bg-white`).
 - `erasableSyntaxOnly`: no TS `enum`, so use `as const` objects plus a derived union (see `common/CommonEnum.ts`).
 - lucide-react v1 uses canonical names only (`CircleCheck`, not `CheckCircle2`). Import `Map as MapIcon` so the global `Map` isn't shadowed.

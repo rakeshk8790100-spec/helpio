@@ -1,15 +1,12 @@
 import { Alert, Button, Drawer, Form, Input, Switch } from 'antd';
 import { MapPin } from 'lucide-react';
-import { AddressLabel } from '../../../common/CommonEnum';
-import { CurrentLocationButton } from '../../../component/marketplace';
-import { ChipSelect } from '../../../component/ui';
-import type { AddressEditorProps } from './profile.layout.types';
+import { AddressLabel } from '@/common/CommonEnum';
+import { ADDRESS_LABEL } from '@/common/CommonLabels';
+import { CurrentLocationButton } from '@/components/common';
+import { ChipSelect } from '@/components/ui';
+import type { AddressEditorProps } from '@/pages/profile/screens/profile/types/profile.dto';
 
-const LABELS = [
-  { value: AddressLabel.HOME, label: 'Home' },
-  { value: AddressLabel.WORK, label: 'Work' },
-  { value: AddressLabel.OTHER, label: 'Other' },
-];
+const LABELS = Object.values(AddressLabel).map((value) => ({ value, label: ADDRESS_LABEL[value] }));
 
 /** Bottom sheet to add or edit a saved address. */
 const AddressEditorLayout = (p: AddressEditorProps) => (

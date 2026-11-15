@@ -1,8 +1,8 @@
 import { Star } from 'lucide-react';
-import type { Testimonial } from '../../common/CommonDto';
-import { UserRole } from '../../common/CommonEnum';
-import Avatar from '../ui/Avatar';
-import StatusBadge from '../ui/StatusBadge';
+import type { Testimonial } from '@/common/CommonDto';
+import { UserRole } from '@/common/CommonEnum';
+import Avatar from '@/components/ui/Avatar';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 /** Quote from a customer or provider, with a role badge. Sized for HScroll. */
 const TestimonialCard = ({ testimonial: t }: { testimonial: Testimonial }) => (

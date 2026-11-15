@@ -1,3 +1,4 @@
+
 // `erasableSyntaxOnly` disallows TS enums, so we use const objects + derived unions.
 
 export const UserRole = {

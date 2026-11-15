@@ -1,8 +1,8 @@
 import { Segmented } from 'antd';
 import { ChevronRight, Landmark, Wallet } from 'lucide-react';
-import { AlertBanner, EmptyState, PageSkeleton, StatTile, StatusBadge } from '../../../component/ui';
-import { formatINR } from '../../../lib/utils';
-import type { EarningRow, EarningsLayoutProps } from './earnings.layout.types';
+import { AlertBanner, EmptyState, PageSkeleton, StatTile, StatusBadge } from '@/components/ui';
+import { formatINR } from '@/lib/utils';
+import type { EarningRow, EarningsLayoutProps } from '@/pages/earnings/screens/earnings/types/earnings.dto';
 
 /** One paid job: title, when it was paid, the amount and where Helpio's payout stands. */
 const EarningCard = ({ row }: { row: EarningRow }) => (

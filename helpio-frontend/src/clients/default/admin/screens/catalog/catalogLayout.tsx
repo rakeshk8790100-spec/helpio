@@ -1,12 +1,11 @@
-import { Alert, Button, Form, Input, InputNumber, Modal, Switch, Table } from 'antd';
+import { Button, Table } from 'antd';
 import { Pencil, Plus } from 'lucide-react';
-import { categoryIcon } from '../../../component/marketplace';
-import { PageHeader } from '../../../component/admin';
-import { AlertBanner, PageSkeleton, StatusBadge } from '../../../component/ui';
-import type { AdminCategory } from '../../../common/CommonDto';
-import type { CatalogFormValues, CatalogLayoutProps } from './admin.layout.types';
-
-type Skill = AdminCategory['skills'][number];
+import { PageHeader } from '@/components/admin';
+import { categoryIcon } from '@/components/common';
+import { AlertBanner, PageSkeleton, StatusBadge } from '@/components/ui';
+import type { CatalogLayoutProps } from '@/pages/admin/screens/catalog/types/catalog.dto';
+import type { AdminCategory } from '@/pages/admin/types/admin.models';
+import CatalogForm from './catalogForm';
 
 /** /admin/catalog: service categories and their services; switch off instead of deleting. */
 const CatalogLayout = (p: CatalogLayoutProps) => {
@@ -54,82 +53,20 @@ const CatalogLayout = (p: CatalogLayoutProps) => {
                   </Button>
                 </span>
               </div>
-              <Table<Skill>
+              <Table<AdminCategory['skills'][number]>
                 rowKey="id"
                 size="small"
                 className="!mt-3"
                 pagination={false}
                 dataSource={category.skills}
-                columns={[
-                  {
-                    title: 'Service',
-                    render: (_, s) => (
-                      <span className="flex items-center gap-2 text-sm text-slate-800">
-                        {s.name}
-                        {!s.isActive && <StatusBadge label="Off" tone="neutral" />}
-                      </span>
-                    ),
-                  },
-                  { title: 'Providers', width: 100, render: (_, s) => <span className="text-sm text-slate-700">{s.providers}</span> },
-                  { title: 'Order', width: 80, render: (_, s) => <span className="text-xs text-slate-500">{s.sortOrder}</span> },
-                  {
-                    title: '',
-                    width: 80,
-                    align: 'right',
-                    render: (_, s) => (
-                      <Button size="small" type="link" onClick={() => c.onEditSkill(category, s)}>
-                        Edit
-                      </Button>
-                    ),
-                  },
-                ]}
+                columns={p.skillColumns(category)}
               />
             </section>
           );
         })}
       </div>
 
-      {p.editor && (
-        <Modal
-          open
-          title={p.editor.title}
-          okText="Save"
-          confirmLoading={p.editor.saving}
-          onOk={() => p.editor?.form.submit()}
-          onCancel={p.editor.onCancel}
-          destroyOnHidden
-        >
-          <Form<CatalogFormValues>
-            form={p.editor.form}
-            layout="vertical"
-            requiredMark={false}
-            initialValues={p.editor.initialValues}
-            onFinish={p.editor.onSave}
-            preserve={false}
-          >
-            <Form.Item name="name" label="Name" rules={[{ required: true, whitespace: true, min: 2, max: 60 }]}>
-              <Input maxLength={60} />
-            </Form.Item>
-            {p.editor.kind === 'category' && (
-              <Form.Item
-                name="icon"
-                label="Icon"
-                extra="A lucide icon name, e.g. wrench, zap, paintbrush"
-                rules={[{ required: true, pattern: /^[a-z0-9-]{2,40}$/, message: 'Lower-case letters, digits and dashes' }]}
-              >
-                <Input maxLength={40} />
-              </Form.Item>
-            )}
-            <Form.Item name="sortOrder" label="Order" extra="Lower numbers come first">
-              <InputNumber min={0} max={999} className="!w-32" />
-            </Form.Item>
-            <Form.Item name="isActive" label="Shown to customers and providers" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-          </Form>
-          {p.editor.error && <Alert type="error" showIcon title={p.editor.error} />}
-        </Modal>
-      )}
+      {p.editor && <CatalogForm editor={p.editor} />}
     </div>
   );
 };

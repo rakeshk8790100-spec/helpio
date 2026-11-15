@@ -1,20 +1,23 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type { CustomerHomeLayoutProps } from '../client/default/home/home.layout.types';
-import type { AuthUser, Job } from '../common/CommonDto';
-import { useGetSkillCatalogQuery } from '../common/CommonApi';
-import { JobStatus, MilestoneStatus } from '../common/CommonEnum';
-import { MOCK_CATEGORIES } from '../common/CommonMock';
-import { RouterKeys, toPath, withQuery } from '../config/router/RouterKeys';
-import { apiErrorMessage } from '../lib/apiError';
-import { firstName } from '../lib/utils';
-import { useGetCustomerHomeQuery } from '../pages/home/home.api';
-import { useGetAddressesQuery } from '../pages/profile/profile.api';
-import { useSearchProvidersQuery } from '../pages/pros/pros.api';
-import { useAppDispatch } from '../redux';
-import { favoritesEditorOpened } from '../redux/authSlice';
-import { callEmergency } from '../lib/safety';
-import { LIVE, toJobItem } from './jobItems';
+import { CustomerHomeLayout } from '@/clients';
+import { useGetSkillCatalogQuery } from '@/common/CommonApi';
+import { useGetAddressesQuery } from '@/common/CommonApi';
+import type { AuthUser, Job } from '@/common/CommonDto';
+import { JobStatus, MilestoneStatus } from '@/common/CommonEnum';
+import { MOCK_CATEGORIES } from '@/common/CommonMock';
+import { toJobItem } from '@/common/JobDisplay';
+import SuspenseWrapper from '@/components/wrapper/SuspenseWrapper';
+import { LIVE } from '@/config/base_service/base.api';
+import { RouterKeys, toPath, withQuery } from '@/config/router/RouterKeys';
+import { apiErrorMessage } from '@/lib/apiError';
+import { callEmergency } from '@/lib/safety';
+import { firstName } from '@/lib/utils';
+import { useSearchProvidersQuery } from '@/pages/pros/pros.api';
+import { useAppDispatch } from '@/redux';
+import { favoritesEditorOpened } from '@/redux/authSlice';
+import { useGetCustomerHomeQuery } from './customerHome.api';
+import type { CustomerHomeLayoutProps } from './types/customerHome.dto';
 
 const HOME_PROS = 6;
 
@@ -50,7 +53,7 @@ const ACTIVE_COPY: Partial<Record<JobStatus, (job: Job) => { statusLabel: string
 };
 
 /** Signed-in customer home: live job, quotes to review, posted jobs and drafts, plus search and discovery. */
-export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
+const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
   const navigate = useNavigate();
   const { data, error, isLoading, refetch } = useGetCustomerHomeQuery(undefined, { ...LIVE, pollingInterval: 60_000 });
   const addresses = useGetAddressesQuery();
@@ -154,3 +157,11 @@ export const useCustomerHome = (user: AuthUser): CustomerHomeLayoutProps => {
           },
   };
 };
+
+const CustomerHomePage = ({ user }: { user: AuthUser }) => (
+  <SuspenseWrapper>
+    <CustomerHomeLayout {...useCustomerHome(user)} />
+  </SuspenseWrapper>
+);
+
+export default CustomerHomePage;

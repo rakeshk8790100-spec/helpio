@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Alert, Button, Drawer, Form, Input, Popconfirm, Skeleton } from 'antd';
 import {
   Briefcase,
@@ -18,12 +17,13 @@ import {
   UserRound,
   Wrench,
 } from 'lucide-react';
-import { AddressLabel } from '../../../common/CommonEnum';
-import { AlertBanner, AvatarUpload, MenuRow, StatusBadge } from '../../../component/ui';
-import type { FormSheet, ProfileLayoutProps } from './profile.layout.types';
+import type { ReactNode } from 'react';
+import { AddressLabel } from '@/common/CommonEnum';
+import { ADDRESS_LABEL } from '@/common/CommonLabels';
+import { AlertBanner, AvatarUpload, MenuRow, StatusBadge } from '@/components/ui';
+import type { FormSheet, ProfileLayoutProps } from '@/pages/profile/screens/profile/types/profile.dto';
 
 const LABEL_ICON = { [AddressLabel.HOME]: House, [AddressLabel.WORK]: Briefcase, [AddressLabel.OTHER]: MapPin };
-const LABEL_TEXT = { [AddressLabel.HOME]: 'Home', [AddressLabel.WORK]: 'Work', [AddressLabel.OTHER]: 'Other' };
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <section>
@@ -109,7 +109,7 @@ const ProfileLayout = (p: ProfileLayoutProps) => (
                       </span>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-slate-900">{LABEL_TEXT[a.label]}</span>
+                          <span className="text-sm font-semibold text-slate-900">{ADDRESS_LABEL[a.label]}</span>
                           {a.isDefault && <StatusBadge label="Default" tone="success" />}
                         </div>
                         <div className="text-xs text-slate-600">

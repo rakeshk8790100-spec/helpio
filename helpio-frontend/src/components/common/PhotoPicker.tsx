@@ -1,5 +1,6 @@
 import { Spin } from 'antd';
 import { CircleAlert, ImagePlus, Video, X } from 'lucide-react';
+import { JOB_MEDIA } from '@/lib/media';
 
 export interface PhotoItem {
   id: string;
@@ -18,7 +19,6 @@ interface Props {
   disabled?: boolean;
 }
 
-const PHOTO_ACCEPT = 'image/jpeg,image/png,image/webp,video/mp4';
 
 /** Up to `max` photos or short videos as a 3-column thumbnail grid, with an add tile and remove buttons. */
 const PhotoPicker = ({ items, max, onAdd, onRemove, disabled = false }: Props) => (
@@ -68,7 +68,7 @@ const PhotoPicker = ({ items, max, onAdd, onRemove, disabled = false }: Props) =
         </span>
         <input
           type="file"
-          accept={PHOTO_ACCEPT}
+          accept={JOB_MEDIA.accept}
           multiple
           disabled={disabled}
           className="sr-only"
