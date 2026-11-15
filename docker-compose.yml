@@ -1,0 +1,38 @@
+# Helpio: the API and the web app.
+#
+#   docker compose up --build -d          # dev settings (helpio-backend/.env.dev)
+#   APP_ENV=prod docker compose up --build -d   # prod settings (helpio-backend/.env.prod)
+#
+# Open http://localhost:8080 (WEB_PORT changes it). The web container forwards /api to the API,
+# so the browser only ever talks to one origin. Values like WEB_PORT and VITE_GOOGLE_CLIENT_ID can
+# go in a .env file next to this one (see .env.example).
+
+services:
+  backend:
+    build: ./helpio-backend
+    image: helpio-backend:latest
+    env_file:
+      - ./helpio-backend/.env.${APP_ENV:-dev}
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+    # Not published: only the web container reaches it. Uncomment to call the API directly.
+    # ports:
+    #   - "8000:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./helpio-frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+        VITE_ORG_NAME: ${VITE_ORG_NAME:-default}
+    image: helpio-web:latest
+    environment:
+      API_UPSTREAM: http://backend:8000
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
