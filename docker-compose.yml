@@ -29,7 +29,8 @@ services:
         VITE_ORG_NAME: ${VITE_ORG_NAME:-default}
     image: helpio-web:latest
     environment:
-      API_UPSTREAM: http://backend:8000
+      API_SCHEME: http
+      API_HOST: backend:8000
     ports:
       - "${WEB_PORT:-8080}:80"
     depends_on:

@@ -1,0 +1,101 @@
+# Render Blueprint: Dashboard > New > Blueprint > pick this repo. Render creates both services from here.
+# Secrets marked `sync: false` are asked for once when the Blueprint is first applied (then edit them under
+# each service's Environment tab). The database stays on Supabase; no Render database is used.
+
+services:
+  # ---- API (FastAPI) ----
+  - type: web
+    name: helpio-backend
+    runtime: docker
+    plan: starter            # always on; "free" sleeps when idle and can't take private-network traffic
+    region: singapore        # keep both services (and ideally Supabase) in the same region
+    rootDir: helpio-backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: prod
+      # Database (Supabase > Connect > Session pooler)
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        value: postgres
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      # Auth
+      - key: AUTH_SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ADMIN_OWNER_EMAIL
+        sync: false
+      # Keep it secret and never change it: saved API keys become unreadable
+      - key: SETTINGS_ENCRYPTION_KEY
+        sync: false
+      # Email (Brevo)
+      - key: BREVO_SMTP_LOGIN
+        sync: false
+      - key: BREVO_SMTP_KEY
+        sync: false
+      - key: BREVO_FROM_EMAIL
+        sync: false
+      # Job photos and videos (Cloudinary)
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Payments (Razorpay)
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
+      # AI job write-ups
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # The web app's public URL (links in emails, Razorpay's return page), e.g. https://helpio-web.onrender.com
+      - key: APP_WEB_URL
+        sync: false
+      - key: REQUIRE_CUSTOMER_APPROVAL
+        value: "false"
+      - key: REQUIRE_PROVIDER_APPROVAL
+        value: "false"
+
+  # ---- Web app (nginx serving the Vite build; forwards /api to the API) ----
+  - type: web
+    name: helpio-web
+    runtime: docker
+    plan: starter
+    region: singapore
+    rootDir: helpio-frontend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      # Reach the API over Render's private network (host:port of helpio-backend)
+      - key: API_SCHEME
+        value: http
+      - key: API_HOST
+        fromService:
+          type: web
+          name: helpio-backend
+          property: hostport
+      # Build-time (Render passes env vars to `docker build` as build args); public values only
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
+      - key: VITE_API_BASE_URL
+        value: /api/v1

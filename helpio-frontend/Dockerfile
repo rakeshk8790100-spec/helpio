@@ -21,10 +21,15 @@ RUN npm run build
 # ---- serve ----
 FROM nginx:1.27-alpine
 
-# Where /api goes; the official image fills ${API_UPSTREAM} into the template at start-up
-ENV API_UPSTREAM=http://backend:8000
+# Where /api goes (scheme + host:port) and the port to listen on (Render sets PORT).
+# The official image fills these into the template at start-up; NGINX_ENTRYPOINT_LOCAL_RESOLVERS makes it
+# fill NGINX_LOCAL_RESOLVERS from the container's DNS servers.
+ENV API_SCHEME=http \
+    API_HOST=backend:8000 \
+    PORT=80 \
+    NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -q -O /dev/null http://127.0.0.1/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -q -O /dev/null "http://127.0.0.1:${PORT}/healthz" || exit 1
